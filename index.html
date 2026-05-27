@@ -1889,7 +1889,14 @@ const SEED_CATALOG = [
 ]
 
 function load(key, fallback) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  try {
+    const v = localStorage.getItem(key);
+    if (!v) return fallback;
+    const parsed = JSON.parse(v);
+    // Return fallback if result is an empty array but fallback is not
+    if (Array.isArray(parsed) && parsed.length === 0 && Array.isArray(fallback) && fallback.length > 0) return fallback;
+    return parsed;
+  }
   catch(e) { return fallback; }
 }
 function save(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
@@ -1915,6 +1922,11 @@ function logAction(type, description, extra) {
 }
 
 let catalog   = load('pizza_catalog', SEED_CATALOG);
+// If catalog is empty (corrupted localStorage or first run), use SEED_CATALOG
+if (!catalog || catalog.length === 0) {
+  catalog = SEED_CATALOG.slice();
+  try { localStorage.setItem('pizza_catalog', JSON.stringify(catalog)); } catch(e) {}
+}
 let cpd       = load('pizza_cpd', {});
 let unitStock = load('pizza_units', {});
 let movements = load('pizza_movements', []);
