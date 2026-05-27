@@ -1423,6 +1423,11 @@ auth.onAuthStateChanged(user => {
         Object.assign(minimums, data.pizza_minimums);
       }
       if (data.pizza_prices)    Object.assign(prices, data.pizza_prices);
+      if (data.pizza_unit_minimums) {
+        if (!window.unitMinimums) window.unitMinimums = {};
+        Object.keys(window.unitMinimums).forEach(k => delete window.unitMinimums[k]);
+        Object.assign(window.unitMinimums, data.pizza_unit_minimums);
+      }
       if (data.pizza_units) {
         Object.keys(unitStock).forEach(k => delete unitStock[k]);
         Object.assign(unitStock, data.pizza_units);
@@ -1923,6 +1928,7 @@ function save(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
 
 // Activity log
 let activityLog = load('pizza_log', []);
+window.unitMinimums = load('pizza_unit_minimums', {});
 
 function logAction(type, description, extra) {
   if (!session) return;
@@ -4927,7 +4933,36 @@ function viewBatchOperation(mode) {
 function viewCatalogo() {
   const frag = document.createDocumentFragment();
 
-  // Add form
+  // ── Unit selector tabs (CPD only) ──────────────────────────────
+  // CPD: 'cpd' = CPD catalog | unit name = that unit's catalog
+  let activeTab = 'cpd'; // 'cpd' or unit name
+
+  const tabsWrap = el('div', {style:'display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap'});
+
+  const buildTabs = () => {
+    tabsWrap.innerHTML = '';
+    const tabs = isCPD() ? ['cpd', ...UNIT_NAMES] : [session.unit];
+    tabs.forEach(tab => {
+      const label = tab === 'cpd' ? '\uD83C\uDFED CPD' : tab;
+      const btn = el('button', {
+        cls: 'unit-tab' + (tab === activeTab ? ' active' : ''),
+        style: 'font-size:12px;padding:6px 14px',
+        onclick: () => {
+          activeTab = tab;
+          buildTabs();
+          buildTable();
+        }
+      }, label);
+      tabsWrap.appendChild(btn);
+    });
+  };
+
+  if (isCPD()) {
+    frag.appendChild(tabsWrap);
+    buildTabs();
+  }
+
+  // Add form (CPD only, only on CPD tab)
   const formCard = el('div', {cls:'form-card', style:'margin-bottom:24px'});
   formCard.appendChild(el('div', {cls:'form-title'}, 'Adicionar novo item'));
   const nameGrp = el('div', {cls:'form-group'});
@@ -4961,7 +4996,239 @@ function viewCatalogo() {
     toast('Item "'+name+'" adicionado ao cat\u00E1logo!');
     render();
   }}, svgCheck(), ' Adicionar ao Cat\u00E1logo'));
-  frag.appendChild(formCard);
+
+  if (isCPD()) frag.appendChild(formCard);
+
+  // ── Table container (rebuilt when tab changes) ──────────────────
+  const tableContainer = el('div');
+  frag.appendChild(tableContainer);
+
+  function buildTable() {
+    tableContainer.innerHTML = '';
+
+    const isCpdTab   = activeTab === 'cpd';
+    const showPrices = isCpdTab && isCPD();
+    const tabUnit    = isCpdTab ? null : activeTab;
+
+    // Stock source for this tab
+    const stockObj = isCpdTab ? cpd : (unitStock[activeTab] || {});
+
+    // Minimums: per-unit minimums stored in unitMinimums[unitName]
+    // For CPD tab use global minimums; for unit tabs use unit-specific minimums
+    if (!window.unitMinimums) window.unitMinimums = {};
+    const activeMins = isCpdTab ? minimums : (window.unitMinimums[activeTab] || {});
+
+    // Catalog table
+    const tableBlock = el('div', {cls:'table-wrap'});
+    const thead = el('div', {cls:'table-header'});
+    const tabLabel = isCpdTab ? 'CPD' : activeTab;
+    thead.appendChild(el('span', {cls:'table-title'}, `${catalog.length} itens \u2014 ${tabLabel}`));
+
+    if (showPrices) {
+      const totalVal = catalog.reduce((s, i) => s + (cpd[i.id]||0) * (prices[i.id]||0), 0);
+      const withPrice = catalog.filter(i => prices[i.id] > 0).length;
+      if (withPrice > 0) {
+        const badge = el('div', {style:'display:flex;flex-direction:column;align-items:flex-end;gap:2px'});
+        badge.appendChild(el('span', {style:'font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px'}, 'Valor total CPD'));
+        badge.appendChild(el('span', {style:'font-size:15px;font-weight:700;color:var(--accent-dark);font-family:"Playfair Display",serif'},
+          totalVal.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})));
+        thead.appendChild(badge);
+      }
+    }
+    tableBlock.appendChild(thead);
+
+    const searchWrap = el('div', {cls:'search-wrap', style:'padding:14px 18px 0'});
+    searchWrap.appendChild(el('span', {cls:'search-icon', html:'<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>'}));
+    const searchInp = el('input', {type:'text', placeholder:'Buscar item...'});
+    searchWrap.appendChild(searchInp);
+    tableBlock.appendChild(searchWrap);
+
+    const table = el('table', {cls:'catalog-table', style:'margin-top:8px'});
+
+    if (showPrices) {
+      table.innerHTML = '<thead><tr>' +
+        '<th style="width:26%">Nome</th>' +
+        '<th class="col-unit" style="width:7%">Medida</th>' +
+        '<th style="width:7%;text-align:right">Qtd CPD</th>' +
+        '<th class="col-min" style="width:8%;text-align:right;font-size:10px;color:var(--text-3)">M\u00CDN.</th>' +
+        '<th style="width:14%;text-align:right">Pre\u00E7o unit.</th>' +
+        '<th style="width:14%;text-align:right">Valor total</th>' +
+        '<th style="width:24%;text-align:right" colspan="2">A\u00E7\u00F5es</th>' +
+        '</tr></thead>';
+    } else if (isCpdTab) {
+      table.innerHTML = '<thead><tr>' +
+        '<th style="width:38%">Nome</th>' +
+        '<th class="col-unit" style="width:9%">Medida</th>' +
+        '<th style="width:9%;text-align:right">Qtd CPD</th>' +
+        '<th class="col-min" style="width:9%;text-align:right;font-size:10px;color:var(--text-3)">M\u00CDN.</th>' +
+        '<th style="width:35%;text-align:right" colspan="2">A\u00E7\u00F5es</th>' +
+        '</tr></thead>';
+    } else {
+      // Unit tab — show unit stock + unit-specific minimum (editable by CPD)
+      table.innerHTML = '<thead><tr>' +
+        `<th style="width:38%">Nome \u2014 ${activeTab}</th>` +
+        '<th class="col-unit" style="width:9%">Medida</th>' +
+        `<th style="width:9%;text-align:right">Qtd</th>` +
+        '<th class="col-min" style="width:9%;text-align:right;font-size:10px;color:var(--text-3)">M\u00CDN.</th>' +
+        '<th style="width:35%;text-align:right" colspan="2">A\u00E7\u00F5es</th>' +
+        '</tr></thead>';
+    }
+
+    const tbody = el('tbody', {});
+    const openCats = Object.fromEntries(CATEGORIES.map(c => [c, false]));
+
+    const renderRows = (search) => {
+      tbody.innerHTML = '';
+      const q = search.toLowerCase().trim();
+      const filtered = catalog.filter(i => !q || i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q));
+      if (!filtered.length) {
+        tbody.appendChild(el('tr', {}, el('td', {colspan:'6', cls:'empty'}, 'Nenhum item encontrado')));
+        return;
+      }
+      const usedCats = CATEGORIES.filter(cat => filtered.some(i => i.category === cat));
+      usedCats.forEach(cat => {
+        const catItems = filtered.filter(i => i.category === cat);
+        const isOpen = openCats[cat] !== false;
+
+        const catTr = el('tr', {cls:'cat-row'});
+        const catTd = document.createElement('td');
+        catTd.setAttribute('colspan', showPrices ? '7' : '6');
+        catTd.style.cssText = 'padding:0;width:100%;';
+        const togBtn = el('button', {cls:'cat-toggle' + (isOpen ? ' open' : '')});
+        const alertCount = catItems.filter(i => (stockObj[i.id]||0) === 0 && (activeMins[i.id]||0) > 0).length;
+        togBtn.innerHTML = `<span class="cat-name">${cat}</span><span class="cat-count">${catItems.length} itens${alertCount > 0 ? ` \u00B7 \u26A0 ${alertCount}` : ''}</span><span class="cat-chevron">\u25B2</span>`;
+        togBtn.addEventListener('click', () => {
+          openCats[cat] = !openCats[cat];
+          togBtn.classList.toggle('open', openCats[cat]);
+          rows.forEach(r => { r.style.display = openCats[cat] ? '' : 'none'; });
+        });
+        catTd.appendChild(togBtn); catTr.appendChild(catTd); tbody.appendChild(catTr);
+
+        const rows = [];
+        catItems.forEach(item => {
+          const qty   = stockObj[item.id] || 0;
+          const min   = activeMins[item.id] || 0;
+          const isZero = qty === 0 && min > 0;
+          const isLow  = min > 0 && qty < min && !isZero;
+
+          const tr = el('tr', {style: isZero ? 'background:var(--danger-bg)' : isLow ? 'background:var(--warning-bg)' : ''});
+          if (!isOpen) tr.style.display = 'none';
+
+          // Name cell
+          const nameTd = el('td', {cls:'item-name'});
+          const nameLabel = el('span', {}, item.name);
+          const nameInp   = el('input', {type:'text', value:item.name, style:'display:none;width:100%;padding:3px 6px;border:1.5px solid var(--accent);border-radius:4px;font-size:13px;outline:none'});
+          const catInline = el('span', {cls:'item-unit-inline', style: (isZero||isLow)?`color:${isZero?'var(--danger)':'#E8A020'};font-weight:600`:''}, item.unit);
+          const saveNameFn = () => {
+            const v = nameInp.value.trim() || item.name;
+            item.name = v; nameLabel.textContent = v;
+            save('pizza_catalog', catalog);
+            nameInp.style.display='none'; nameLabel.style.display='';
+          };
+          nameLabel.addEventListener('click', () => { nameLabel.style.display='none'; nameInp.style.display=''; nameInp.focus(); nameInp.select(); });
+          nameInp.addEventListener('blur', saveNameFn);
+          nameInp.addEventListener('keydown', e => { if(e.key==='Enter') saveNameFn(); if(e.key==='Escape'){nameInp.style.display='none';nameLabel.style.display='';} });
+          nameTd.appendChild(nameLabel); nameTd.appendChild(nameInp); nameTd.appendChild(catInline);
+          tr.appendChild(nameTd);
+
+          // Medida cell (editable)
+          const unitTd = el('td', {cls:'muted col-unit', style:'cursor:pointer;white-space:nowrap'});
+          const unitSpan = el('span', {style:'font-size:12px;color:var(--text-2);border-bottom:1px dashed var(--border)'}, item.unit);
+          const unitInp  = el('input', {type:'text', value:item.unit, style:'display:none;width:70px;padding:2px 5px;border:1.5px solid var(--accent);border-radius:4px;font-size:12px;outline:none'});
+          unitSpan.addEventListener('click', () => { unitSpan.style.display='none'; unitInp.style.display=''; unitInp.focus(); unitInp.select(); });
+          const saveUnitFn = () => {
+            const v = unitInp.value.trim() || item.unit;
+            item.unit = v; unitSpan.textContent = v; catInline.textContent = v;
+            save('pizza_catalog', catalog);
+            unitInp.style.display='none'; unitSpan.style.display='';
+          };
+          unitInp.addEventListener('blur', saveUnitFn);
+          unitInp.addEventListener('keydown', e => { if(e.key==='Enter') saveUnitFn(); if(e.key==='Escape'){unitInp.style.display='none';unitSpan.style.display='';} });
+          unitTd.appendChild(unitSpan); unitTd.appendChild(unitInp);
+          tr.appendChild(unitTd);
+
+          // Qty cell (read-only in catalog)
+          tr.appendChild(el('td', {cls: qty===0&&min>0?'danger':qty>0&&isLow?'warn':'', style:'text-align:right;font-weight:700'}, String(qty)));
+
+          // Min cell — editable, per-tab (CPD = global minimums, unit = unit minimums)
+          const minTd = el('td', {cls:'col-min', style:'text-align:right;cursor:pointer;padding-right:8px'});
+          const minSpan = el('span', {style:'font-size:12px;color:var(--text-3);border-bottom:1px dashed var(--border)'}, min > 0 ? String(min) : '\u2014');
+          const minInp  = el('input', {type:'number', inputmode:'decimal', value: min > 0 ? String(min) : '0',
+            style:'display:none;width:54px;padding:3px 6px;border:1.5px solid #B8922A;border-radius:4px;font-size:12px;text-align:right;outline:none'});
+          minSpan.addEventListener('click', () => { minSpan.style.display='none'; minInp.style.display=''; minInp.focus(); minInp.select(); });
+          const saveMinFn = () => {
+            const v = Math.max(0, parseFloat(minInp.value)||0);
+            if (isCpdTab) {
+              minimums[item.id] = v;
+              save('pizza_minimums', minimums);
+            } else {
+              if (!window.unitMinimums[activeTab]) window.unitMinimums[activeTab] = {};
+              window.unitMinimums[activeTab][item.id] = v;
+              save('pizza_unit_minimums', window.unitMinimums);
+            }
+            minSpan.textContent = v > 0 ? String(v) : '\u2014';
+            catInline.style.color = '';
+            catInline.style.fontWeight = '';
+            minInp.style.display='none'; minSpan.style.display='';
+          };
+          minInp.addEventListener('blur', saveMinFn);
+          minInp.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();saveMinFn();} if(e.key==='Escape'){minInp.style.display='none';minSpan.style.display='';} });
+          minTd.appendChild(minSpan); minTd.appendChild(minInp);
+          tr.appendChild(minTd);
+
+          // Price cell (CPD only)
+          if (showPrices) {
+            const price = prices[item.id] || 0;
+            const priceTd = el('td', {style:'text-align:right;cursor:pointer'});
+            const priceSpan = el('span', {style:'font-size:12px;color:var(--text-2);border-bottom:1px dashed var(--border)'},
+              price > 0 ? price.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '\u2014');
+            const priceInp = el('input', {type:'number', inputmode:'decimal', value: price > 0 ? String(price) : '',
+              style:'display:none;width:80px;padding:2px 5px;border:1.5px solid var(--accent);border-radius:4px;font-size:12px;text-align:right;outline:none'});
+            priceSpan.addEventListener('click', () => { priceSpan.style.display='none'; priceInp.style.display=''; priceInp.focus(); priceInp.select(); });
+            const savePriceFn = () => {
+              const v = parseFloat(priceInp.value)||0;
+              prices[item.id] = v; save('pizza_prices', prices);
+              priceSpan.textContent = v > 0 ? v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '\u2014';
+              priceInp.style.display='none'; priceSpan.style.display='';
+            };
+            priceInp.addEventListener('blur', savePriceFn);
+            priceInp.addEventListener('keydown', e => { if(e.key==='Enter') savePriceFn(); if(e.key==='Escape'){priceInp.style.display='none';priceSpan.style.display='';} });
+            priceTd.appendChild(priceSpan); priceTd.appendChild(priceInp);
+            tr.appendChild(priceTd);
+            const totalVal2 = qty * (prices[item.id]||0);
+            tr.appendChild(el('td', {style:'text-align:right;font-size:12px;color:var(--text-2)'},
+              totalVal2 > 0 ? totalVal2.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '\u2014'));
+          }
+
+          // Actions
+          const actionsTd = el('td', {style:'text-align:right;white-space:nowrap'});
+          const removeBtn = el('button', {cls:'btn btn-outline btn-sm', style:'color:var(--danger);border-color:var(--danger);font-size:11px', onclick:()=>{
+            if (!confirm(`Remover "${item.name}" do cat\u00E1logo?`)) return;
+            const idx = catalog.indexOf(item);
+            if (idx >= 0) catalog.splice(idx, 1);
+            save('pizza_catalog', catalog);
+            tr.remove();
+            toast('Item removido');
+          }}, 'Remover');
+          actionsTd.appendChild(removeBtn);
+          tr.appendChild(actionsTd);
+
+          rows.push(tr);
+          tbody.appendChild(tr);
+        });
+      });
+    };
+
+    searchInp.addEventListener('input', () => renderRows(searchInp.value));
+    renderRows('');
+    table.appendChild(tbody);
+    tableBlock.appendChild(table);
+    tableContainer.appendChild(tableBlock);
+  }
+
+  buildTable();
+  return frag;
+}
 
   // Catalog table
   const showPrices = isCPD();
@@ -5258,68 +5525,56 @@ const MIN_SEED = {
 
 const UNIT_SEED = {'Asa Sul':{},'SIG':{},'Vicente Pires':{}};
 
-// Apply seeds -- reseed if catalog version changed or CPD is empty/stale
-const SEED_VERSION = 'v10'; // increment when catalog or seed data changes
+// ── INICIALIZAÇÃO DE DADOS ──────────────────────────────────────
+// SEED_VERSION controla APENAS o catálogo de itens.
+// Dados operacionais (estoque, pedidos, movimentações) NUNCA são resetados
+// por uma atualização de versão — só são inicializados se estiverem vazios.
+
+const SEED_VERSION = 'v10';
 window._seedVersion = SEED_VERSION;
 const storedSeedVer = load('pizza_seed_ver', null);
-const needReseed = storedSeedVer !== SEED_VERSION || Object.keys(cpd).length === 0;
+const catalogChanged = storedSeedVer !== SEED_VERSION;
 
-if (needReseed) {
-  // Always update catalog to latest seed
+// 1. CATÁLOGO — atualiza sempre que a versão mudar
+if (catalogChanged || !catalog || catalog.length === 0) {
   catalog.length = 0;
   SEED_CATALOG.forEach(i => catalog.push(i));
   save('pizza_catalog', catalog);
-
-  // Only reseed stock if quantities look wrong (e.g. all items have qty <= 1)
-  const cpdVals = Object.values(cpd);
-  const cpdLooksWrong = cpdVals.length === 0 || cpdVals.every(v => v <= 1);
-
-  if (cpdLooksWrong) {
-    // Full reseed
-    Object.keys(cpd).forEach(k => delete cpd[k]);
-    Object.assign(cpd, CPD_SEED);
-    save('pizza_cpd', cpd);
-
-    Object.keys(unitStock).forEach(k => delete unitStock[k]);
-    Object.assign(unitStock, UNIT_SEED);
-    save('pizza_units', unitStock);
-  }
-
-  // Always update minimums to latest
-  Object.assign(minimums, MIN_SEED);
-  save('pizza_minimums', minimums);
-
   save('pizza_seed_ver', SEED_VERSION);
 
-  // Push new catalog and seed version to Firebase so other devices get it too
-  // Wait for Firebase to be ready (auth might not be done yet at this point)
-  const pushCatalogToFb = () => {
+  // Envia novo catálogo para Firebase (com retry se não estiver pronto)
+  const pushCatalog = () => {
     if (window._fb && window._fb.ready) {
-      db.ref('dados/pizza_catalog').set(catalog)
+      db.ref('dados/pizza_catalog').set(SEED_CATALOG)
         .then(() => db.ref('dados/pizza_seed_ver').set(SEED_VERSION))
-        .then(() => console.log('[Firebase] Cat\u00E1logo novo enviado ao banco (' + SEED_VERSION + ')'))
-        .catch(e => console.error('[Firebase] Erro ao enviar cat\u00E1logo:', e));
+        .then(() => console.log('[Firebase] Cat\u00E1logo atualizado (' + SEED_VERSION + ') - ' + SEED_CATALOG.length + ' itens'))
+        .catch(e => console.error('[Firebase] Erro cat\u00E1logo:', e));
     } else {
-      // Firebase not ready yet, retry after auth
-      setTimeout(pushCatalogToFb, 2000);
+      setTimeout(pushCatalog, 2000);
     }
   };
-  pushCatalogToFb();
-} else {
-  // First run
-  if (Object.keys(cpd).length === 0) {
-    Object.assign(cpd, CPD_SEED);
-    save('pizza_cpd', cpd);
-  }
-  if (Object.keys(minimums).length === 0) {
-    Object.assign(minimums, MIN_SEED);
-    save('pizza_minimums', minimums);
-  }
-  if (Object.keys(unitStock).length === 0) {
-    Object.assign(unitStock, UNIT_SEED);
-    save('pizza_units', unitStock);
-  }
+  pushCatalog();
 }
+
+// 2. MÍNIMOS — atualiza se a versão mudou (não são dados operacionais)
+if (catalogChanged || Object.keys(minimums).length === 0) {
+  Object.assign(minimums, MIN_SEED);
+  save('pizza_minimums', minimums);
+}
+
+// 3. ESTOQUE CPD — só inicializa se estiver completamente vazio (primeira vez)
+if (Object.keys(cpd).length === 0) {
+  Object.assign(cpd, CPD_SEED);
+  save('pizza_cpd', cpd);
+}
+
+// 4. ESTOQUE UNIDADES — só inicializa se estiver completamente vazio (primeira vez)
+if (Object.keys(unitStock).length === 0) {
+  Object.assign(unitStock, UNIT_SEED);
+  save('pizza_units', unitStock);
+}
+
+// 5. PEDIDOS e MOVIMENTAÇÕES — nunca resetar, apenas carregar do localStorage
 
 // \u2500\u2500 VIEW: Movimenta\u00E7\u00F5es (Activity Log) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 function viewLog() {
