@@ -1380,22 +1380,38 @@ auth.onAuthStateChanged(user => {
     window._fb.cache = data;
 
     if (typeof catalog !== 'undefined') {
-      const fbSeedVer   = data.pizza_seed_ver;
+      const fbSeedVer    = data.pizza_seed_ver;
       const localSeedVer = window._seedVersion || null;
+      const fbCatalog    = data.pizza_catalog;
+      const fbCatalogLen = Array.isArray(fbCatalog) ? fbCatalog.length : 0;
 
-      if (data.pizza_catalog) {
-        if (!fbSeedVer || !localSeedVer || fbSeedVer === localSeedVer) {
-          // Same version or no version info: sync normally
+      if (fbCatalogLen === 0) {
+        // Firebase has no catalog — push local SEED_CATALOG immediately
+        console.log('[Firebase] Cat\u00E1logo vazio no banco, enviando automaticamente...');
+        const catToSend = (typeof SEED_CATALOG !== 'undefined' && SEED_CATALOG.length > 0)
+          ? SEED_CATALOG : catalog;
+        if (catToSend && catToSend.length > 0) {
+          db.ref('dados/pizza_catalog').set(catToSend)
+            .then(() => db.ref('dados/pizza_seed_ver').set(localSeedVer || 'v10'))
+            .then(() => console.log('[Firebase] Cat\u00E1logo enviado automaticamente:', catToSend.length, 'itens'))
+            .catch(e => console.error('[Firebase] Erro ao enviar cat\u00E1logo:', e));
+          // Use local catalog now
           catalog.length = 0;
-          data.pizza_catalog.forEach(i => catalog.push(i));
-        } else {
-          // Local seed is newer: push new catalog to Firebase, keep local
-          console.log('[Firebase] Atualizando cat\u00E1logo: local=' + localSeedVer + ' banco=' + fbSeedVer);
-          db.ref('dados/pizza_catalog').set(catalog)
-            .then(() => db.ref('dados/pizza_seed_ver').set(localSeedVer))
-            .then(() => console.log('[Firebase] Cat\u00E1logo atualizado no banco (' + localSeedVer + ')'))
-            .catch(e => console.error('[Firebase] Erro:', e));
+          catToSend.forEach(i => catalog.push(i));
         }
+      } else if (!fbSeedVer || fbSeedVer === localSeedVer) {
+        // Same version — sync catalog from Firebase
+        catalog.length = 0;
+        fbCatalog.forEach(i => catalog.push(i));
+      } else {
+        // Local seed is newer — push new catalog to Firebase
+        console.log('[Firebase] Seed atualizado: local=' + localSeedVer + ' banco=' + fbSeedVer);
+        const catToSend = (typeof SEED_CATALOG !== 'undefined' && SEED_CATALOG.length > 0)
+          ? SEED_CATALOG : catalog;
+        db.ref('dados/pizza_catalog').set(catToSend)
+          .then(() => db.ref('dados/pizza_seed_ver').set(localSeedVer))
+          .then(() => console.log('[Firebase] Cat\u00E1logo atualizado (' + localSeedVer + ')'))
+          .catch(e => console.error('[Firebase] Erro:', e));
       }
 
       if (data.pizza_cpd) {
