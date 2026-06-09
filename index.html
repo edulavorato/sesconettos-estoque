@@ -3394,15 +3394,17 @@ function printStockPdf(unitLabel, stockObj) {
   const timeStr = now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
   const user = session?.name || '';
 
-  // Group items by category, only those with qty > 0 or min > 0
+  // Group items by category — TODOS os itens, inclusive zerados e sem mínimo
   const byCategory = {};
+  CATEGORIES.forEach(cat => { byCategory[cat] = []; });
   catalog.forEach(item => {
     const qty = stockObj[item.id] || 0;
     const min = minimums[item.id] || 0;
-    if (qty === 0 && min === 0) return;
     if (!byCategory[item.category]) byCategory[item.category] = [];
     byCategory[item.category].push({name: item.name, unit: item.unit, qty, min});
   });
+  // Remove categorias sem nenhum item cadastrado
+  CATEGORIES.forEach(cat => { if (byCategory[cat].length === 0) delete byCategory[cat]; });
 
   // Build PDF rows
   const W = 595, ML = 40, MR = 40, TW = W - ML - MR;
@@ -3438,7 +3440,7 @@ function printStockPdf(unitLabel, stockObj) {
     // Header
     ops.push(`BT /F1 16 Tf ${ML} ${y} Td (Sesconetto's - Contagem de Estoque) Tj ET`);
     y -= 20;
-    ops.push(`BT /F2 10 Tf ${ML} ${y} Td (${unitLabel}  |  ${dateStr} as ${timeStr}  |  ${user}) Tj ET`);
+    ops.push(`BT /F2 10 Tf ${ML} ${y} Td ${pdfStr(unitLabel + '  |  ' + dateStr + ' as ' + timeStr + '  |  ' + user)} Tj ET`);
     y -= 8;
     ops.push(`${ML} ${y} m ${W-MR} ${y} l S`);
     y -= 14;
@@ -3453,16 +3455,41 @@ function printStockPdf(unitLabel, stockObj) {
   }
 
   function pdfStr(s) {
-    let o = '';
-    for (const ch of s) {
+    // WinAnsiEncoding: latin-1 chars (0x00-0xFF) são suportados pelo Helvetica
+    // Chars acima de 0xFF são substituídos pelo equivalente mais próximo
+    const latin1Map = {
+      '\u0100':'A','\u0101':'a','\u0102':'A','\u0103':'a','\u0104':'A','\u0105':'a',
+      '\u0106':'C','\u0107':'c','\u010C':'C','\u010D':'c',
+      '\u0110':'D','\u0111':'d','\u011A':'E','\u011B':'e',
+      '\u0118':'E','\u0119':'e','\u011E':'G','\u011F':'g',
+      '\u0130':'I','\u0131':'i','\u0141':'L','\u0142':'l',
+      '\u0143':'N','\u0144':'n','\u0147':'N','\u0148':'n',
+      '\u0150':'O','\u0151':'o','\u0152':'OE','\u0153':'oe',
+      '\u0158':'R','\u0159':'r','\u015A':'S','\u015B':'s',
+      '\u015E':'S','\u015F':'s','\u0160':'S','\u0161':'s',
+      '\u0164':'T','\u0165':'t','\u016E':'U','\u016F':'u',
+      '\u0170':'U','\u0171':'u','\u0178':'Y','\u0179':'Z',
+      '\u017A':'z','\u017B':'Z','\u017C':'z','\u017D':'Z','\u017E':'z',
+    };
+    let o = '(';
+    for (const ch of String(s)) {
       const c = ch.charCodeAt(0);
       if (ch === '(') o += '\\(';
       else if (ch === ')') o += '\\)';
       else if (ch === '\\') o += '\\\\';
       else if (c < 128) o += ch;
-      else o += '?' ;
+      else if (c <= 0xFF) {
+        // Latin-1: emite como octal escape — WinAnsiEncoding mapeia direto
+        o += '\\' + c.toString(8).padStart(3, '0');
+      } else if (latin1Map[ch]) {
+        o += latin1Map[ch];
+      } else {
+        // Tenta normalizar para NFD e pegar só a base ASCII
+        const norm = ch.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        o += norm.length > 0 && norm.charCodeAt(0) < 128 ? norm : '_';
+      }
     }
-    return o;
+    return o + ')';
   }
 
   newPage();
@@ -3470,7 +3497,7 @@ function printStockPdf(unitLabel, stockObj) {
     if (y < 80) newPage();
     // Category header
     ops.push(`0.85 0.93 0.87 rg ${ML} ${y-2} ${TW} 14 re f 0 0 0 rg`);
-    ops.push(`BT /F1 9 Tf ${ML+3} ${y+2} Td (${pdfStr(cat.toUpperCase())}) Tj ET`);
+    ops.push(`BT /F1 9 Tf ${ML+3} ${y+2} Td ${pdfStr(cat.toUpperCase())} Tj ET`);
     y -= 16;
     byCategory[cat].forEach(item => {
       if (y < 60) newPage();
@@ -3478,8 +3505,8 @@ function printStockPdf(unitLabel, stockObj) {
       const isZero = item.qty === 0 && item.min > 0;
       if (isZero) ops.push(`1 0.9 0.9 rg ${ML} ${y-2} ${TW} 13 re f 0 0 0 rg`);
       else if (isLow) ops.push(`1 0.97 0.87 rg ${ML} ${y-2} ${TW} 13 re f 0 0 0 rg`);
-      ops.push(`BT /F2 8 Tf ${colX[0]+3} ${y+1} Td (${pdfStr(item.name)}) Tj ET`);
-      ops.push(`BT /F2 8 Tf ${colX[1]+3} ${y+1} Td (${pdfStr(item.unit)}) Tj ET`);
+      ops.push(`BT /F2 8 Tf ${colX[0]+3} ${y+1} Td ${pdfStr(item.name)} Tj ET`);
+      ops.push(`BT /F2 8 Tf ${colX[1]+3} ${y+1} Td ${pdfStr(item.unit)} Tj ET`);
       ops.push(`BT /F2 8 Tf ${colX[2]+3} ${y+1} Td (${item.min > 0 ? item.min : '-'}) Tj ET`);
       ops.push(`BT /F1 9 Tf ${colX[3]+3} ${y+1} Td (${item.qty}) Tj ET`);
       ops.push(`${ML} ${y-3} m ${W-MR} ${y-3} l 0.9 0.9 0.9 RG S 0 0 0 RG`);
