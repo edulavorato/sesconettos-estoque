@@ -1511,7 +1511,7 @@ auth.onAuthStateChanged(user => {
         <button type="button" onclick="(function(){var i=document.getElementById('login-pass');i.type=i.type==='password'?'text':'password'})()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#5A7A62;font-size:16px;padding:4px;line-height:1">👁</button>
       </div>
     </div>
-    <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
+    <button class="login-btn" id="login-btn">Entrar</button>
     <div class="login-error" id="login-error">Preencha todos os campos para continuar.</div>
   </div>
 </div>
@@ -1942,24 +1942,22 @@ const FIREBASE_SYNC_KEYS = new Set([
 ]);
 
 function save(key, data) {
-  // Sempre salva no localStorage (cache local e fallback offline)
+  // Sempre salva no localStorage primeiro (nunca pode travar o fluxo)
   try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
 
   // Sincroniza com Firebase se for uma chave operacional
-  if (FIREBASE_SYNC_KEYS.has(key)) {
-    try {
-      if (window._fb && window._fb.ready && typeof db !== 'undefined') {
-        db.ref('dados/' + key).set(data)
-          .catch(e => console.warn('[Firebase] Erro ao salvar ' + key + ':', e));
-      } else {
-        // Firebase ainda não pronto — enfileira para tentar em seguida
-        if (!window._fb) window._fb = { ready: false, pendingWrites: [] };
-        window._fb.pendingWrites = window._fb.pendingWrites || [];
-        window._fb.pendingWrites.push({ key, data });
-      }
-    } catch(e) {
-      console.warn('[Firebase] save() erro inesperado:', e);
+  if (!FIREBASE_SYNC_KEYS.has(key)) return;
+  try {
+    if (window._fb && window._fb.ready && typeof db !== 'undefined') {
+      db.ref('dados/' + key).set(data)
+        .catch(e => console.warn('[Firebase] Erro ao salvar ' + key + ':', e));
+    } else {
+      if (!window._fb) window._fb = { ready: false, pendingWrites: [] };
+      if (!window._fb.pendingWrites) window._fb.pendingWrites = [];
+      window._fb.pendingWrites.push({ key, data });
     }
+  } catch(e) {
+    console.warn('[Firebase] save() erro inesperado:', e);
   }
 }
 
@@ -2066,35 +2064,42 @@ const UNIT_PASSWORDS = {
 
 // LOGIN/LOGOUT
 function doLogin() {
-  const name = document.getElementById('login-name').value.trim();
-  const unit = document.getElementById('login-unit').value;
-  const role = document.getElementById('login-role').value;
-  const pass = document.getElementById('login-pass').value;
-  const errDiv = document.getElementById('login-error');
+  // Guard: se já está logado, não faz nada (evita duplo disparo)
+  if (session && document.getElementById('login-screen').style.display === 'none') return;
+  try {
+    const name = (document.getElementById('login-name').value || '').trim();
+    const unit = document.getElementById('login-unit').value || '';
+    const role = document.getElementById('login-role').value || '';
+    const pass = document.getElementById('login-pass').value || '';
+    const errDiv = document.getElementById('login-error');
 
-  if (!name || !unit || !role || !pass) {
-    errDiv.textContent = 'Preencha todos os campos para continuar.';
-    errDiv.style.display = 'block';
-    return;
+    if (!name || !unit || !role || !pass) {
+      errDiv.textContent = 'Preencha todos os campos para continuar.';
+      errDiv.style.display = 'block';
+      return;
+    }
+
+    const expected = UNIT_PASSWORDS[unit];
+    if (!expected || pass !== expected) {
+      errDiv.textContent = 'Senha incorreta. Verifique com o respons\u00E1vel da unidade.';
+      errDiv.style.display = 'block';
+      const passInp = document.getElementById('login-pass');
+      if (passInp) {
+        passInp.style.borderColor = 'var(--danger)';
+        setTimeout(() => { passInp.style.borderColor = ''; }, 2000);
+      }
+      return;
+    }
+
+    errDiv.style.display = 'none';
+    session = { name, unit, role };
+    try { localStorage.setItem('pizza_session', JSON.stringify(session)); } catch(e) {}
+    applySession();
+  } catch(err) {
+    console.error('[Login] Erro:', err);
+    const errDiv = document.getElementById('login-error');
+    if (errDiv) { errDiv.textContent = 'Erro ao entrar. Tente novamente.'; errDiv.style.display = 'block'; }
   }
-
-  // Validate password
-  const expected = UNIT_PASSWORDS[unit];
-  if (!expected || pass !== expected) {
-    errDiv.textContent = 'Senha incorreta. Verifique com o respons\u00E1vel da unidade.';
-    errDiv.style.display = 'block';
-    // Shake animation
-    const passInp = document.getElementById('login-pass');
-    passInp.style.borderColor = 'var(--danger)';
-    passInp.style.animation = 'none';
-    setTimeout(() => { passInp.style.borderColor = ''; }, 2000);
-    return;
-  }
-
-  errDiv.style.display = 'none';
-  session = { name, unit, role };
-  save('pizza_session', session);
-  applySession();
 }
 
 function logout() {
@@ -2110,42 +2115,48 @@ function logout() {
 }
 
 function applySession() {
-  if (!session) {
-    document.getElementById('login-screen').style.display = 'flex';
-    return;
+  try {
+    const loginScreen = document.getElementById('login-screen');
+    if (!session) {
+      if (loginScreen) loginScreen.style.display = 'flex';
+      return;
+    }
+
+    // Catálogo: seed como fallback temporário até Firebase sincronizar
+    if (!catalog || catalog.length === 0) {
+      catalog = SEED_CATALOG.slice();
+      try { localStorage.setItem('pizza_catalog', JSON.stringify(catalog)); } catch(e) {}
+    }
+
+    // Esconde tela de login
+    if (loginScreen) loginScreen.style.display = 'none';
+
+    // Atualiza badges do topo
+    try {
+      const initials = session.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+      const av = document.getElementById('user-avatar');
+      const nb = document.getElementById('user-name-badge');
+      const ub = document.getElementById('user-unit-badge');
+      if (av) av.textContent = initials;
+      if (nb) nb.textContent = session.name;
+      if (ub) ub.textContent = (session.unit === 'cpd' ? 'CPD' : session.unit) + ' \u00B7 ' + session.role;
+    } catch(e) { console.warn('[applySession] badge:', e); }
+
+    const badge = document.getElementById('sidebar-unit-badge');
+    if (badge) badge.textContent = session.unit === 'cpd' ? 'CPD' : session.unit;
+
+    try { buildSidebarNav(); }      catch(e) { console.warn('[applySession] sidebar:', e); }
+    try { buildDrawerNav(); }       catch(e) { console.warn('[applySession] drawer:', e); }
+    try { updateHamburgerVisibility(); } catch(e) {}
+
+    currentView = defaultView();
+    if (session.unit !== 'cpd') activeUnit = session.unit;
+    setView(currentView);
+  } catch(err) {
+    console.error('[applySession] Erro crítico:', err);
+    // Fallback de emergência: esconde o login mesmo assim
+    try { document.getElementById('login-screen').style.display = 'none'; } catch(e) {}
   }
-  // Catálogo: usa seed apenas como fallback temporário.
-  // O listener do Firebase sincroniza o catálogo real logo em seguida.
-  if (!catalog || catalog.length === 0) {
-    catalog = SEED_CATALOG.slice();
-    try { localStorage.setItem('pizza_catalog', JSON.stringify(catalog)); } catch(e) {}
-    // NÃO empurra para Firebase — o listener cuida disso corretamente
-  }
-
-  // Hide login screen
-  document.getElementById('login-screen').style.display = 'none';
-
-  // Update topbar user badge
-  const initials = session.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  document.getElementById('user-avatar').textContent = initials;
-  document.getElementById('user-name-badge').textContent = session.name;
-  document.getElementById('user-unit-badge').textContent =
-    (session.unit === 'cpd' ? 'CPD' : session.unit) + ' \u00B7 ' + session.role;
-
-  // Update sidebar unit badge
-  const badge = document.getElementById('sidebar-unit-badge');
-  if (badge) badge.textContent = session.unit === 'cpd' ? 'CPD' : session.unit;
-
-  // Build sidebar nav based on allowed views
-  buildSidebarNav();
-  buildDrawerNav();
-  updateHamburgerVisibility();
-
-  // Navigate to default view
-  currentView = defaultView();
-  if (session.unit !== 'cpd') activeUnit = session.unit;
-
-  setView(currentView);
 }
 
 function buildSidebarNav() {
@@ -5762,7 +5773,10 @@ function viewLog() {
 
 // Login form wiring
 const loginBtn = document.getElementById('login-btn');
-loginBtn.addEventListener('click', doLogin);
+if (loginBtn && !loginBtn._wired) {
+  loginBtn._wired = true;
+  loginBtn.addEventListener('click', doLogin);
+}
 document.getElementById('login-name').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
