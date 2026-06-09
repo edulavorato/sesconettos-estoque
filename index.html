@@ -1511,7 +1511,7 @@ auth.onAuthStateChanged(user => {
         <button type="button" onclick="(function(){var i=document.getElementById('login-pass');i.type=i.type==='password'?'text':'password'})()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#5A7A62;font-size:16px;padding:4px;line-height:1">👁</button>
       </div>
     </div>
-    <button class="login-btn" id="login-btn">Entrar</button>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar</button>
     <div class="login-error" id="login-error">Preencha todos os campos para continuar.</div>
   </div>
 </div>
@@ -1942,22 +1942,24 @@ const FIREBASE_SYNC_KEYS = new Set([
 ]);
 
 function save(key, data) {
-  // Sempre salva no localStorage primeiro (nunca pode travar o fluxo)
+  // Sempre salva no localStorage (cache local e fallback offline)
   try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
 
   // Sincroniza com Firebase se for uma chave operacional
-  if (!FIREBASE_SYNC_KEYS.has(key)) return;
-  try {
-    if (window._fb && window._fb.ready && typeof db !== 'undefined') {
-      db.ref('dados/' + key).set(data)
-        .catch(e => console.warn('[Firebase] Erro ao salvar ' + key + ':', e));
-    } else {
-      if (!window._fb) window._fb = { ready: false, pendingWrites: [] };
-      if (!window._fb.pendingWrites) window._fb.pendingWrites = [];
-      window._fb.pendingWrites.push({ key, data });
+  if (FIREBASE_SYNC_KEYS.has(key)) {
+    try {
+      if (window._fb && window._fb.ready && typeof db !== 'undefined') {
+        db.ref('dados/' + key).set(data)
+          .catch(e => console.warn('[Firebase] Erro ao salvar ' + key + ':', e));
+      } else {
+        // Firebase ainda não pronto — enfileira para tentar em seguida
+        if (!window._fb) window._fb = { ready: false, pendingWrites: [] };
+        window._fb.pendingWrites = window._fb.pendingWrites || [];
+        window._fb.pendingWrites.push({ key, data });
+      }
+    } catch(e) {
+      console.warn('[Firebase] save() erro inesperado:', e);
     }
-  } catch(e) {
-    console.warn('[Firebase] save() erro inesperado:', e);
   }
 }
 
@@ -2064,42 +2066,35 @@ const UNIT_PASSWORDS = {
 
 // LOGIN/LOGOUT
 function doLogin() {
-  // Guard: se já está logado, não faz nada (evita duplo disparo)
-  if (session && document.getElementById('login-screen').style.display === 'none') return;
-  try {
-    const name = (document.getElementById('login-name').value || '').trim();
-    const unit = document.getElementById('login-unit').value || '';
-    const role = document.getElementById('login-role').value || '';
-    const pass = document.getElementById('login-pass').value || '';
-    const errDiv = document.getElementById('login-error');
+  const name = document.getElementById('login-name').value.trim();
+  const unit = document.getElementById('login-unit').value;
+  const role = document.getElementById('login-role').value;
+  const pass = document.getElementById('login-pass').value;
+  const errDiv = document.getElementById('login-error');
 
-    if (!name || !unit || !role || !pass) {
-      errDiv.textContent = 'Preencha todos os campos para continuar.';
-      errDiv.style.display = 'block';
-      return;
-    }
-
-    const expected = UNIT_PASSWORDS[unit];
-    if (!expected || pass !== expected) {
-      errDiv.textContent = 'Senha incorreta. Verifique com o respons\u00E1vel da unidade.';
-      errDiv.style.display = 'block';
-      const passInp = document.getElementById('login-pass');
-      if (passInp) {
-        passInp.style.borderColor = 'var(--danger)';
-        setTimeout(() => { passInp.style.borderColor = ''; }, 2000);
-      }
-      return;
-    }
-
-    errDiv.style.display = 'none';
-    session = { name, unit, role };
-    try { localStorage.setItem('pizza_session', JSON.stringify(session)); } catch(e) {}
-    applySession();
-  } catch(err) {
-    console.error('[Login] Erro:', err);
-    const errDiv = document.getElementById('login-error');
-    if (errDiv) { errDiv.textContent = 'Erro ao entrar. Tente novamente.'; errDiv.style.display = 'block'; }
+  if (!name || !unit || !role || !pass) {
+    errDiv.textContent = 'Preencha todos os campos para continuar.';
+    errDiv.style.display = 'block';
+    return;
   }
+
+  // Validate password
+  const expected = UNIT_PASSWORDS[unit];
+  if (!expected || pass !== expected) {
+    errDiv.textContent = 'Senha incorreta. Verifique com o respons\u00E1vel da unidade.';
+    errDiv.style.display = 'block';
+    // Shake animation
+    const passInp = document.getElementById('login-pass');
+    passInp.style.borderColor = 'var(--danger)';
+    passInp.style.animation = 'none';
+    setTimeout(() => { passInp.style.borderColor = ''; }, 2000);
+    return;
+  }
+
+  errDiv.style.display = 'none';
+  session = { name, unit, role };
+  save('pizza_session', session);
+  applySession();
 }
 
 function logout() {
@@ -2115,48 +2110,42 @@ function logout() {
 }
 
 function applySession() {
-  try {
-    const loginScreen = document.getElementById('login-screen');
-    if (!session) {
-      if (loginScreen) loginScreen.style.display = 'flex';
-      return;
-    }
-
-    // Catálogo: seed como fallback temporário até Firebase sincronizar
-    if (!catalog || catalog.length === 0) {
-      catalog = SEED_CATALOG.slice();
-      try { localStorage.setItem('pizza_catalog', JSON.stringify(catalog)); } catch(e) {}
-    }
-
-    // Esconde tela de login
-    if (loginScreen) loginScreen.style.display = 'none';
-
-    // Atualiza badges do topo
-    try {
-      const initials = session.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-      const av = document.getElementById('user-avatar');
-      const nb = document.getElementById('user-name-badge');
-      const ub = document.getElementById('user-unit-badge');
-      if (av) av.textContent = initials;
-      if (nb) nb.textContent = session.name;
-      if (ub) ub.textContent = (session.unit === 'cpd' ? 'CPD' : session.unit) + ' \u00B7 ' + session.role;
-    } catch(e) { console.warn('[applySession] badge:', e); }
-
-    const badge = document.getElementById('sidebar-unit-badge');
-    if (badge) badge.textContent = session.unit === 'cpd' ? 'CPD' : session.unit;
-
-    try { buildSidebarNav(); }      catch(e) { console.warn('[applySession] sidebar:', e); }
-    try { buildDrawerNav(); }       catch(e) { console.warn('[applySession] drawer:', e); }
-    try { updateHamburgerVisibility(); } catch(e) {}
-
-    currentView = defaultView();
-    if (session.unit !== 'cpd') activeUnit = session.unit;
-    setView(currentView);
-  } catch(err) {
-    console.error('[applySession] Erro crítico:', err);
-    // Fallback de emergência: esconde o login mesmo assim
-    try { document.getElementById('login-screen').style.display = 'none'; } catch(e) {}
+  if (!session) {
+    document.getElementById('login-screen').style.display = 'flex';
+    return;
   }
+  // Catálogo: usa seed apenas como fallback temporário.
+  // O listener do Firebase sincroniza o catálogo real logo em seguida.
+  if (!catalog || catalog.length === 0) {
+    catalog = SEED_CATALOG.slice();
+    try { localStorage.setItem('pizza_catalog', JSON.stringify(catalog)); } catch(e) {}
+    // NÃO empurra para Firebase — o listener cuida disso corretamente
+  }
+
+  // Hide login screen
+  document.getElementById('login-screen').style.display = 'none';
+
+  // Update topbar user badge
+  const initials = session.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('user-avatar').textContent = initials;
+  document.getElementById('user-name-badge').textContent = session.name;
+  document.getElementById('user-unit-badge').textContent =
+    (session.unit === 'cpd' ? 'CPD' : session.unit) + ' \u00B7 ' + session.role;
+
+  // Update sidebar unit badge
+  const badge = document.getElementById('sidebar-unit-badge');
+  if (badge) badge.textContent = session.unit === 'cpd' ? 'CPD' : session.unit;
+
+  // Build sidebar nav based on allowed views
+  buildSidebarNav();
+  buildDrawerNav();
+  updateHamburgerVisibility();
+
+  // Navigate to default view
+  currentView = defaultView();
+  if (session.unit !== 'cpd') activeUnit = session.unit;
+
+  setView(currentView);
 }
 
 function buildSidebarNav() {
@@ -5287,206 +5276,6 @@ function viewCatalogo() {
   return frag;
 }
 
-  // Catalog table
-  const showPrices = isCPD();
-  const tableBlock = el('div', {cls:'table-wrap'});
-  const thead = el('div', {cls:'table-header'});
-  thead.appendChild(el('span', {cls:'table-title'}, `${catalog.length} itens cadastrados`));
-
-  // Total CPD value summary (CPD only)
-  if (showPrices) {
-    const totalCpdValue = catalog.reduce((sum, item) => {
-      return sum + (cpd[item.id] || 0) * (prices[item.id] || 0);
-    }, 0);
-    const itemsWithPrice = catalog.filter(i => prices[i.id] > 0).length;
-    if (itemsWithPrice > 0) {
-      const totalBadge = el('div', {style:'display:flex;flex-direction:column;align-items:flex-end;gap:2px'});
-      totalBadge.appendChild(el('span', {style:'font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px'}, 'Valor total CPD'));
-      totalBadge.appendChild(el('span', {style:'font-size:15px;font-weight:700;color:var(--accent-dark);font-family:"Playfair Display",serif'},
-        totalCpdValue.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})
-      ));
-      thead.appendChild(totalBadge);
-    }
-  }
-  tableBlock.appendChild(thead);
-
-  const searchWrap = el('div', {cls:'search-wrap', style:'padding:14px 18px 0'});
-  const si = el('span', {cls:'search-icon', html:'<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>'});
-  const searchInp = el('input', {type:'text', placeholder:'Buscar item...'});
-  searchWrap.appendChild(si); searchWrap.appendChild(searchInp);
-  tableBlock.appendChild(searchWrap);
-
-  const table = el('table', {cls:'catalog-table', style:'margin-top:8px'});
-  const qtyLabel = isCPD() ? 'Qtd CPD' : `Qtd ${session?.unit || ''}`;
-  if (showPrices) {
-    table.innerHTML = '<thead><tr>' +
-      '<th style="width:26%">Nome</th>' +
-      '<th class="col-unit" style="width:7%">Medida</th>' +
-      `<th style="width:7%;text-align:right">${qtyLabel}</th>` +
-      '<th class="col-min" style="width:8%;text-align:right;font-size:10px;color:var(--text-3)">M\u00CDN.</th>' +
-      '<th style="width:14%;text-align:right">Pre\u00E7o unit.</th>' +
-      '<th style="width:14%;text-align:right">Valor total</th>' +
-      '<th style="width:24%;text-align:right" colspan="2">A\u00E7\u00F5es</th>' +
-      '</tr></thead>';
-  } else {
-    table.innerHTML = '<thead><tr>' +
-      '<th style="width:38%">Nome</th>' +
-      '<th class="col-unit" style="width:9%">Medida</th>' +
-      `<th style="width:12%;text-align:right">${qtyLabel}</th>` +
-      '<th class="col-min" style="width:9%;text-align:right;font-size:10px;color:var(--text-3)">M\u00CDN.</th>' +
-      '<th style="width:32%;text-align:right" colspan="2">A\u00E7\u00F5es</th>' +
-      '</tr></thead>';
-  }
-  const tbody = el('tbody', {});
-  table.appendChild(tbody);
-  tableBlock.appendChild(table);
-  frag.appendChild(tableBlock);
-
-  const openCatsCat = {};
-  CATEGORIES.forEach(c => { openCatsCat[c] = false; });
-
-  function fmtMoney(v) {
-    return v.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-  }
-
-  function renderCatRows(q) {
-    tbody.innerHTML = '';
-    const filtered = catalog.filter(i => i.name.toLowerCase().includes(q.toLowerCase()));
-    if (!filtered.length) { tbody.appendChild(el('tr',{},el('td',{colspan:'7',cls:'empty'},'Nenhum item encontrado'))); return; }
-    const usedCats = CATEGORIES.filter(cat => filtered.some(i => i.category === cat));
-
-    // Category totals
-    usedCats.forEach(cat => {
-      const catItems = filtered.filter(i => i.category === cat);
-      const isOpen = openCatsCat[cat] !== false;
-
-      // Category header
-      const catTr = el('tr', {cls:'cat-row'});
-      const catTd = document.createElement('td');
-      catTd.setAttribute('colspan', '7');
-      catTd.style.padding = '0';
-      const togBtn = el('button', {cls:'cat-toggle' + (isOpen ? ' open' : '')});
-      togBtn.appendChild(document.createTextNode(cat));
-
-      // Category total value
-      const catTotal = catItems.reduce((sum, item) => {
-        const qty = cpd[item.id] || 0;
-        const price = prices[item.id] || 0;
-        return sum + qty * price;
-      }, 0);
-      const catHasPrice = catItems.some(i => prices[i.id] > 0);
-      const catCountSpan = el('span', {cls:'cat-count'}, `${catItems.length} itens`);
-      if (catHasPrice && catTotal > 0) {
-        catCountSpan.textContent = `${catItems.length} itens  \u00B7  ${fmtMoney(catTotal)}`;
-      }
-      togBtn.appendChild(catCountSpan);
-      togBtn.appendChild(el('span', {cls:'cat-chevron'}, '\u25BC'));
-      togBtn.addEventListener('click', () => {
-        openCatsCat[cat] = !openCatsCat[cat];
-        togBtn.classList.toggle('open', openCatsCat[cat]);
-        tbody.querySelectorAll(`[data-cat="${CSS.escape(cat)}"]`).forEach(r => {
-          r.style.display = openCatsCat[cat] ? '' : 'none';
-        });
-      });
-      catTd.appendChild(togBtn);
-      catTr.appendChild(catTd);
-      tbody.appendChild(catTr);
-
-      catItems.forEach(item => {
-        const stockRef = isCPD() ? (cpd[item.id] || 0) : ((unitStock[session && session.unit] || {})[item.id] || 0);
-        const qty   = stockRef;
-        const price = prices[item.id] || 0;
-        const total = qty * price;
-        const tr = el('tr', {});
-        tr.setAttribute('data-cat', cat);
-        if (!isOpen) tr.style.display = 'none';
-        const nameTd = el('td', {style:'font-weight:500'});
-        const nameLabel = el('span', {}, item.name);
-        const nameInp = el('input', {type:'text', value: item.name, style:'display:none;width:100%;padding:4px 8px;border:1.5px solid var(--accent);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;font-weight:500;outline:none;'});
-        // Min info below name
-        const min = minimums[item.id] || 0;
-        const catInline = el('span', {cls:'item-unit-inline'});
-        catInline.appendChild(document.createTextNode(item.unit));
-        const catInlineMin = el('span', {cls:'cat-inline-min', style:'color:var(--text-3)'}, min > 0 ? ` \u00B7 m\u00EDn: ${min}` : '');
-        catInline.appendChild(catInlineMin);
-        nameTd.appendChild(nameLabel); nameTd.appendChild(nameInp); nameTd.appendChild(catInline); tr.appendChild(nameTd);
-        // Editable Medida in catalog
-        const unitTd = el('td', {cls:'muted col-unit', style:'cursor:pointer;white-space:nowrap'});
-        const unitSpan = el('span', {style:'font-size:12px;color:var(--text-2);border-bottom:1px dashed var(--border);padding-bottom:1px'}, item.unit);
-        const unitInp = el('input', {type:'text', value: item.unit,
-          style:'display:none;width:70px;padding:2px 5px;border:1.5px solid var(--accent);border-radius:4px;font-size:12px;outline:none;background:var(--surface);color:var(--text)'});
-        unitSpan.addEventListener('click', () => { unitSpan.style.display='none'; unitInp.style.display=''; unitInp.focus(); unitInp.select(); });
-        function saveCatUnit() {
-          const v = unitInp.value.trim() || item.unit;
-          item.unit = v; unitSpan.textContent = v;
-          save('pizza_catalog', catalog);
-          if (catInline) {
-            catInline.childNodes[0].textContent = v;
-          }
-          unitSpan.style.display=''; unitInp.style.display='none';
-        }
-        unitInp.addEventListener('blur', saveCatUnit);
-        unitInp.addEventListener('keydown', e => { if(e.key==='Enter') saveCatUnit(); if(e.key==='Escape'){unitSpan.style.display='';unitInp.style.display='none';} });
-        unitTd.appendChild(unitSpan); unitTd.appendChild(unitInp);
-        tr.appendChild(unitTd);
-        tr.appendChild(el('td', {cls: qtyClass(qty), style:'text-align:right'}, String(qty)));
-        // M\u00CDN column -- editable
-        const catMinTd = el('td', {cls:'col-min', style:'text-align:right;cursor:pointer;padding-right:8px'});
-        const catMinSpan = el('span', {style:'font-size:12px;color:var(--text-3);border-bottom:1px dashed var(--border)'}, min > 0 ? String(min) : '\u2014');
-        const catMinInp = el('input', {type:'number', inputmode:'decimal', value: min > 0 ? String(min) : '0',
-          style:'display:none;width:54px;padding:3px 6px;border:1.5px solid #B8922A;border-radius:4px;font-size:12px;text-align:right;outline:none;background:var(--surface);color:var(--text)'});
-        catMinSpan.addEventListener('click', () => { catMinSpan.style.display='none'; catMinInp.style.display=''; catMinInp.focus(); catMinInp.select(); });
-        const saveCatMin = () => {
-          const v = Math.max(0, parseFloat(catMinInp.value) || 0);
-          minimums[item.id] = v; save('pizza_minimums', minimums);
-          catMinSpan.textContent = v > 0 ? String(v) : '\u2014';
-          if (catInline) {
-            const minNode = catInline.querySelector('.cat-inline-min');
-            if (minNode) minNode.textContent = v > 0 ? ` \u00B7 m\u00EDn: ${v}` : '';
-          }
-          catMinInp.style.display='none'; catMinSpan.style.display='';
-        };
-        catMinInp.addEventListener('blur', saveCatMin);
-        catMinInp.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();saveCatMin();} if(e.key==='Escape'){catMinInp.style.display='none';catMinSpan.style.display='';} });
-        catMinTd.appendChild(catMinSpan); catMinTd.appendChild(catMinInp);
-        tr.appendChild(catMinTd);
-        if (showPrices) {
-          const priceTd = el('td', {cls:'price-cell', style:'text-align:right'});
-          const priceView = el('div', {cls:'price-view'});
-          const priceLabel = el('span', {style:'font-size:13px;color:'+(price>0?'var(--text)':'var(--text-3)')}, price>0?fmtMoney(price):'\u2014');
-          priceView.appendChild(priceLabel); priceView.appendChild(el('span',{cls:'price-edit-icon'},'\u270F'));
-          const priceInp = el('input',{type:'text',inputmode:'decimal',cls:'price-inp',value:price>0?price.toFixed(2).replace('.',','):'',placeholder:'0,00',style:'display:none'});
-          let totalLabel;
-          function showPI(){priceView.style.display='none';priceInp.style.display='';priceInp.value=(prices[item.id]||0)>0?(prices[item.id]).toFixed(2).replace('.',','):'';priceInp.focus();priceInp.select();}
-          function savePI(){const raw=priceInp.value.replace(/\./g,'').replace(',','.');const nv=parseFloat(raw);if(!isNaN(nv)&&nv>=0){prices[item.id]=nv;save('pizza_prices',prices);priceLabel.textContent=nv>0?fmtMoney(nv):'\u2014';priceLabel.style.color=nv>0?'var(--text)':'var(--text-3)';const nt=(cpd[item.id]||0)*nv;if(totalLabel){totalLabel.textContent=nt>0?fmtMoney(nt):'\u2014';totalLabel.style.color=nt>0?'var(--accent-dark)':'var(--text-3)';}}priceView.style.display='';priceInp.style.display='none';}
-          priceView.addEventListener('click',showPI);priceInp.addEventListener('blur',savePI);
-          priceInp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();savePI();}if(e.key==='Escape'){priceView.style.display='';priceInp.style.display='none';}});
-          priceTd.appendChild(priceView);priceTd.appendChild(priceInp);tr.appendChild(priceTd);
-          const totalTd=el('td',{style:'text-align:right'});
-          totalLabel=el('span',{style:'font-size:13px;color:'+(total>0?'var(--accent-dark)':'var(--text-3)')+(total>0?';font-weight:600':'')},total>0?fmtMoney(total):'\u2014');
-          totalTd.appendChild(totalLabel);tr.appendChild(totalTd);
-        }
-        const actTd=el('td',{style:'text-align:right;white-space:nowrap',colspan:'2'});
-        const editBtn=el('button',{cls:'btn btn-outline btn-sm',style:'margin-right:5px'},'\u270F\uFE0F Editar');
-        const saveBtn=el('button',{cls:'btn btn-sm',style:'display:none;margin-right:4px;background:var(--success);color:#fff;border:none'},'\u2713 Salvar');
-        const cancelBtn=el('button',{cls:'btn btn-outline btn-sm',style:'display:none;margin-right:5px'},'\u2715');
-        const removeBtn=el('button',{cls:'btn btn-outline btn-sm'},'Remover');
-        editBtn.addEventListener('click',()=>{nameLabel.style.display='none';nameInp.style.display='';nameInp.value=item.name;nameInp.focus();editBtn.style.display='none';removeBtn.style.display='none';saveBtn.style.display='';cancelBtn.style.display='';});
-        saveBtn.addEventListener('click',()=>{const nn=nameInp.value.trim();if(!nn){nameInp.focus();return;}if(nn!==item.name&&catalog.find(i=>i.id!==item.id&&i.name.toLowerCase()===nn.toLowerCase())){alert('J\u00E1 existe um item com esse nome.');return;}item.name=nn;nameLabel.textContent=nn;save('pizza_catalog',catalog);toast('Nome atualizado: "'+nn+'"');nameLabel.style.display='';nameInp.style.display='none';editBtn.style.display='';removeBtn.style.display='';saveBtn.style.display='none';cancelBtn.style.display='none';});
-        cancelBtn.addEventListener('click',()=>{nameLabel.style.display='';nameInp.style.display='none';editBtn.style.display='';removeBtn.style.display='';saveBtn.style.display='none';cancelBtn.style.display='none';});
-        nameInp.addEventListener('keydown',e=>{if(e.key==='Enter')saveBtn.click();if(e.key==='Escape')cancelBtn.click();});
-        removeBtn.addEventListener('click',()=>{if(!confirm('Remover "'+item.name+'" do cat\u00E1logo?'))return;catalog=catalog.filter(i=>i.id!==item.id);save('pizza_catalog',catalog);toast('"'+item.name+'" removido.');render();});
-        actTd.appendChild(cancelBtn);actTd.appendChild(saveBtn);actTd.appendChild(editBtn);actTd.appendChild(removeBtn);
-        tr.appendChild(actTd);tbody.appendChild(tr);
-      });
-    });
-  }
-
-  renderCatRows('');
-  searchInp.addEventListener('input', e => renderCatRows(e.target.value));
-  return frag;
-}
-
 function svgCheck() {
   const s = document.createElement('span');
   s.innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>';
@@ -5773,10 +5562,7 @@ function viewLog() {
 
 // Login form wiring
 const loginBtn = document.getElementById('login-btn');
-if (loginBtn && !loginBtn._wired) {
-  loginBtn._wired = true;
-  loginBtn.addEventListener('click', doLogin);
-}
+loginBtn.addEventListener('click', doLogin);
 document.getElementById('login-name').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
