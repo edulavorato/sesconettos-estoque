@@ -1445,7 +1445,8 @@ auth.onAuthStateChanged(user => {
       if (data.pizza_catalog && data.pizza_catalog.length > 0) {
         saveLocal('pizza_catalog', data.pizza_catalog);
       }
-      if (typeof render === 'function' && session) render();
+      // Só re-renderiza se foi outro dispositivo que enviou — não write local
+      if (typeof render === 'function' && session && !window._fb.localWrite) render();
     }
 
     console.log('[Firebase] Dados sincronizados');
@@ -1949,6 +1950,11 @@ function save(key, data) {
   if (FIREBASE_SYNC_KEYS.has(key)) {
     try {
       if (window._fb && window._fb.ready && typeof db !== 'undefined') {
+        // Marca write local: impede que o listener re-renderize a tela
+        // quando recebe de volta o próprio dado que acabou de enviar
+        window._fb.localWrite = true;
+        clearTimeout(window._fb.localWriteTimer);
+        window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 3000);
         db.ref('dados/' + key).set(data)
           .catch(e => console.warn('[Firebase] Erro ao salvar ' + key + ':', e));
       } else {
@@ -2391,9 +2397,8 @@ function buildStockTable(stockObj, searchInputId, onUpdate) {
     saveTimer[itemId] = setTimeout(() => onUpdate(itemId, q), 400);
   }
 
-  // track open state per table instance -- all open by default
+  // track open state per table instance -- all closed by default
   const openCats = Object.fromEntries(CATEGORIES.map(c => [c, false]));
-  CATEGORIES.forEach(c => { openCats[c] = true; });
 
   function renderRows(q) {
     tbody.innerHTML = '';
