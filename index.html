@@ -1713,6 +1713,7 @@ const CATEGORIES = [
   'Descart\u00E1veis e Embalagens',
   'Material de Escrit\u00F3rio',
   'Higiene e Limpeza',
+  'Delivery',
 ];
 
 const MEASURES = ['Un','PCT','Cx','Kg','g','L','mL','Saco','Balde','Pe\u00E7a','Bandeja','Por\u00E7\u00E3o','Ma\u00E7o','Pote','Garrafa','Rolo','Gal\u00E3o','Barril','Caixa','Fardo'];
@@ -1917,6 +1918,7 @@ const SEED_CATALOG = [
   {id:'hl34',name:'Borrifador de \u00E1lcool',category:'Higiene e Limpeza',unit:'Un'},
   {id:'hl35',name:'Prop\u00E9 pacote de 100',category:'Higiene e Limpeza',unit:'Un'},
   {id:'hl36',name:'Poliflor',category:'Higiene e Limpeza',unit:'Un'},
+  {id:'dv01',name:'Atualizar itens',category:'Delivery',unit:'Un'},
 ]
 
 function load(key, fallback) {
@@ -2008,6 +2010,13 @@ if (!catalog || catalog.length === 0) {
   catalog = SEED_CATALOG.slice();
   try { localStorage.setItem('pizza_catalog', JSON.stringify(catalog)); } catch(e) {}
 }
+// Bootstrap: adiciona itens novos do SEED que ainda não existem no catálogo salvo
+// Isso garante que novos itens apareçam sem resetar o catálogo existente
+SEED_CATALOG.forEach(seedItem => {
+  if (!catalog.find(i => i.id === seedItem.id)) {
+    catalog.push(seedItem);
+  }
+});
 let cpd       = load('pizza_cpd', {});
 let unitStock = load('pizza_units', {});
 let movements = load('pizza_movements', []);
