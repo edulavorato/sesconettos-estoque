@@ -1536,15 +1536,15 @@ auth.onAuthStateChanged(user => {
     <span class="nav-label">Painéis</span>
     <button class="nav-item" data-view="cpd" onclick="setView('cpd')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      Painel CPD
+      Contagem CPD
+    </button>
+    <button class="nav-item" data-view="units" onclick="setView('units')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/></svg>
+      Contagem das Unidades
     </button>
     <button class="nav-item" data-view="dashboard" onclick="setView('dashboard')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
       Dashboard
-    </button>
-    <button class="nav-item" data-view="units" onclick="setView('units')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/></svg>
-      Painel Unidades
     </button>
   </div>
 
@@ -1557,10 +1557,6 @@ auth.onAuthStateChanged(user => {
     <button class="nav-item" data-view="entrada" onclick="setView('entrada')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
       Entrada CPD
-    </button>
-    <button class="nav-item" data-view="saida" onclick="setView('saida')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-      Saída p/ Unidade
     </button>
   </div>
 
@@ -1581,18 +1577,6 @@ auth.onAuthStateChanged(user => {
     <button class="nav-item" data-view="log" onclick="setView('log')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Movimentações
-    </button>
-  </div>
-
-  <div class="nav-section">
-    <span class="nav-label">Pedidos</span>
-    <button class="nav-item" data-view="pedido" onclick="setView('pedido')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
-      Fazer Pedido
-    </button>
-    <button class="nav-item" data-view="separacao" onclick="setView('separacao')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-      Separação de Pedidos
     </button>
   </div>
 
@@ -1636,7 +1620,7 @@ auth.onAuthStateChanged(user => {
         <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
       </svg>
     </button>
-    <span class="topbar-title" id="topbar-title">Painel CPD</span>
+    <span class="topbar-title" id="topbar-title">Contagem CPD</span>
     <div style="display:flex;align-items:center;gap:10px">
       <span class="topbar-date" id="topbar-date"></span>
       <div class="user-badge" id="user-badge" onclick="isMobile()?openDrawer():logout()" title="Menu / Sair">
@@ -1684,21 +1668,9 @@ auth.onAuthStateChanged(user => {
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
     Entrada
   </button>
-  <button class="bnav-btn" data-view="saida" onclick="setView('saida')">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-    Saída
-  </button>
   <button class="bnav-btn" data-view="catalogo" onclick="setView('catalogo')">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
     Catálogo
-  </button>
-  <button class="bnav-btn" data-view="pedido" onclick="setView('pedido')">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
-    Pedido
-  </button>
-  <button class="bnav-btn" data-view="separacao" onclick="setView('separacao')">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-    Separação
   </button>
   <button class="bnav-btn" onclick="logout()" style="color:#EF9090">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -2076,7 +2048,7 @@ function unitKey(){ return session ? session.unit : 'cpd'; }
 // Views available per role
 function allowedViews() {
   if (!session) return [];
-  if (isCPD()) return ['cpd','dashboard','units','envios','entrada','saida','catalogo','separacao','relatorio','historico','log'];
+  if (isCPD()) return ['cpd','units','dashboard','envios','entrada','catalogo','relatorio','historico','log'];
   return ['units']; // Unidades: apenas o Painel de Contagem
 }
 
@@ -2221,9 +2193,9 @@ function buildDrawerNav() {
     {
       label: 'Pain\u00E9is',
       items: [
-        { view:'cpd',       label:'Painel CPD',        icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' },
+        { view:'cpd',       label:'Contagem CPD',        icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' },
+        { view:'units',     label: isCPD() ? 'Contagem das Unidades' : 'Painel de Contagem',   icon:'<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/>' },
         { view:'dashboard', label:'Dashboard',         icon:'<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>' },
-        { view:'units',     label: isCPD() ? 'Painel Unidades' : 'Painel de Contagem',   icon:'<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/>' },
       ]
     },
     {
@@ -2231,14 +2203,11 @@ function buildDrawerNav() {
       items: [
         { view:'envios',    label:'Envios \u00E0s Unidades', icon:'<path d="M5 8h11l3 5v5h-2a2 2 0 1 1-4 0H9a2 2 0 1 1-4 0H3V8z"/><circle cx="7" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>' },
         { view:'entrada',   label:'Entrada CPD',       icon:'<path d="M12 5v14M5 12l7 7 7-7"/>' },
-        { view:'saida',     label:'Sa\u00EDda p/ Unidade', icon:'<path d="M12 19V5M5 12l7-7 7 7"/>' },
       ]
     },
     {
-      label: 'Pedidos',
+      label: 'Registros',
       items: [
-        { view:'pedido',    label:'Fazer Pedido',      icon:'<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>' },
-        { view:'separacao', label:'Separa\u00E7\u00E3o',         icon:'<path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' },
         { view:'historico', label:'Hist\u00F3rico',            icon:'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>' },
         { view:'log',       label:'Movimenta\u00E7\u00F5es',   icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
       ]
@@ -2297,7 +2266,7 @@ function toast(msg) {
 
 // NAVIGATION
 const VIEW_TITLES = {
-  cpd: 'Painel CPD', envios: 'Envios \u00E0s Unidades', get units() { return isCPD() ? 'Painel Unidades' : 'Painel de Contagem'; },
+  cpd: 'Contagem CPD', envios: 'Envios \u00E0s Unidades', get units() { return isCPD() ? 'Contagem das Unidades' : 'Painel de Contagem'; },
   entrada: 'Registrar Entrada', saida: 'Registrar Sa\u00EDda',
   catalogo: 'Cat\u00E1logo de Itens',
   pedido: 'Fazer Pedido ao CPD',
@@ -3333,7 +3302,7 @@ function viewSeparacao() {
           showPushNotif(
             '\uD83D\uDE9A Pedido enviado \u2014 ' + order.unit,
             `${toSend.length} item${toSend.length!==1?'s':''} enviado${toSend.length!==1?'s':''}${faltaCount>0?` \u00B7 ${faltaCount} item${faltaCount!==1?'s':''} em falta`:''}`,
-            [{label:'Ver pedido', fn:()=>setView('separacao')}]
+            []
           );
           toast(`Pedido enviado: ${toSend.length} item${toSend.length!==1?'s':''} separado${toSend.length!==1?'s':''}`);
         }
@@ -4004,7 +3973,7 @@ function showReceiptModal(order) {
     logAction('recebimento', `${session.name} confirmou recebimento completo do pedido do CPD em ${order.unit}`, {orderId: order.id, unit: order.unit});
     overlay.remove();
     render();
-    showPushNotif('\u2705 Recebimento confirmado \u2014 ' + order.unit, `${order.unit} confirmou o recebimento completo do pedido.`, [{label:'Ver Separa\u00E7\u00E3o', fn:()=>setView('separacao')}]);
+    showPushNotif('\u2705 Recebimento confirmado \u2014 ' + order.unit, `${order.unit} confirmou o recebimento completo do pedido.`, []);
     toast('Recebimento confirmado!');
   }});
   allBtn.textContent = '\u2705 Todos os itens recebidos';
@@ -4106,7 +4075,7 @@ function showIncompleteModal(order) {
     showPushNotif(
       divCount > 0 ? '\u26A0\uFE0F Pedido incompleto \u2014 ' + order.unit : '\u2705 Recebido \u2014 ' + order.unit,
       msg,
-      [{label:'Ver Separa\u00E7\u00E3o', fn:()=>setView('separacao')}]
+      []
     );
     toast(divCount > 0 ? `Novo pedido criado com ${divCount} item${divCount!==1?'s':''} faltantes` : 'Recebimento confirmado!');
   }}, 'Confirmar'));
@@ -4118,6 +4087,7 @@ function showIncompleteModal(order) {
 
 // Also show unit notification banner when order status is aguardando_recebimento
 function checkPendingReceiptNotifications() {
+  return; // Fluxo de pedidos desativado — unidades não fazem mais pedidos
   if (!session || isCPD()) return;
   const myPending = orders.filter(o => o.unit === session.unit && o.status === 'aguardando_recebimento' && !o._notified);
   myPending.forEach(order => {
@@ -4125,7 +4095,7 @@ function checkPendingReceiptNotifications() {
     showPushNotif(
       '\uD83D\uDE9A Pedido a caminho!',
       `Seu pedido de ${order.items.length} ${order.items.length===1?'produto':'produtos'} foi enviado pelo CPD.`,
-      [{label:'Confirmar Recebimento', fn:()=>{ setView('separacao'); setTimeout(()=>showReceiptModal(order),300); }}]
+      []
     );
   });
 }
@@ -4523,16 +4493,6 @@ function viewCpd() {
   if (cpdAlerts) frag.appendChild(cpdAlerts);
 
   // Pending orders alert
-  const pendingOrders = orders.filter(o => o.status === 'pendente');
-  if (pendingOrders.length > 0) {
-    const alert = el('div', {style:'background:var(--warning-bg);border:1.5px solid #D4A017;border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer', onclick:()=>setView('separacao')});
-    const alertInfo = el('div', {});
-    alertInfo.appendChild(el('div', {style:'font-weight:700;font-size:14px;color:var(--warning)'}, `\u23F3  ${pendingOrders.length} ${pendingOrders.length===1?'pedido pendente':'pedidos pendentes'} de separa\u00E7\u00E3o`));
-    alertInfo.appendChild(el('div', {style:'font-size:12px;color:var(--text-2);margin-top:2px'}, pendingOrders.map(o=>o.unit).join(', ')));
-    alert.appendChild(alertInfo);
-    alert.appendChild(el('span', {style:'color:var(--warning);font-size:18px'}, '\u203A'));
-    frag.appendChild(alert);
-  }
 
   const metrics = el('div', {cls:'metrics-grid'});
   const makeMetric = (label, value, cls='') => {
@@ -5494,10 +5454,7 @@ function render() {
   else if (currentView === 'units')      node = viewUnits();
   else if (currentView === 'envios')     node = viewEnvios();
   else if (currentView === 'entrada')    node = viewEntrada();
-  else if (currentView === 'saida')      node = viewSaida();
   else if (currentView === 'catalogo')   node = viewCatalogo();
-  else if (currentView === 'pedido')     node = viewPedido();
-  else if (currentView === 'separacao')  node = viewSeparacao();
   else if (currentView === 'dashboard')  node = viewDashboard();
   else if (currentView === 'relatorio')  node = viewRelatorio();
   else if (currentView === 'historico')  node = viewHistorico();
