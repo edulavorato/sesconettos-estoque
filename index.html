@@ -2064,7 +2064,7 @@ function unitKey(){ return session ? session.unit : 'cpd'; }
 function allowedViews() {
   if (!session) return [];
   if (isCPD()) return ['cpd','dashboard','units','entrada','saida','catalogo','separacao','relatorio','historico','log'];
-  return ['units','entrada','pedido','separacao'];
+  return ['units']; // Unidades: apenas o Painel de Contagem
 }
 
 function defaultView() {
@@ -2169,6 +2169,13 @@ function buildSidebarNav() {
   document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
     const v = btn.dataset.view;
     btn.style.display = allowed.includes(v) ? '' : 'none';
+    // Unidades veem 'Painel de Contagem' em vez de 'Painel Unidades'
+    if (v === 'units' && !isCPD()) {
+      const svg = btn.querySelector('svg');
+      btn.textContent = '';
+      if (svg) btn.appendChild(svg);
+      btn.appendChild(document.createTextNode(' Painel de Contagem'));
+    }
   });
   // Section labels: hide "Pain\u00E9is" label if only one panel visible
   const painelItems = ['cpd','units'];
@@ -2203,7 +2210,7 @@ function buildDrawerNav() {
       items: [
         { view:'cpd',       label:'Painel CPD',        icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' },
         { view:'dashboard', label:'Dashboard',         icon:'<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>' },
-        { view:'units',     label:'Painel Unidades',   icon:'<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/>' },
+        { view:'units',     label: isCPD() ? 'Painel Unidades' : 'Painel de Contagem',   icon:'<path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/>' },
       ]
     },
     {
@@ -2276,7 +2283,7 @@ function toast(msg) {
 
 // NAVIGATION
 const VIEW_TITLES = {
-  cpd: 'Painel CPD', units: 'Painel Unidades',
+  cpd: 'Painel CPD', get units() { return isCPD() ? 'Painel Unidades' : 'Painel de Contagem'; },
   entrada: 'Registrar Entrada', saida: 'Registrar Sa\u00EDda',
   catalogo: 'Cat\u00E1logo de Itens',
   pedido: 'Fazer Pedido ao CPD',
@@ -2346,7 +2353,10 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'2-digit'});
 }
 
-function buildStockTable(stockObj, searchInputId, onUpdate) {
+function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
+  opts = opts || {};
+  const useMin   = opts.useMin !== false;   // false nas unidades: esconde tudo de mínimo
+  const pdfLabel = opts.pdfLabel || null;   // se definido, mostra botão de PDF por categoria
   const editable = typeof onUpdate === 'function';
   const showMin  = false; // M\u00CDN column removed from stock table \u2014 editable only in Cat\u00E1logo
   const wrap = el('div', {});
@@ -2382,7 +2392,7 @@ function buildStockTable(stockObj, searchInputId, onUpdate) {
     const q = Math.max(0, isNaN(raw) ? 0 : raw);
     stockObj[itemId] = q;
     inp.value = String(q);
-    const min = minimums[itemId] || 0;
+    const min = useMin ? (minimums[itemId] || 0) : 0;
     const isZero = q === 0;
     const isLow  = min > 0 && q < min && !isZero;
 
@@ -2390,9 +2400,9 @@ function buildStockTable(stockObj, searchInputId, onUpdate) {
     if (isZero && min > 0) inp.className = 'qty-inp-sm has-error';
     else                   inp.className = 'qty-inp-sm has-val';
 
-    // Update row background instantly
+    // Update row background instantly (alertas de cor s\u00F3 com m\u00EDnimos ativos)
     if (tr) {
-      tr.style.background = isZero ? 'var(--danger-bg)' : isLow ? 'var(--warning-bg)' : '';
+      tr.style.background = useMin ? (isZero ? 'var(--danger-bg)' : isLow ? 'var(--warning-bg)' : '') : '';
     }
 
     // Update inline min text color instantly
@@ -2430,7 +2440,7 @@ function buildStockTable(stockObj, searchInputId, onUpdate) {
       togBtn.appendChild(document.createTextNode(cat));
 
       // Show alert count in category header if any items below minimum
-      const alertCount = catItems.filter(i => {
+      const alertCount = !useMin ? 0 : catItems.filter(i => {
         const qty = stockObj[i.id]||0; const min = minimums[i.id]||0;
         return min>0 && qty<min;
       }).length;
@@ -2447,13 +2457,32 @@ function buildStockTable(stockObj, searchInputId, onUpdate) {
         const rows = tbody.querySelectorAll(`[data-cat="${CSS.escape(cat)}"]`);
         rows.forEach(r => { r.style.display = openCats[cat] ? '' : 'none'; });
       });
-      catTd.appendChild(togBtn);
+      if (pdfLabel) {
+        // Bot\u00E3o de PDF da categoria, ao lado do toggle
+        const catWrap = el('div', {style:'display:flex;align-items:stretch;gap:6px;width:100%'});
+        togBtn.style.flex = '1';
+        const catPdfBtn = el('button', {
+          cls:'btn btn-outline btn-sm',
+          style:'flex:0 0 auto;align-self:center;padding:4px 10px;font-size:11px;white-space:nowrap',
+          title:'Gerar PDF apenas desta categoria'
+        });
+        catPdfBtn.innerHTML = '\uD83D\uDCC4';
+        catPdfBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          printStockPdf(pdfLabel, stockObj, cat);
+        });
+        catWrap.appendChild(togBtn);
+        catWrap.appendChild(catPdfBtn);
+        catTd.appendChild(catWrap);
+      } else {
+        catTd.appendChild(togBtn);
+      }
       catTr.appendChild(catTd);
       tbody.appendChild(catTr);
 
       catItems.forEach(item => {
         const qty = stockObj[item.id] || 0;
-        const min = minimums[item.id] || 0;
+        const min = useMin ? (minimums[item.id] || 0) : 0;
         const isZero = qty === 0;
         const isLow  = min > 0 && qty < min && !isZero;
         const isOk   = !isZero && !isLow;
@@ -2461,9 +2490,9 @@ function buildStockTable(stockObj, searchInputId, onUpdate) {
         const tr = el('tr', {});
         tr.setAttribute('data-cat', cat);
         if (!isOpen) tr.style.display = 'none';
-        // highlight entire row for zero stock
-        if (isZero) tr.style.background = 'var(--danger-bg)';
-        else if (isLow) tr.style.background = 'var(--warning-bg)';
+        // highlight: alertas de cor apenas quando m\u00EDnimos est\u00E3o ativos (CPD)
+        if (useMin && isZero) tr.style.background = 'var(--danger-bg)';
+        else if (useMin && isLow) tr.style.background = 'var(--warning-bg)';
 
         const nameTd = el('td', {cls:'item-name'});
         nameTd.textContent = item.name;
@@ -2696,38 +2725,20 @@ function printBatchPdf(batch) {
   // Converts UTF-8 string to PDF octal-escaped Latin-1 string literal.
   // This is the correct way to handle accented chars with standard PDF fonts.
   function pdfStr(str) {
-    // Map common UTF-8 chars to Latin-1 code points
-    const latin1Map = {
-      '\u0040':'\xC0','\u0041':'\xC1','\u0042':'\xC2','\u0043':'\xC3','\u0044':'\xC4','\u0045':'\xC5',
-      '\u0046':'\xC6','\u0047':'\xC7','\u0048':'\xC8','\u0049':'\xC9','\u004A':'\xCA','\u004B':'\xCB',
-      '\u004C':'\xCC','\u004D':'\xCD','\u004E':'\xCE','\u004F':'\xCF','\u0050':'\xD0','\u0051':'\xD1',
-      '\u0052':'\xD2','\u0053':'\xD3','\u0054':'\xD4','\u0055':'\xD5','\u0056':'\xD6','\u0057':'\xD7',
-      '\u0058':'\xD8','\u0059':'\xD9','\u005A':'\xDA','\u005B':'\xDB','\u005C':'\xDC','\u005D':'\xDD',
-      '\u005E':'\xDE','\u005F':'\xDF','\u0060':'\xE0','\u00E1':'\xE1','\u00E2':'\xE2','\u00E3':'\xE3',
-      '\u0064':'\xE4','\u0065':'\xE5','\u0066':'\xE6','\u00E7':'\xE7','\u0068':'\xE8','\u00E9':'\xE9',
-      '\u00EA':'\xEA','\u006B':'\xEB','\u006C':'\xEC','\u00ED':'\xED','\u006E':'\xEE','\u006F':'\xEF',
-      '\u0070':'\xF0','\u00F1':'\xF1','\u0072':'\xF2','\u00F3':'\xF3','\u00F4':'\xF4','\u00F5':'\xF5',
-      '\u0076':'\xF6','\u0077':'\xF7','\u0078':'\xF8','\u0079':'\xF9','\u007A':'\xFA','\u007B':'\xFB',
-      '\u00FC':'\xFC','\u007D':'\xFD','\u007E':'\xFE','\u007F':'\xFF',
-    };
-    // Convert each char to octal escape
+    // Encoder Latin-1/WinAnsi correto: ASCII passa direto,
+    // chars 0x80-0xFF viram escape octal (suporta acentos PT-BR)
     let out = '';
-    for (const ch of str) {
-      const mapped = latin1Map[ch];
-      if (mapped) {
-        const code = mapped.charCodeAt(0);
-        out += '\\' + code.toString(8).padStart(3, '0');
-      } else if (ch === '(' ) {
-        out += '\\(';
-      } else if (ch === ')') {
-        out += '\\)';
-      } else if (ch === '\\') {
-        out += '\\\\';
-      } else if (ch.charCodeAt(0) < 128) {
-        out += ch;
-      } else {
-        // Unknown char above latin-1 \u2014 skip
-        out += '?';
+    for (const ch of String(str)) {
+      const code = ch.charCodeAt(0);
+      if (ch === '(') out += '\\(';
+      else if (ch === ')') out += '\\)';
+      else if (ch === '\\') out += '\\\\';
+      else if (code < 128) out += ch;
+      else if (code <= 0xFF) out += '\\' + code.toString(8).padStart(3, '0');
+      else {
+        // Acima de latin-1: normaliza para base ASCII (ex: \u0161 -> s)
+        const norm = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        out += (norm && norm.charCodeAt(0) < 128) ? norm : '?';
       }
     }
     return `(${out})`;
@@ -3388,7 +3399,7 @@ function viewSeparacao() {
   return frag;
 }
 
-function printStockPdf(unitLabel, stockObj) {
+function printStockPdf(unitLabel, stockObj, onlyCategory) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
   const timeStr = now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
@@ -3398,18 +3409,25 @@ function printStockPdf(unitLabel, stockObj) {
   const byCategory = {};
   CATEGORIES.forEach(cat => { byCategory[cat] = []; });
   catalog.forEach(item => {
+    if (onlyCategory && item.category !== onlyCategory) return;
     const qty = stockObj[item.id] || 0;
     const min = minimums[item.id] || 0;
     if (!byCategory[item.category]) byCategory[item.category] = [];
     byCategory[item.category].push({name: item.name, unit: item.unit, qty, min});
   });
-  // Remove categorias sem nenhum item cadastrado
+  // Remove categorias sem nenhum item cadastrado (ou fora do filtro)
   CATEGORIES.forEach(cat => { if (byCategory[cat].length === 0) delete byCategory[cat]; });
 
   // Build PDF rows
   const W = 595, ML = 40, MR = 40, TW = W - ML - MR;
-  const colW = [TW*0.55, TW*0.15, TW*0.15, TW*0.15];
-  const colX = [ML, ML+colW[0], ML+colW[0]+colW[1], ML+colW[0]+colW[1]+colW[2]];
+  // Coluna MIN só aparece no CPD; unidades não usam estoque mínimo
+  const showMinCol = unitLabel === 'CPD';
+  const colW = showMinCol
+    ? [TW*0.55, TW*0.15, TW*0.15, TW*0.15]
+    : [TW*0.64, TW*0.18, TW*0.18];
+  const colX = showMinCol
+    ? [ML, ML+colW[0], ML+colW[0]+colW[1], ML+colW[0]+colW[1]+colW[2]]
+    : [ML, ML+colW[0], ML+colW[0]+colW[1]];
   let y = 0;
   const ops = [];
   const pages = [];
@@ -3438,7 +3456,7 @@ function printStockPdf(unitLabel, stockObj) {
     if (ops.length) pages.push(ops.splice(0));
     y = 780;
     // Header
-    ops.push(`BT /F1 16 Tf ${ML} ${y} Td (Sesconetto's - Contagem de Estoque) Tj ET`);
+    ops.push(`BT /F1 16 Tf ${ML} ${y} Td ${pdfStr("Sesconetto's - Contagem de Estoque" + (onlyCategory ? ' - ' + onlyCategory : ''))} Tj ET`);
     y -= 20;
     ops.push(`BT /F2 10 Tf ${ML} ${y} Td ${pdfStr(unitLabel + '  |  ' + dateStr + ' as ' + timeStr + '  |  ' + user)} Tj ET`);
     y -= 8;
@@ -3447,8 +3465,12 @@ function printStockPdf(unitLabel, stockObj) {
     // Col headers
     ops.push(`BT /F1 9 Tf ${colX[0]} ${y} Td (ITEM) Tj ET`);
     ops.push(`BT /F1 9 Tf ${colX[1]} ${y} Td (UN.) Tj ET`);
-    ops.push(`BT /F1 9 Tf ${colX[2]} ${y} Td (MIN.) Tj ET`);
-    ops.push(`BT /F1 9 Tf ${colX[3]} ${y} Td (QTD) Tj ET`);
+    if (showMinCol) {
+      ops.push(`BT /F1 9 Tf ${colX[2]} ${y} Td (MIN.) Tj ET`);
+      ops.push(`BT /F1 9 Tf ${colX[3]} ${y} Td (QTD) Tj ET`);
+    } else {
+      ops.push(`BT /F1 9 Tf ${colX[2]} ${y} Td (QTD) Tj ET`);
+    }
     y -= 6;
     ops.push(`${ML} ${y} m ${W-MR} ${y} l S`);
     y -= 12;
@@ -3501,14 +3523,18 @@ function printStockPdf(unitLabel, stockObj) {
     y -= 16;
     byCategory[cat].forEach(item => {
       if (y < 60) newPage();
-      const isLow = item.min > 0 && item.qty < item.min;
-      const isZero = item.qty === 0 && item.min > 0;
+      const isLow = showMinCol && item.min > 0 && item.qty < item.min;
+      const isZero = showMinCol && item.qty === 0 && item.min > 0;
       if (isZero) ops.push(`1 0.9 0.9 rg ${ML} ${y-2} ${TW} 13 re f 0 0 0 rg`);
       else if (isLow) ops.push(`1 0.97 0.87 rg ${ML} ${y-2} ${TW} 13 re f 0 0 0 rg`);
       ops.push(`BT /F2 8 Tf ${colX[0]+3} ${y+1} Td ${pdfStr(item.name)} Tj ET`);
       ops.push(`BT /F2 8 Tf ${colX[1]+3} ${y+1} Td ${pdfStr(item.unit)} Tj ET`);
-      ops.push(`BT /F2 8 Tf ${colX[2]+3} ${y+1} Td (${item.min > 0 ? item.min : '-'}) Tj ET`);
-      ops.push(`BT /F1 9 Tf ${colX[3]+3} ${y+1} Td (${item.qty}) Tj ET`);
+      if (showMinCol) {
+        ops.push(`BT /F2 8 Tf ${colX[2]+3} ${y+1} Td (${item.min > 0 ? item.min : '-'}) Tj ET`);
+        ops.push(`BT /F1 9 Tf ${colX[3]+3} ${y+1} Td (${item.qty}) Tj ET`);
+      } else {
+        ops.push(`BT /F1 9 Tf ${colX[2]+3} ${y+1} Td (${item.qty}) Tj ET`);
+      }
       ops.push(`${ML} ${y-3} m ${W-MR} ${y-3} l 0.9 0.9 0.9 RG S 0 0 0 RG`);
       y -= 14;
     });
@@ -3560,7 +3586,8 @@ function printStockPdf(unitLabel, stockObj) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `contagem-${unitLabel.toLowerCase().replace(/\s+/g,'-')}-${now.toISOString().slice(0,10)}.pdf`;
+  const catSlug = onlyCategory ? '-' + onlyCategory.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-') : '';
+  a.download = `contagem-${unitLabel.toLowerCase().replace(/\s+/g,'-')}${catSlug}-${now.toISOString().slice(0,10)}.pdf`;
   a.click();
   setTimeout(()=>URL.revokeObjectURL(url), 3000);
 }
@@ -3594,6 +3621,7 @@ function printLogPdf(entries) {
 
 
   function pdfStr(s) {
+    // Encoder Latin-1/WinAnsi (retorna sem parenteses externos)
     let o = '';
     for (const ch of (s||'').toString()) {
       const c = ch.charCodeAt(0);
@@ -3601,7 +3629,11 @@ function printLogPdf(entries) {
       else if (ch===')') o+='\\)';
       else if (ch==='\\') o+='\\\\';
       else if (c<128) o+=ch;
-      else o+='?';
+      else if (c<=0xFF) o+='\\' + c.toString(8).padStart(3,'0');
+      else {
+        const norm = ch.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        o += (norm && norm.charCodeAt(0)<128) ? norm : '?';
+      }
     }
     return o;
   }
@@ -3685,13 +3717,19 @@ function printOrderPdf(order) {
   const count    = order.items.length;
 
   function pdfStr(str) {
-    const latin1Map = {'\u0040':'\xC0','\u0041':'\xC1','\u0042':'\xC2','\u0043':'\xC3','\u0044':'\xC4','\u0045':'\xC5','\u0046':'\xC6','\u0047':'\xC7','\u0048':'\xC8','\u0049':'\xC9','\u004A':'\xCA','\u004B':'\xCB','\u004C':'\xCC','\u004D':'\xCD','\u004E':'\xCE','\u004F':'\xCF','\u0050':'\xD0','\u0051':'\xD1','\u0052':'\xD2','\u0053':'\xD3','\u0054':'\xD4','\u0055':'\xD5','\u0056':'\xD6','\u0057':'\xD7','\u0058':'\xD8','\u0059':'\xD9','\u005A':'\xDA','\u005B':'\xDB','\u005C':'\xDC','\u005D':'\xDD','\u005E':'\xDE','\u005F':'\xDF','\u0060':'\xE0','\u00E1':'\xE1','\u00E2':'\xE2','\u00E3':'\xE3','\u0064':'\xE4','\u0065':'\xE5','\u0066':'\xE6','\u00E7':'\xE7','\u0068':'\xE8','\u00E9':'\xE9','\u00EA':'\xEA','\u006B':'\xEB','\u006C':'\xEC','\u00ED':'\xED','\u006E':'\xEE','\u006F':'\xEF','\u0070':'\xF0','\u00F1':'\xF1','\u0072':'\xF2','\u00F3':'\xF3','\u00F4':'\xF4','\u00F5':'\xF5','\u0076':'\xF6','\u0077':'\xF7','\u0078':'\xF8','\u0079':'\xF9','\u007A':'\xFA','\u007B':'\xFB','\u00FC':'\xFC','\u007D':'\xFD','\u007E':'\xFE','\u007F':'\xFF'};
+    // Encoder Latin-1/WinAnsi correto
     let out = '';
-    for (const ch of str) {
-      const m = latin1Map[ch];
-      if (m) { out += '\\' + m.charCodeAt(0).toString(8).padStart(3,'0'); }
-      else if (ch==='(') out+='\\('; else if (ch===')') out+='\\)'; else if (ch==='\\') out+='\\\\';
-      else if (ch.charCodeAt(0)<128) out+=ch; else out+='?';
+    for (const ch of String(str)) {
+      const code = ch.charCodeAt(0);
+      if (ch === '(') out += '\\(';
+      else if (ch === ')') out += '\\)';
+      else if (ch === '\\') out += '\\\\';
+      else if (code < 128) out += ch;
+      else if (code <= 0xFF) out += '\\' + code.toString(8).padStart(3, '0');
+      else {
+        const norm = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        out += (norm && norm.charCodeAt(0) < 128) ? norm : '?';
+      }
     }
     return `(${out})`;
   }
@@ -4506,7 +4544,7 @@ function viewCpd() {
   inner.appendChild(buildStockTable(cpd, 'cpd-search', (itemId, qty) => {
     cpd[itemId] = qty;
     save('pizza_cpd', cpd);
-  }));
+  }, { useMin: true, pdfLabel: 'CPD' }));
   tableBlock.appendChild(inner);
   frag.appendChild(tableBlock);
 
@@ -4570,7 +4608,7 @@ function viewUnits() {
     if (!unitStock[activeUnit]) unitStock[activeUnit] = {};
     unitStock[activeUnit][itemId] = qty;
     save('pizza_units', unitStock);
-  } : undefined));
+  } : undefined, { useMin: false, pdfLabel: activeUnit }));
   tableBlock.appendChild(inner);
   frag.appendChild(tableBlock);
 
