@@ -2082,6 +2082,57 @@ function defaultView() {
 }
 
 // Senhas por unidade (n\u00E3o exibir em logs ou console)
+// ═══ JANELAS DE CONTAGEM (unidades) ═══
+// Dia operacional: 15h00 do dia até 03h00 da manhã seguinte.
+// 0=Domingo, 1=Segunda, 2=Terça, 3=Quarta, 4=Quinta, 5=Sexta, 6=Sábado
+// 'ALL' libera todas as categorias naquele dia.
+// >>> EDITE AQUI quando a lista categoria × dia for definida <<<
+const CONTAGEM_JANELAS = {
+  0: ['ALL'],   // Domingo: todas as categorias
+  2: ['ALL'],   // Terça: todas as categorias
+  3: ['Bebidas'], // Quarta: bar/bebidas
+  4: ['ALL'],   // Quinta: todas as categorias
+};
+const DIAS_SEMANA = ['Domingo','Segunda','Ter\u00E7a','Quarta','Quinta','Sexta','S\u00E1bado'];
+
+// Retorna o dia operacional atual (0-6). Entre 0h-3h, conta como o dia anterior.
+function diaOperacional() {
+  const now = new Date();
+  let d = now.getDay();
+  if (now.getHours() < 3) d = (d + 6) % 7;
+  return d;
+}
+
+// Está dentro do horário de funcionamento (15h-3h)?
+function dentroDoHorario() {
+  const h = new Date().getHours();
+  return h >= 15 || h < 3;
+}
+
+// A categoria pode ser contada agora? (CPD sempre pode)
+function categoriaLiberada(cat) {
+  if (isCPD()) return true;
+  if (!dentroDoHorario()) return false;
+  const allowed = CONTAGEM_JANELAS[diaOperacional()];
+  if (!allowed) return false;
+  return allowed.includes('ALL') || allowed.includes(cat);
+}
+
+// Próxima janela em que a categoria estará liberada (para mensagens)
+function proximaJanela(cat) {
+  const hoje = diaOperacional();
+  for (let i = 0; i <= 7; i++) {
+    const d = (hoje + i) % 7;
+    const allowed = CONTAGEM_JANELAS[d];
+    if (allowed && (allowed.includes('ALL') || allowed.includes(cat))) {
+      if (i === 0 && !dentroDoHorario()) return DIAS_SEMANA[d] + ' a partir das 15h';
+      if (i === 0) return 'hoje';
+      return DIAS_SEMANA[d] + ' a partir das 15h';
+    }
+  }
+  return 'a definir';
+}
+
 const UNIT_PASSWORDS = {
   'cpd':           'Sesco@CPD',
   'Asa Sul':       'SescoAsaSul@',
@@ -2366,6 +2417,7 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
   opts = opts || {};
   const useMin   = opts.useMin !== false;   // false nas unidades: esconde tudo de mínimo
   const pdfLabel = opts.pdfLabel || null;   // se definido, mostra botão de PDF por categoria
+  const lockByWindow = opts.lockByWindow === true; // unidades: trava fora da janela de contagem
   const editable = typeof onUpdate === 'function';
   const showMin  = false; // M\u00CDN column removed from stock table \u2014 editable only in Cat\u00E1logo
   const wrap = el('div', {});
@@ -2397,6 +2449,14 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
   let saveTimer = {};
 
   function updateQty(itemId, newQty, inp, tr, inlineSpan) {
+    // Trava de janela: recusa gravação fora do horário/dia de contagem
+    if (lockByWindow) {
+      const it = catalog.find(i => i.id === itemId);
+      if (it && !categoriaLiberada(it.category)) {
+        toast('\uD83D\uDD12 Contagem de ' + it.category + ' dispon\u00EDvel ' + proximaJanela(it.category) + '.');
+        return;
+      }
+    }
     const raw = typeof newQty === 'string' ? parseFloat(newQty.replace(',', '.')) : newQty;
     const q = Math.max(0, isNaN(raw) ? 0 : raw);
     stockObj[itemId] = q;
@@ -2453,10 +2513,13 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
         const qty = stockObj[i.id]||0; const min = minimums[i.id]||0;
         return min>0 && qty<min;
       }).length;
-      const countText = alertCount > 0
-        ? `${catItems.length} itens \u00B7 \u26A0\uFE0F ${alertCount}`
-        : `${catItems.length} itens`;
-      const countSpan = el('span', {cls:'cat-count', style: alertCount>0?'color:var(--warning);font-weight:700':''}, countText);
+      const catLocked = lockByWindow && !categoriaLiberada(cat);
+      const countText = catLocked
+        ? `\uD83D\uDD12 Contagem ${proximaJanela(cat)}`
+        : (alertCount > 0
+          ? `${catItems.length} itens \u00B7 \u26A0\uFE0F ${alertCount}`
+          : `${catItems.length} itens`);
+      const countSpan = el('span', {cls:'cat-count', style: catLocked ? 'color:var(--text-3)' : (alertCount>0?'color:var(--warning);font-weight:700':'')}, countText);
       const chevron = el('span', {cls:'cat-chevron'}, '\u25BC');
       togBtn.appendChild(countSpan);
       togBtn.appendChild(chevron);
@@ -2526,7 +2589,10 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
 
           const ctrlTd = el('td', {cls:'qty-controls-cell', style:'text-align:right; padding: 6px 16px;'});
           const wrap2 = el('div', {cls:'qty-controls'});
+          const rowLocked = lockByWindow && !categoriaLiberada(item.category);
+          if (rowLocked) wrap2.style.opacity = '0.45';
           const minBtn = el('button', {cls:'qty-btn-sm'}, '-');
+          if (rowLocked) minBtn.disabled = true;
 
           // Colour input based on stock status
           let inpCls = 'qty-inp-sm';
@@ -2539,7 +2605,9 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
             type: 'text', inputmode: 'decimal', pattern: '[0-9]*',
             cls: inpCls, value: String(qty)
           });
+          if (rowLocked) { inp.disabled = true; inp.title = 'Contagem dispon\u00EDvel ' + proximaJanela(item.category); }
           const plusBtn = el('button', {cls:'qty-btn-sm'}, '+');
+          if (rowLocked) plusBtn.disabled = true;
           minBtn.addEventListener('click', () => {
             const cur = parseFloat(inp.value.replace(',', '.')) || 0;
             updateQty(item.id, cur - 1, inp, tr, inlineUnit);
@@ -4571,6 +4639,34 @@ function viewUnits() {
   const shipBanner = buildShipmentBanner();
   if (shipBanner) frag.appendChild(shipBanner);
 
+  // Banner da janela de contagem (apenas unidades)
+  if (!isCPD()) {
+    const d = diaOperacional();
+    const allowed = CONTAGEM_JANELAS[d];
+    const aberto = dentroDoHorario();
+    let msg, cor;
+    if (aberto && allowed) {
+      const cats = allowed.includes('ALL') ? 'todas as categorias' : allowed.join(', ');
+      msg = '\u2705 Janela de contagem ABERTA (' + DIAS_SEMANA[d] + '): ' + cats + '.';
+      cor = 'border-color:var(--success);background:var(--success-bg, rgba(50,160,80,.08))';
+    } else {
+      // achar próxima janela geral
+      let prox = 'a definir';
+      for (let i = aberto && allowed ? 1 : 0; i <= 7; i++) {
+        const dd = (d + i) % 7;
+        if (CONTAGEM_JANELAS[dd]) {
+          prox = DIAS_SEMANA[dd] + ' a partir das 15h';
+          if (i === 0 && !aberto) prox = 'hoje a partir das 15h';
+          break;
+        }
+      }
+      msg = '\uD83D\uDD12 Fora da janela de contagem. Pr\u00F3xima: ' + prox + '.';
+      cor = 'border-color:var(--border);background:var(--surface-2)';
+    }
+    const winBanner = el('div', {cls:'table-wrap', style:'padding:11px 16px;margin-bottom:14px;font-size:12.5px;color:var(--text-2);' + cor}, msg);
+    frag.appendChild(winBanner);
+  }
+
   // CPD users see unit tabs; unit users are locked to their own unit
   if (isCPD()) {
     const tabs = el('div', {cls:'unit-tabs'});
@@ -4616,7 +4712,7 @@ function viewUnits() {
     if (!unitStock[activeUnit]) unitStock[activeUnit] = {};
     unitStock[activeUnit][itemId] = qty;
     save('pizza_units', unitStock);
-  } : undefined, { useMin: false, pdfLabel: activeUnit }));
+  } : undefined, { useMin: false, pdfLabel: activeUnit, lockByWindow: !isCPD() }));
   tableBlock.appendChild(inner);
   frag.appendChild(tableBlock);
 
