@@ -1449,6 +1449,25 @@ auth.onAuthStateChanged(user => {
         envios = data.pizza_envios;
         saveLocal('pizza_envios', envios);
       }
+      if (data.pizza_shipments) {
+        const prevTransitIds = new Set(shipments.filter(s=>s.status==='em_transito').map(s=>s.id));
+        shipments = data.pizza_shipments;
+        saveLocal('pizza_shipments', shipments);
+        // Notificar unidade sobre novos envios em trânsito
+        if (session && !isCPD()) {
+          shipments.filter(s => s.unit === session.unit && s.status === 'em_transito' && !prevTransitIds.has(s.id))
+            .forEach(s => {
+              if (typeof showPushNotif === 'function') {
+                showPushNotif('\uD83D\uDE9A Entrega a caminho!',
+                  'O CPD enviou ' + s.items.length + (s.items.length===1?' item':' itens') + ' para ' + s.unit + '.', []);
+              }
+            });
+        }
+      }
+      if (data.pizza_pendencias) {
+        pendencias = data.pizza_pendencias;
+        saveLocal('pizza_pendencias', pendencias);
+      }
       // Só re-renderiza se foi outro dispositivo que enviou — não write local
       if (typeof render === 'function' && session && !window._fb.localWrite) render();
     }
@@ -1557,6 +1576,10 @@ auth.onAuthStateChanged(user => {
     <button class="nav-item" data-view="entrada" onclick="setView('entrada')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
       Entrada CPD
+    </button>
+    <button class="nav-item" data-view="saida" onclick="setView('saida')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      Saída do Estoque
     </button>
   </div>
 
@@ -1925,7 +1948,7 @@ function saveLocal(key, data) {
 const FIREBASE_SYNC_KEYS = new Set([
   'pizza_cpd', 'pizza_units', 'pizza_movements', 'pizza_orders',
   'pizza_catalog', 'pizza_minimums', 'pizza_prices', 'pizza_unit_minimums',
-  'pizza_envios'
+  'pizza_envios', 'pizza_shipments', 'pizza_pendencias'
 ]);
 
 function save(key, data) {
@@ -2010,6 +2033,8 @@ let orders    = load('pizza_orders', []); // [{id, unit, userName, date, status,
 let minimums  = load('pizza_minimums', {}); // {itemId: minQty} \u2014 feature 1: stock minimums
 let templates = load('pizza_templates', {}); // {unitName: [{itemId,qty}]} \u2014 feature 2: recurring orders
 let saidaPreload = null;
+let shipments  = load('pizza_shipments', []);   // envios em trânsito/recebidos
+let pendencias = load('pizza_pendencias', {});  // {unidade: {itemId: qtyFaltante}}
 let activeUnit = UNIT_NAMES[0];
 let currentView = 'cpd';
 
@@ -2048,7 +2073,7 @@ function unitKey(){ return session ? session.unit : 'cpd'; }
 // Views available per role
 function allowedViews() {
   if (!session) return [];
-  if (isCPD()) return ['cpd','units','dashboard','envios','entrada','catalogo','relatorio','historico','log'];
+  if (isCPD()) return ['cpd','units','dashboard','envios','entrada','saida','catalogo','relatorio','historico','log'];
   return ['units']; // Unidades: apenas o Painel de Contagem
 }
 
@@ -2203,6 +2228,7 @@ function buildDrawerNav() {
       items: [
         { view:'envios',    label:'Envios \u00E0s Unidades', icon:'<path d="M5 8h11l3 5v5h-2a2 2 0 1 1-4 0H9a2 2 0 1 1-4 0H3V8z"/><circle cx="7" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>' },
         { view:'entrada',   label:'Entrada CPD',       icon:'<path d="M12 5v14M5 12l7 7 7-7"/>' },
+        { view:'saida',     label:'Sa\u00EDda do Estoque',  icon:'<path d="M12 19V5M5 12l7-7 7 7"/>' },
       ]
     },
     {
@@ -2266,7 +2292,7 @@ function toast(msg) {
 
 // NAVIGATION
 const VIEW_TITLES = {
-  cpd: 'Contagem CPD', envios: 'Envios \u00E0s Unidades', get units() { return isCPD() ? 'Contagem das Unidades' : 'Painel de Contagem'; },
+  cpd: 'Contagem CPD', saida: 'Sa\u00EDda do Estoque', envios: 'Envios \u00E0s Unidades', get units() { return isCPD() ? 'Contagem das Unidades' : 'Painel de Contagem'; },
   entrada: 'Registrar Entrada', saida: 'Registrar Sa\u00EDda',
   catalogo: 'Cat\u00E1logo de Itens',
   pedido: 'Fazer Pedido ao CPD',
@@ -4485,6 +4511,10 @@ function viewHistorico() {
 
 function viewCpd() {
   const frag = document.createDocumentFragment();
+
+  // Banner de divergências de entregas (itens faltantes)
+  const divBanner = buildDivergenceBanner();
+  if (divBanner) frag.appendChild(divBanner);
   const inStock = catalog.filter(i => (cpd[i.id]||0) > 0).length;
   const zeroStock = catalog.length - inStock;
 
@@ -4536,6 +4566,10 @@ function viewCpd() {
 
 function viewUnits() {
   const frag = document.createDocumentFragment();
+
+  // Banner de entrega a caminho (lado unidade)
+  const shipBanner = buildShipmentBanner();
+  if (shipBanner) frag.appendChild(shipBanner);
 
   // CPD users see unit tabs; unit users are locked to their own unit
   if (isCPD()) {
@@ -4594,8 +4628,48 @@ function viewUnits() {
 // Editável apenas pelo CPD; salvo em pizza_envios (Firebase + localStorage).
 let enviosActiveUnit = 'Asa Sul';
 
+// Monta o preload da Saída do Estoque a partir do plano de envios + pendências
+function separarParaEnvio(unit, dayCode) {
+  const itemsMap = {}; // itemId -> qty
+
+  // 1. Quantidades do plano para o dia
+  Object.keys(envios).forEach(catName => {
+    const catData = envios[catName];
+    if (!catData.days.includes(dayCode)) return;
+    (catData.items || []).forEach(planItem => {
+      const q = (planItem.qty && planItem.qty[unit] && planItem.qty[unit][dayCode]) || 0;
+      if (q <= 0) return;
+      // Mapear item do plano para item do catálogo (por nome normalizado)
+      const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+      const catItem = catalog.find(i => norm(i.name) === norm(planItem.name));
+      if (catItem) {
+        itemsMap[catItem.id] = (itemsMap[catItem.id] || 0) + q;
+      }
+    });
+  });
+
+  // 2. Somar pendências da unidade
+  const unitPend = pendencias[unit] || {};
+  Object.entries(unitPend).forEach(([itemId, q]) => {
+    if (q > 0) itemsMap[itemId] = (itemsMap[itemId] || 0) + q;
+  });
+
+  const items = Object.entries(itemsMap).map(([itemId, qty]) => ({itemId, qty}));
+  if (items.length === 0) {
+    toast('Nenhum item planejado para ' + unit + ' neste dia.');
+    return;
+  }
+
+  saidaPreload = { unit, items, fromEnvios: true, day: dayCode };
+  setView('saida');
+}
+
 function viewEnvios() {
   const frag = document.createDocumentFragment();
+
+  // Banner de divergências (itens faltantes a tratar)
+  const divBanner2 = buildDivergenceBanner();
+  if (divBanner2) frag.appendChild(divBanner2);
 
   // Tabs de unidade
   const tabs = el('div', {cls:'unit-tabs'});
@@ -4612,6 +4686,38 @@ function viewEnvios() {
   const info = el('div', {cls:'table-wrap', style:'padding:12px 18px;margin-bottom:14px;font-size:12px;color:var(--text-3)'},
     'Quantidades a enviar para ' + enviosActiveUnit + ' em cada dia de entrega. Altera\u00E7\u00F5es s\u00E3o salvas automaticamente.');
   frag.appendChild(info);
+
+  // ─── Pend\u00EAncias da unidade (itens faltantes de entregas anteriores) ───
+  const unitPend = pendencias[enviosActiveUnit] || {};
+  const pendCount = Object.keys(unitPend).filter(k => unitPend[k] > 0).length;
+  if (pendCount > 0) {
+    const pendBox = el('div', {cls:'table-wrap', style:'padding:12px 18px;margin-bottom:14px;border-color:var(--warning);background:var(--warning-bg)'});
+    pendBox.appendChild(el('div', {style:'font-weight:700;font-size:13px;color:var(--warning);margin-bottom:6px'},
+      '\u26A0\uFE0F ' + pendCount + (pendCount===1?' item pendente':' itens pendentes') + ' de entregas anteriores'));
+    const pendList = Object.entries(unitPend).filter(([,q])=>q>0).map(([id,q]) => {
+      const it = catalog.find(i=>i.id===id);
+      return (it?it.name:id) + ' (' + q + ')';
+    }).join(' \u00B7 ');
+    pendBox.appendChild(el('div', {style:'font-size:12px;color:var(--text-2)'}, pendList));
+    pendBox.appendChild(el('div', {style:'font-size:11px;color:var(--text-3);margin-top:6px'},
+      'Estes itens ser\u00E3o somados automaticamente ao pr\u00F3ximo "Separar para Envio".'));
+    frag.appendChild(pendBox);
+  }
+
+  // ─── Bot\u00F5es Separar para Envio (um por dia de entrega) ───
+  const sepBox = el('div', {cls:'table-wrap', style:'padding:14px 18px;margin-bottom:14px'});
+  sepBox.appendChild(el('div', {style:'font-weight:700;font-size:13px;margin-bottom:10px'}, '\uD83D\uDE9A Separar para Envio \u2014 ' + enviosActiveUnit));
+  const dayBtns = el('div', {style:'display:flex;gap:8px;flex-wrap:wrap'});
+  const ALL_DAYS = [['SEG','Segunda'],['QUA','Quarta'],['SEX','Sexta']];
+  ALL_DAYS.forEach(([code, label]) => {
+    const btn = el('button', {cls:'btn btn-primary btn-sm', style:'flex:1;min-width:90px'}, label);
+    btn.addEventListener('click', () => separarParaEnvio(enviosActiveUnit, code));
+    dayBtns.appendChild(btn);
+  });
+  sepBox.appendChild(dayBtns);
+  sepBox.appendChild(el('div', {style:'font-size:11px;color:var(--text-3);margin-top:8px'},
+    'Abre a Sa\u00EDda do Estoque com as quantidades do dia j\u00E1 pr\u00E9-selecionadas (+ pend\u00EAncias).'));
+  frag.appendChild(sepBox);
 
   const saveEnvios = () => save('pizza_envios', envios);
   let envioSaveTimer = null;
@@ -4700,6 +4806,181 @@ function viewEnvios() {
 }
 
 function viewEntrada() { return viewBatchOperation('entrada'); }
+// ═══ RECEBIMENTO DE ENVIOS (lado unidade) ═══
+function getMyTransitShipments() {
+  if (!session || isCPD()) return [];
+  return shipments.filter(s => s.unit === session.unit && s.status === 'em_transito');
+}
+
+function buildShipmentBanner() {
+  const transit = getMyTransitShipments();
+  if (transit.length === 0) return null;
+  const isGerente = (session.role || '').toLowerCase() === 'gerente';
+
+  const box = el('div', {cls:'table-wrap', style:'padding:14px 18px;margin-bottom:14px;border-color:var(--accent);background:var(--accent-light);cursor:' + (isGerente?'pointer':'default')});
+  const title = el('div', {style:'font-weight:700;font-size:14px;color:var(--accent-dark);display:flex;align-items:center;gap:8px'});
+  title.innerHTML = '\uD83D\uDE9A <span>Entrega a caminho!</span>';
+  box.appendChild(title);
+  const totalItems = transit.reduce((s, sh) => s + sh.items.length, 0);
+  box.appendChild(el('div', {style:'font-size:12px;color:var(--text-2);margin-top:4px'},
+    transit.length + (transit.length===1?' envio':' envios') + ' com ' + totalItems + (totalItems===1?' item':' itens') + ' aguardando recebimento.'));
+  if (isGerente) {
+    box.appendChild(el('div', {style:'font-size:12px;color:var(--accent-dark);margin-top:6px;font-weight:700'}, 'Toque para conferir e confirmar \u2192'));
+    box.addEventListener('click', () => showShipmentReceiptModal(transit[0]));
+  } else {
+    box.appendChild(el('div', {style:'font-size:11px;color:var(--text-3);margin-top:6px'},
+      'Apenas o gerente pode confirmar o recebimento.'));
+  }
+  return box;
+}
+
+function showShipmentReceiptModal(shipment) {
+  const overlay = el('div', {cls:'modal-overlay', style:'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px'});
+  const box = el('div', {style:'background:var(--surface);border-radius:14px;max-width:520px;width:100%;max-height:88vh;overflow-y:auto;padding:22px'});
+
+  box.appendChild(el('div', {style:'font-family:"Playfair Display",serif;font-size:19px;font-weight:700;margin-bottom:4px'}, '\uD83D\uDCE6 Conferir Recebimento'));
+  const sentDate = new Date(shipment.date);
+  box.appendChild(el('div', {style:'font-size:12px;color:var(--text-3);margin-bottom:14px'},
+    'Enviado por ' + (shipment.sentBy||'CPD') + ' em ' + sentDate.toLocaleDateString('pt-BR') + ' \u00E0s ' + sentDate.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})));
+
+  // Modo: 'ok' (padrão) ou 'faltantes'
+  let mode = 'ok';
+  const received = {}; // itemId -> qty recebida (modo faltantes)
+  shipment.items.forEach(({itemId, qty}) => { received[itemId] = qty; });
+
+  // Tabela de itens
+  const table = el('table', {cls:'stock-table', style:'margin-bottom:14px'});
+  const thead = el('thead', {});
+  thead.innerHTML = '<tr><th>Item</th><th style="width:20%;text-align:center">Enviado</th><th class="recv-col" style="width:26%;text-align:center;display:none">Recebido</th></tr>';
+  table.appendChild(thead);
+  const tbody = el('tbody', {});
+  shipment.items.forEach(({itemId, qty}) => {
+    const item = catalog.find(i => i.id === itemId);
+    const tr = el('tr', {});
+    tr.appendChild(el('td', {cls:'item-name'}, item ? item.name : itemId));
+    tr.appendChild(el('td', {style:'text-align:center;font-weight:700'}, String(qty)));
+    const recvTd = el('td', {cls:'recv-col', style:'text-align:center;display:none;padding:4px'});
+    const inp = el('input', {type:'text', inputmode:'decimal', cls:'qty-inp-sm has-val', value:String(qty), style:'width:54px;text-align:center'});
+    inp.addEventListener('change', () => {
+      const raw = parseFloat((inp.value||'0').replace(',','.'));
+      const q = Math.max(0, Math.min(qty, isNaN(raw) ? 0 : raw));
+      inp.value = String(q);
+      received[itemId] = q;
+      inp.className = 'qty-inp-sm ' + (q < qty ? 'has-error' : 'has-val');
+    });
+    recvTd.appendChild(inp);
+    tr.appendChild(recvTd);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  box.appendChild(table);
+
+  // Botões de modo
+  const modeBox = el('div', {style:'display:flex;gap:8px;margin-bottom:14px'});
+  const okBtn = el('button', {cls:'btn btn-primary', style:'flex:1'}, '\u2705 Tudo OK');
+  const faltBtn = el('button', {cls:'btn btn-outline', style:'flex:1'}, '\u26A0\uFE0F Itens faltantes');
+  modeBox.appendChild(okBtn);
+  modeBox.appendChild(faltBtn);
+  box.appendChild(modeBox);
+
+  const confirmBtn = el('button', {cls:'btn btn-primary', style:'width:100%;display:none'}, 'Confirmar Recebimento');
+  box.appendChild(confirmBtn);
+  const cancelBtn = el('button', {cls:'btn btn-outline', style:'width:100%;margin-top:8px'}, 'Fechar');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  box.appendChild(cancelBtn);
+
+  function finalize() {
+    const faltantes = [];
+    shipment.items.forEach(({itemId, qty}) => {
+      const recv = mode === 'ok' ? qty : (received[itemId] || 0);
+      const falta = qty - recv;
+      // Entra no estoque da unidade o que foi recebido
+      if (!unitStock[shipment.unit]) unitStock[shipment.unit] = {};
+      unitStock[shipment.unit][itemId] = (unitStock[shipment.unit][itemId] || 0) + recv;
+      if (falta > 0) {
+        faltantes.push({itemId, qty: falta});
+        // Quantidade faltante volta ao estoque do CPD
+        cpd[itemId] = (cpd[itemId] || 0) + falta;
+      }
+      movements.unshift({id: Date.now()+Math.random(), batchId: shipment.batchId, type:'recebimento', itemId, qty: recv, unitName: shipment.unit, note: falta>0 ? ('Falta: '+falta) : 'Recebido', date: new Date().toISOString()});
+    });
+
+    shipment.status = faltantes.length > 0 ? 'divergencia' : 'recebido';
+    shipment.receivedBy = session.name;
+    shipment.receivedAt = new Date().toISOString();
+    if (faltantes.length > 0) shipment.faltantes = faltantes;
+
+    save('pizza_units', unitStock);
+    save('pizza_cpd', cpd);
+    save('pizza_shipments', shipments);
+    save('pizza_movements', movements);
+    logAction('recebimento', session.name + ' confirmou recebimento de envio em ' + shipment.unit + (faltantes.length>0 ? ' com ' + faltantes.length + ' falta(s)' : ' (completo)'), {shipmentId: shipment.id, faltas: faltantes.length});
+
+    overlay.remove();
+    toast(faltantes.length > 0 ? 'Recebimento confirmado com ' + faltantes.length + ' item(ns) faltante(s). O CPD foi notificado.' : 'Recebimento confirmado! Estoque atualizado.');
+    render();
+  }
+
+  okBtn.addEventListener('click', () => {
+    mode = 'ok';
+    if (confirm('Confirmar que TODOS os itens chegaram nas quantidades enviadas?')) finalize();
+  });
+
+  faltBtn.addEventListener('click', () => {
+    mode = 'faltantes';
+    // Mostrar coluna de recebido e botão confirmar
+    box.querySelectorAll('.recv-col').forEach(td => td.style.display = '');
+    confirmBtn.style.display = '';
+    okBtn.style.opacity = '0.5';
+    faltBtn.classList.remove('btn-outline');
+    faltBtn.classList.add('btn-primary');
+  });
+
+  confirmBtn.addEventListener('click', () => {
+    if (confirm('Confirmar o recebimento com as quantidades informadas? Itens faltantes voltar\u00E3o ao CPD.')) finalize();
+  });
+
+  overlay.appendChild(box);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+// ═══ DIVERGÊNCIAS (lado CPD) ═══
+function buildDivergenceBanner() {
+  if (!isCPD()) return null;
+  const divs = shipments.filter(s => s.status === 'divergencia' && !s._pendAdded);
+  if (divs.length === 0) return null;
+
+  const box = el('div', {cls:'table-wrap', style:'padding:14px 18px;margin-bottom:14px;border-color:var(--danger);background:var(--danger-bg)'});
+  box.appendChild(el('div', {style:'font-weight:700;font-size:14px;color:var(--danger)'},
+    '\u26A0\uFE0F ' + divs.length + (divs.length===1?' entrega com itens faltantes':' entregas com itens faltantes')));
+
+  divs.forEach(sh => {
+    const row = el('div', {style:'margin-top:10px;padding-top:10px;border-top:1px solid var(--border)'});
+    row.appendChild(el('div', {style:'font-size:13px;font-weight:700'}, sh.unit + ' \u2014 ' + new Date(sh.receivedAt||sh.date).toLocaleDateString('pt-BR')));
+    const list = (sh.faltantes||[]).map(f => {
+      const it = catalog.find(i=>i.id===f.itemId);
+      return (it?it.name:f.itemId) + ' (' + f.qty + ')';
+    }).join(' \u00B7 ');
+    row.appendChild(el('div', {style:'font-size:12px;color:var(--text-2);margin:4px 0 8px'}, 'Faltou: ' + list));
+    const addBtn = el('button', {cls:'btn btn-primary btn-sm'}, '\u2795 Adicionar \u00E0 pr\u00F3xima sa\u00EDda');
+    addBtn.addEventListener('click', () => {
+      if (!pendencias[sh.unit]) pendencias[sh.unit] = {};
+      (sh.faltantes||[]).forEach(f => {
+        pendencias[sh.unit][f.itemId] = (pendencias[sh.unit][f.itemId] || 0) + f.qty;
+      });
+      sh._pendAdded = true;
+      save('pizza_pendencias', pendencias);
+      save('pizza_shipments', shipments);
+      toast('Itens adicionados \u00E0s pend\u00EAncias de ' + sh.unit + '. Ser\u00E3o somados no pr\u00F3ximo envio.');
+      render();
+    });
+    row.appendChild(addBtn);
+    box.appendChild(row);
+  });
+  return box;
+}
+
 function viewSaida()   { return viewBatchOperation('saida'); }
 
 function showConfirmModal(batch, isEntrada, destUnit) {
@@ -4804,7 +5085,7 @@ function viewBatchOperation(mode) {
         destBox.innerHTML='';
         destBox.appendChild(el('label', {style:'margin-bottom:8px'}, 'Destino'));
         const sel2 = el('select', {});
-        const optInt = el('option', {value:INTERNAL_USE}, '\uD83C\uDFED Uso Interno CPD');
+        const optInt = el('option', {value:INTERNAL_USE}, '\uD83C\uDF55 Cozinha CPD');
         sel2.appendChild(optInt);
         UNIT_NAMES.forEach(u => { const opt=el('option',{value:u},u); if(u===destUnit) opt.selected=true; sel2.appendChild(opt); });
         sel2.addEventListener('change', () => { destUnit=sel2.value; renderRows(searchInp.value); });
@@ -4817,7 +5098,7 @@ function viewBatchOperation(mode) {
       destSel = el('select', {});
 
       // First option: internal CPD use
-      const optInternal = el('option', {value: INTERNAL_USE}, '\uD83C\uDFED Uso Interno CPD');
+      const optInternal = el('option', {value: INTERNAL_USE}, '\uD83C\uDF55 Cozinha CPD');
       destSel.appendChild(optInternal);
 
       // Then the three units
@@ -4935,26 +5216,45 @@ function viewBatchOperation(mode) {
           movements.unshift({id: Date.now() + Math.random(), batchId, type:'entrada', itemId, qty, note:'Lote', unitName: myUnit, date: new Date().toISOString()});
         }
       } else {
-        // Sa\u00EDda CPD: always removes from CPD stock
+        // Sa\u00EDda CPD: sempre desconta do estoque CPD
         cpd[itemId] = (cpd[itemId] || 0) - qty;
         if (isInternal) {
-          // Uso interno: only removes from CPD, doesn't add to any unit
-          movements.unshift({id: Date.now() + Math.random(), batchId, type:'saida', itemId, qty, unitName: 'Uso Interno CPD', note:'Uso Interno', date: new Date().toISOString()});
+          // Cozinha CPD: s\u00F3 desconta do CPD, n\u00E3o vai para nenhuma unidade
+          movements.unshift({id: Date.now() + Math.random(), batchId, type:'saida', itemId, qty, unitName: 'Cozinha CPD', note:'Cozinha CPD', date: new Date().toISOString()});
         } else {
-          // Normal: removes from CPD, adds to destination unit
-          if (!unitStock[effectiveDest]) unitStock[effectiveDest] = {};
-          unitStock[effectiveDest][itemId] = (unitStock[effectiveDest][itemId] || 0) + qty;
-          movements.unshift({id: Date.now() + Math.random(), batchId, type:'saida', itemId, qty, unitName: effectiveDest, note:'Lote', date: new Date().toISOString()});
+          // Envio p/ unidade: fica EM TR\u00C2NSITO — s\u00F3 entra no estoque da
+          // unidade quando o gerente confirmar o recebimento
+          movements.unshift({id: Date.now() + Math.random(), batchId, type:'saida', itemId, qty, unitName: effectiveDest, note:'Em tr\u00E2nsito', date: new Date().toISOString()});
         }
       }
     });
+
+    // Criar shipment em tr\u00E2nsito para envios a unidades
+    if (!isEntrada && !isInternal) {
+      shipments.unshift({
+        id: 'ship_' + Date.now(),
+        batchId,
+        unit: effectiveDest,
+        items: entries.map(([itemId, qty]) => ({itemId, qty})),
+        status: 'em_transito',
+        sentBy: session.name,
+        date: new Date().toISOString()
+      });
+      save('pizza_shipments', shipments);
+      // Limpar pend\u00EAncias da unidade que foram incorporadas neste envio
+      if (pendencias[effectiveDest]) {
+        delete pendencias[effectiveDest];
+        save('pizza_pendencias', pendencias);
+      }
+    }
+
     save('pizza_cpd', cpd);
     save('pizza_units', unitStock);
     save('pizza_movements', movements);
 
     const savedBatch = movements.filter(m => m.batchId === batchId);
     const batchQty = savedBatch.reduce((s, m) => s + m.qty, 0);
-    const dest = isInternal ? 'Uso Interno CPD' : destUnit;
+    const dest = isInternal ? 'Cozinha CPD' : destUnit;
     if (isEntrada) {
       logAction('entrada',
         `${session.name} registrou entrada de ${savedBatch.length} item${savedBatch.length!==1?'s':''} (${batchQty} unidades) no ${isCPD()?'CPD':unitKey()}`,
@@ -4967,7 +5267,7 @@ function viewBatchOperation(mode) {
       );
     }
     clearCart();
-    showConfirmModal(savedBatch, isEntrada, isInternal ? 'Uso Interno CPD' : destUnit);
+    showConfirmModal(savedBatch, isEntrada, isInternal ? 'Cozinha CPD' : destUnit);
   }
 
   updateSummary();
@@ -5453,6 +5753,7 @@ function render() {
   if (currentView === 'cpd')         node = viewCpd();
   else if (currentView === 'units')      node = viewUnits();
   else if (currentView === 'envios')     node = viewEnvios();
+  else if (currentView === 'saida')      node = viewSaida();
   else if (currentView === 'entrada')    node = viewEntrada();
   else if (currentView === 'catalogo')   node = viewCatalogo();
   else if (currentView === 'dashboard')  node = viewDashboard();
