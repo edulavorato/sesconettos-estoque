@@ -2699,6 +2699,7 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
   const tableWrap = el('div', {cls:'table-wrap'});
   const table = el('table', {cls: 'stock-table'});
   const thead = el('thead', {});
+  const hasEnviarCol = !!(opts && opts.showEnviar);
   if (editable) {
     thead.innerHTML = showMin
       ? '<tr><th>Item</th><th class="col-unit" style="width:12%">Medida</th><th class="col-min" style="width:10%;text-align:right;font-size:10px;color:var(--text-3)">M\u00CDN.</th><th style="width:40%;text-align:right">Quantidade</th></tr>'
@@ -2706,7 +2707,6 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
         ? '<tr><th>Item</th><th class="col-unit" style="width:12%">Medida</th><th style="width:38%;text-align:right">Quantidade</th><th style="width:38px"></th></tr>'
         : '<tr><th>Item</th><th class="col-unit" style="width:14%">Medida</th><th style="width:46%;text-align:right">Quantidade</th></tr>');
   } else {
-    const hasEnviarCol = opts && opts.showEnviar;
     thead.innerHTML = hasEnviarCol
       ? '<tr><th>Item</th><th style="width:15%;text-align:right">Qtd</th><th style="width:16%;text-align:right;color:var(--accent-dark,#2a6049);font-size:11px">A Enviar</th><th class="col-unit" style="width:15%">Medida</th><th style="width:8%"></th></tr>'
       : '<tr><th>Item</th><th style="width:18%;text-align:right">Qtd</th><th class="col-unit" style="width:18%">Medida</th><th style="width:8%"></th></tr>';
