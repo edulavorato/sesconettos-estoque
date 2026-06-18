@@ -394,6 +394,37 @@
     display: inline-block;
   }
   .cat-toggle.open .cat-chevron { transform: rotate(180deg); }
+
+  /* Janelas de contagem — cores no cabeçalho de categoria (unidades) */
+  .cat-toggle.janela-aberta {
+    background: rgba(56, 161, 105, 0.14);
+    border-left: 3px solid var(--success, #38A169);
+    color: var(--success, #276749);
+  }
+  .cat-toggle.janela-aberta .cat-count { color: #276749; font-weight: 700; }
+  .cat-toggle.janela-fechada {
+    background: rgba(214, 158, 46, 0.10);
+    border-left: 3px solid #D69E2E;
+  }
+  .cat-toggle.janela-fechada .cat-count { color: #975A16; }
+
+  /* Botão confirmar item */
+  .confirm-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; min-width: 30px;
+    border-radius: 50%; border: 2px solid var(--border);
+    background: transparent; cursor: pointer; font-size: 14px;
+    transition: all .15s ease; color: var(--text-3);
+  }
+  .confirm-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .confirm-btn.confirmed-ok     { background: rgba(56,161,105,.18); border-color: #38A169; color: #276749; }
+  .confirm-btn.confirmed-warn   { background: rgba(214,158,46,.18); border-color: #D69E2E; color: #975A16; }
+  .confirm-btn.confirmed-danger { background: rgba(197,48,48,.18);  border-color: #C53030; color: #9B2C2C; }
+
+  /* Linha confirmada: cor de fundo suave */
+  tr.count-ok     { background: rgba(56,161,105,.08) !important; }
+  tr.count-warn   { background: rgba(214,158,46,.10) !important; }
+  tr.count-danger { background: rgba(197,48,48,.10)  !important; }
   .cat-toggle .cat-count {
     font-weight: 400;
     color: var(--accent);
@@ -425,6 +456,16 @@
   .cat-row:hover { background: none !important; }
   .cat-row > td { padding: 0 !important; border: none; }
   .cat-toggle { box-sizing: border-box; width: 100%; }
+  .cat-toggle.janela-aberta  { background: rgba(34,139,34,.10); border-left: 4px solid #2a9148; color: #1e7a38; }
+  .cat-toggle.janela-fechada { background: rgba(200,150,0,.08); border-left: 4px solid #C89600; color: #8a6500; }
+  .cat-toggle.janela-aberta .cat-count  { color: #2a9148 !important; }
+  .cat-toggle.janela-fechada .cat-count { color: #C89600 !important; }
+  .confirm-btn { flex:0 0 auto; width:32px; height:32px; border-radius:50%; border:2px solid var(--border); background:transparent; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .18s; }
+  .confirm-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+  .confirm-btn.conf-ok   { border-color:#2a9148; background:rgba(34,139,34,.12); color:#2a9148; }
+  .confirm-btn.conf-low  { border-color:#E8A020; background:rgba(232,160,32,.12); color:#C88000; }
+  .confirm-btn.conf-zero { border-color:var(--danger); background:var(--danger-bg); color:var(--danger); }
+  .confirm-btn:disabled  { opacity:0.4; cursor:default; }
 
   .qty-controls { display: flex; align-items: center; gap: 5px; justify-content: flex-end; }
   .qty-btn-sm {
@@ -1492,6 +1533,14 @@ auth.onAuthStateChanged(user => {
         pendencias = data.pizza_pendencias;
         saveLocal('pizza_pendencias', pendencias);
       }
+      if (data.pizza_counted) {
+        countedMap = data.pizza_counted;
+        saveLocal('pizza_counted', countedMap);
+      }
+      if (data.pizza_confirmados) {
+        confirmados = data.pizza_confirmados;
+        saveLocal('pizza_confirmados', confirmados);
+      }
       // Só re-renderiza se foi outro dispositivo que enviou — não write local
       if (typeof render === 'function' && session && !window._fb.localWrite) render();
     }
@@ -2128,7 +2177,7 @@ function saveLocal(key, data) {
 const FIREBASE_SYNC_KEYS = new Set([
   'pizza_cpd', 'pizza_units', 'pizza_movements', 'pizza_orders',
   'pizza_catalog', 'pizza_minimums', 'pizza_prices', 'pizza_unit_minimums',
-  'pizza_envios', 'pizza_shipments', 'pizza_pendencias'
+  'pizza_envios', 'pizza_shipments', 'pizza_pendencias', 'pizza_confirmados'
 ]);
 
 function save(key, data) {
@@ -2208,8 +2257,46 @@ let orders    = load('pizza_orders', []); // [{id, unit, userName, date, status,
 let minimums  = load('pizza_minimums', {}); // {itemId: minQty} \u2014 feature 1: stock minimums
 let templates = load('pizza_templates', {}); // {unitName: [{itemId,qty}]} \u2014 feature 2: recurring orders
 let saidaPreload = null;
-let shipments  = load('pizza_shipments', []);   // envios em trânsito/recebidos
+let shipments  = load('pizza_shipments', []);
+let countedMap = load('pizza_counted', {});  // {unit: {windowKey: {itemId: true}}}
+
+// Chave única da janela de contagem atual (ex: "2026-06-15-0" = domingo 15/06)
+function windowKey() {
+  const now = new Date();
+  // Entre 0h e 3h, pertence ao dia anterior
+  if (now.getHours() < 3) now.setDate(now.getDate() - 1);
+  now.setHours(12, 0, 0, 0);
+  const iso = now.toISOString().slice(0, 10);
+  return iso + '-' + diaOperacional();
+}
+
+// Marcar/desmarcar item como confirmado na janela atual
+function setConfirmed(unit, itemId, val) {
+  if (!countedMap[unit]) countedMap[unit] = {};
+  const wk = windowKey();
+  if (!countedMap[unit][wk]) countedMap[unit][wk] = {};
+  if (val) countedMap[unit][wk][itemId] = true;
+  else delete countedMap[unit][wk][itemId];
+  save('pizza_counted', countedMap);
+}
+
+// Verificar se item está confirmado na janela atual
+function isConfirmed(unit, itemId) {
+  const wk = windowKey();
+  return !!(countedMap[unit] && countedMap[unit][wk] && countedMap[unit][wk][itemId]);
+}
+
+// Limpar janelas antigas (manter apenas últimas 4) para não inflar o Firebase
+function pruneCountedMap() {
+  Object.keys(countedMap).forEach(unit => {
+    const keys = Object.keys(countedMap[unit]).sort();
+    if (keys.length > 4) {
+      keys.slice(0, keys.length - 4).forEach(k => delete countedMap[unit][k]);
+    }
+  });
+}   // envios em trânsito/recebidos
 let pendencias = load('pizza_pendencias', {});  // {unidade: {itemId: qtyFaltante}}
+let confirmados = load('pizza_confirmados', {}); // {unidade: {itemId: {qty, diaOp}}}
 let activeUnit = UNIT_NAMES[0];
 let currentView = 'cpd';
 
@@ -2590,9 +2677,13 @@ function formatDate(iso) {
 
 function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
   opts = opts || {};
-  const useMin   = opts.useMin !== false;   // false nas unidades: esconde tudo de mínimo
-  const pdfLabel = opts.pdfLabel || null;   // se definido, mostra botão de PDF por categoria
-  const lockByWindow = opts.lockByWindow === true; // unidades: trava fora da janela de contagem
+  const useMin        = opts.useMin !== false;
+  const pdfLabel      = opts.pdfLabel     || null;
+  const lockByWindow  = opts.lockByWindow === true;
+  const unitForConf   = opts.unitForConf  || null;
+  const unitMins      = opts.unitMins     || {};
+  const unitName      = opts.unitName     || null;  // unidade para botão confirmar
+  const showConfirm   = opts.showConfirm === true;  // mostrar botão ✓ por item
   const editable = typeof onUpdate === 'function';
   const showMin  = false; // M\u00CDN column removed from stock table \u2014 editable only in Cat\u00E1logo
   const wrap = el('div', {});
@@ -2611,9 +2702,14 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
   if (editable) {
     thead.innerHTML = showMin
       ? '<tr><th>Item</th><th class="col-unit" style="width:12%">Medida</th><th class="col-min" style="width:10%;text-align:right;font-size:10px;color:var(--text-3)">M\u00CDN.</th><th style="width:40%;text-align:right">Quantidade</th></tr>'
-      : '<tr><th>Item</th><th class="col-unit" style="width:14%">Medida</th><th style="width:46%;text-align:right">Quantidade</th></tr>';
+      : (showConfirm
+        ? '<tr><th>Item</th><th class="col-unit" style="width:12%">Medida</th><th style="width:38%;text-align:right">Quantidade</th><th style="width:38px"></th></tr>'
+        : '<tr><th>Item</th><th class="col-unit" style="width:14%">Medida</th><th style="width:46%;text-align:right">Quantidade</th></tr>');
   } else {
-    thead.innerHTML = '<tr><th>Item</th><th style="width:18%;text-align:right">Qtd</th><th class="col-unit" style="width:18%">Medida</th><th style="width:8%"></th></tr>';
+    const hasEnviarCol = opts && opts.showEnviar;
+    thead.innerHTML = hasEnviarCol
+      ? '<tr><th>Item</th><th style="width:15%;text-align:right">Qtd</th><th style="width:16%;text-align:right;color:var(--accent-dark,#2a6049);font-size:11px">A Enviar</th><th class="col-unit" style="width:15%">Medida</th><th style="width:8%"></th></tr>'
+      : '<tr><th>Item</th><th style="width:18%;text-align:right">Qtd</th><th class="col-unit" style="width:18%">Medida</th><th style="width:8%"></th></tr>';
   }
   const tbody = el('tbody', {id:'tbody-'+searchInp.id});
   table.appendChild(thead);
@@ -2636,7 +2732,7 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
     const q = Math.max(0, isNaN(raw) ? 0 : raw);
     stockObj[itemId] = q;
     inp.value = String(q);
-    const min = useMin ? (minimums[itemId] || 0) : 0;
+    const min = unitForConf ? (unitMins[itemId] || 0) : (useMin ? (minimums[itemId] || 0) : 0);
     const isZero = q === 0;
     const isLow  = min > 0 && q < min && !isZero;
 
@@ -2680,10 +2776,13 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
       const catTd = document.createElement('td');
       catTd.setAttribute('colspan', colCount);
       catTd.style.cssText = 'padding:0;width:100%;';
-      const togBtn = el('button', {cls:'cat-toggle' + (isOpen ? ' open' : '')});
+      const catJanela = (lockByWindow && !isCPD())
+        ? (categoriaLiberada(cat) ? ' janela-aberta' : ' janela-fechada')
+        : '';
+      const togBtn = el('button', {cls:'cat-toggle' + (isOpen ? ' open' : '') + catJanela});
       togBtn.appendChild(document.createTextNode(cat));
 
-      // Show alert count in category header if any items below minimum
+      // Alert count
       const alertCount = !useMin ? 0 : catItems.filter(i => {
         const qty = stockObj[i.id]||0; const min = minimums[i.id]||0;
         return min>0 && qty<min;
@@ -2734,11 +2833,22 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
         const isLow  = min > 0 && qty < min && !isZero;
         const isOk   = !isZero && !isLow;
 
+        // Estado de confirmação da contagem desta janela
+        const confirmed = showConfirm && unitName ? isConfirmed(unitName, item.id) : false;
+        const uMin = (showConfirm && unitName && window.unitMinimums && window.unitMinimums[unitName])
+          ? (window.unitMinimums[unitName][item.id] || 0) : 0;
+        let confirmState = 'none';
+        if (confirmed) {
+          confirmState = qty === 0 ? 'danger' : (uMin > 0 && qty < uMin ? 'warn' : 'ok');
+        }
+
         const tr = el('tr', {});
         tr.setAttribute('data-cat', cat);
         if (!isOpen) tr.style.display = 'none';
-        // highlight: alertas de cor apenas quando m\u00EDnimos est\u00E3o ativos (CPD)
-        if (useMin && isZero) tr.style.background = 'var(--danger-bg)';
+        // Cor da linha: confirmados → classes CSS; CPD → background direto
+        if (showConfirm && confirmed) {
+          tr.className = 'count-' + (confirmState === 'ok' ? 'ok' : confirmState === 'warn' ? 'warn' : 'danger');
+        } else if (useMin && isZero) tr.style.background = 'var(--danger-bg)';
         else if (useMin && isLow) tr.style.background = 'var(--warning-bg)';
 
         const nameTd = el('td', {cls:'item-name'});
@@ -2796,6 +2906,37 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
           wrap2.appendChild(minBtn); wrap2.appendChild(inp); wrap2.appendChild(plusBtn);
           ctrlTd.appendChild(wrap2);
           tr.appendChild(ctrlTd);
+
+          // Botão confirmar contagem (apenas nas unidades, quando showConfirm=true)
+          if (showConfirm && unitName) {
+            const confTd = el('td', {style:'width:38px;padding:4px 8px 4px 2px;text-align:center'});
+            const confBtn = el('button', {
+              cls: 'confirm-btn' + (confirmed ? ' confirmed-' + confirmState : ''),
+              title: confirmed ? 'Confirmado — clique para desfazer' : 'Confirmar contagem deste item'
+            });
+            confBtn.innerHTML = '\u2713';
+            confBtn.addEventListener('click', () => {
+              const nowConfirmed = isConfirmed(unitName, item.id);
+              const newState = !nowConfirmed;
+              setConfirmed(unitName, item.id, newState);
+              pruneCountedMap();
+              if (newState) {
+                const curQty = parseFloat(inp.value.replace(',','.')) || 0;
+                const curUMin = (window.unitMinimums && window.unitMinimums[unitName])
+                  ? (window.unitMinimums[unitName][item.id] || 0) : 0;
+                const st = curQty === 0 ? 'danger' : (curUMin > 0 && curQty < curUMin ? 'warn' : 'ok');
+                confBtn.className = 'confirm-btn confirmed-' + st;
+                tr.className = 'count-' + st;
+                tr.style.background = '';
+              } else {
+                confBtn.className = 'confirm-btn';
+                tr.className = '';
+                tr.style.background = '';
+              }
+            });
+            confTd.appendChild(confBtn);
+            tr.appendChild(confTd);
+          }
         } else {
           // Read-only: show qty with status colour + min as small text
           const qtyColor = isZero ? 'var(--danger)' : isLow ? '#E8A020' : 'var(--success)';
@@ -2806,6 +2947,15 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
             qtyTd.appendChild(minLabel);
           }
           tr.appendChild(qtyTd);
+          if (hasEnviarCol) {
+            const uMins = (window.unitMinimums && window.unitMinimums[opts.unitForDisplay]) || {};
+            const uMin  = uMins[item.id] || 0;
+            const aEnviar = Math.max(0, uMin - qty);
+            const envTd = el('td', {style:'text-align:right;font-weight:700;color:' + (aEnviar > 0 ? 'var(--accent-dark,#2a6049)' : 'var(--text-3)')});
+            envTd.textContent = aEnviar > 0 ? String(aEnviar) : '—';
+            if (uMin > 0) envTd.title = 'Mín: ' + uMin + ' | Estoque: ' + qty;
+            tr.appendChild(envTd);
+          }
           tr.appendChild(el('td', {cls:'muted col-unit'}, item.unit));
           tr.appendChild(el('td', {}));
         }
@@ -3779,13 +3929,18 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
       const isZero = showMinCol && item.qty === 0 && item.min > 0;
       if (isZero) ops.push(`1 0.9 0.9 rg ${ML} ${y-2} ${TW} 13 re f 0 0 0 rg`);
       else if (isLow) ops.push(`1 0.97 0.87 rg ${ML} ${y-2} ${TW} 13 re f 0 0 0 rg`);
-      ops.push(`BT /F2 8 Tf ${colX[0]+3} ${y+1} Td ${pdfStr(item.name)} Tj ET`);
+      // Verificar se item foi confirmado na janela atual
+      const itemConfirmed = !showMinCol && unitLabel !== 'CPD'
+        ? isConfirmed(unitLabel, (catalog.find(i => i.name === item.name) || {}).id || '')
+        : true; // CPD sempre "confirmado" (não usa esse sistema)
+      const itemName = itemConfirmed ? item.name : ('! nao contado ! ' + item.name);
+      ops.push(`BT /F2 8 Tf ${colX[0]+3} ${y+1} Td ${pdfStr(itemName)} Tj ET`);
       ops.push(`BT /F2 8 Tf ${colX[1]+3} ${y+1} Td ${pdfStr(item.unit)} Tj ET`);
       if (showMinCol) {
         ops.push(`BT /F2 8 Tf ${colX[2]+3} ${y+1} Td (${item.min > 0 ? item.min : '-'}) Tj ET`);
         ops.push(`BT /F1 9 Tf ${colX[3]+3} ${y+1} Td (${item.qty}) Tj ET`);
       } else {
-        ops.push(`BT /F1 9 Tf ${colX[2]+3} ${y+1} Td (${item.qty}) Tj ET`);
+        ops.push(`BT /F1 9 Tf ${colX[2]+3} ${y+1} Td (${item.qty !== undefined ? item.qty : '-'}) Tj ET`);
       }
       ops.push(`${ML} ${y-3} m ${W-MR} ${y-3} l 0.9 0.9 0.9 RG S 0 0 0 RG`);
       y -= 14;
@@ -4887,7 +5042,15 @@ function viewUnits() {
     if (!unitStock[activeUnit]) unitStock[activeUnit] = {};
     unitStock[activeUnit][itemId] = qty;
     save('pizza_units', unitStock);
-  } : undefined, { useMin: false, pdfLabel: activeUnit, lockByWindow: !isCPD() }));
+  } : undefined, {
+    useMin: false,
+    pdfLabel: activeUnit,
+    lockByWindow: !isCPD(),
+    showConfirm: !isCPD(),
+    unitName: activeUnit,
+    showEnviar: isCPD(),        // coluna A Enviar só para CPD
+    unitForDisplay: activeUnit, // unidade cujo unitMinimums usar
+  }));
   tableBlock.appendChild(inner);
   frag.appendChild(tableBlock);
 
