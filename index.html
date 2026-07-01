@@ -2525,6 +2525,9 @@ function logAction(type, description, extra) {
 
 let catalog     = load('pizza_catalog', SEED_CATALOG);       // CPD
 let unitCatalog = load('pizza_unit_catalog', null) || JSON.parse(JSON.stringify(UNIT_SEED_CATALOG)); // Unidades
+
+// Retorna o catálogo ativo conforme sessão: CPD usa catalog, unidades usam unitCatalog
+function activeCatalog() { return isCPD() ? catalog : unitCatalog; }
 // If catalog is empty (corrupted localStorage or first run), use SEED_CATALOG
 if (!catalog || catalog.length === 0) {
   catalog = SEED_CATALOG.slice();
@@ -3307,7 +3310,7 @@ function buildBatchMovList(movs, limit) {
 
     // Sub: first 2 item names + "e mais X"
     const preview = batch.slice(0, 2).map(m => {
-      const item = catSource.find(i => i.id === m.itemId);
+      const item = catalog.find(i => i.id === m.itemId);
       return item ? item.name : '\u2014';
     });
     let subText = preview.join(', ');
@@ -3363,7 +3366,7 @@ function openBatchModal(batch) {
   table.innerHTML = '<thead><tr style="background:var(--surface-2)"><th style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-2);text-align:left;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid var(--border)">Item</th><th style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-2);text-align:right;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid var(--border)">Qtd</th><th style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-2);text-align:left;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid var(--border)">Un.</th></tr></thead>';
   const tbody = el('tbody', {});
   batch.forEach((m, i) => {
-    const item = catSource.find(c => c.id === m.itemId);
+    const item = catalog.find(c => c.id === m.itemId);
     const tr = el('tr', {style: i % 2 === 0 ? '' : 'background:var(--surface-2)'});
     tr.appendChild(el('td', {style:'padding:9px 10px;font-size:13px;font-weight:500;border-bottom:1px solid var(--border-light)'}, item?.name || '\u2014'));
     tr.appendChild(el('td', {style:'padding:9px 10px;font-size:13px;font-weight:700;color:var(--accent);text-align:right;border-bottom:1px solid var(--border-light)'}, String(m.qty)));
@@ -3406,7 +3409,7 @@ function printBatchPdf(batch) {
 
   // Build row data
   const rows = batch.map(m => {
-    const item = catSource.find(c => c.id === m.itemId);
+    const item = catalog.find(c => c.id === m.itemId);
     return { name: item?.name || '-', qty: String(m.qty), unit: item?.unit || '' };
   });
 
@@ -3697,7 +3700,7 @@ function viewPedido() {
 
   function renderRows(q) {
     tbody.innerHTML = '';
-    const filtered = catSource.filter(i => i.name.toLowerCase().includes(q.toLowerCase()));
+    const filtered = catalog.filter(i => i.name.toLowerCase().includes(q.toLowerCase()));
     if (!filtered.length) { tbody.appendChild(el('tr',{},el('td',{colspan:'3',cls:'empty'},'Nenhum item encontrado'))); return; }
     const usedCats = CATEGORIES.filter(cat => filtered.some(i => i.category === cat));
     usedCats.forEach(cat => {
@@ -3773,7 +3776,7 @@ function showOrderConfirmModal(order, entries, unitName) {
 
   const body = el('div', {cls:'confirm-modal-body'});
   order.items.forEach(({itemId, qty}) => {
-    const item = catSource.find(c => c.id === itemId);
+    const item = catalog.find(c => c.id === itemId);
     const row = el('div', {cls:'confirm-modal-row'});
     row.appendChild(el('span', {cls:'confirm-modal-item'}, item?.name||'\u2014'));
     row.appendChild(el('span', {cls:'confirm-modal-qty'}, `${qty} ${item?.unit||''}`));
@@ -3849,7 +3852,7 @@ function viewSeparacao() {
         order.items.forEach(({itemId}) => { order.separation[itemId] = 'aguardando'; });
       }
       order.items.forEach(({itemId, qty}) => {
-        const item = catSource.find(c => c.id === itemId);
+        const item = catalog.find(c => c.id === itemId);
         const state = order.separation[itemId] || 'aguardando';
 
         const row = el('div', {cls:'sep-item-row', style: `
@@ -3914,7 +3917,7 @@ function viewSeparacao() {
 
     } else {
       order.items.forEach(({itemId, qty}) => {
-        const item = catSource.find(c => c.id === itemId);
+        const item = catalog.find(c => c.id === itemId);
         const state = order.separation?.[itemId];
         const row = el('div', {cls:'order-item-row'});
         if (state === 'falta') {
@@ -4220,7 +4223,7 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
       else if (isLow) ops.push(`1 0.97 0.87 rg ${ML} ${y-2} ${TW} 13 re f 0 0 0 rg`);
       // Verificar se item foi confirmado na janela atual
       const itemConfirmed = !showMinCol && unitLabel !== 'CPD'
-        ? isConfirmed(unitLabel, (catSource.find(i => i.name === item.name) || {}).id || '')
+        ? isConfirmed(unitLabel, (catalog.find(i => i.name === item.name) || {}).id || '')
         : true; // CPD sempre "confirmado" (não usa esse sistema)
       const itemName = itemConfirmed ? item.name : ('! nao contado ! ' + item.name);
       ops.push(`BT /F2 8 Tf ${colX[0]+3} ${y+1} Td ${pdfStr(itemName)} Tj ET`);
@@ -4471,7 +4474,7 @@ function printOrderPdf(order) {
   const grouped = CATEGORIES.map(cat => ({
     cat,
     items: order.items.filter(({itemId}) => {
-      const it = catSource.find(c=>c.id===itemId);
+      const it = catalog.find(c=>c.id===itemId);
       return it?.category === cat;
     })
   })).filter(g => g.items.length > 0);
@@ -4484,7 +4487,7 @@ function printOrderPdf(order) {
     rowY -= rowH;
 
     items.forEach(({itemId,qty}) => {
-      const item=catSource.find(c=>c.id===itemId);
+      const item=catalog.find(c=>c.id===itemId);
       if(rowAltIndex%2===1) c(`${rgb(245,242,232)} rg ${ml} ${rowY} ${W-ml-mr} ${rowH} re f`);
       else c(`${rgb(253,252,247)} rg ${ml} ${rowY} ${W-ml-mr} ${rowH} re f`);
       c(`${rgb(218,215,197)} RG 0.3 w ${ml} ${rowY} m ${W-mr} ${rowY} l S`);
@@ -4576,7 +4579,7 @@ function hidePush() {
 
 // Feature1:Stockminimumalerts
 function getLowStockItems(stockObj) {
-  return catSource.filter(item => {
+  return catalog.filter(item => {
     const min = minimums[item.id];
     if (!min || min <= 0) return false;
     const qty = stockObj[item.id] || 0;
@@ -4641,7 +4644,7 @@ function getCategoryConsumption(weeks=4) {
   const result = {};
   CATEGORIES.forEach(cat => { result[cat] = 0; });
   movements.filter(m => m.type==='saida' && new Date(m.date).getTime()>=from).forEach(m => {
-    const item = catSource.find(i=>i.id===m.itemId);
+    const item = catalog.find(i=>i.id===m.itemId);
     if (item) result[item.category] = (result[item.category]||0) + m.qty;
   });
   return result;
@@ -4663,7 +4666,7 @@ function showReceiptModal(order) {
   // Item preview
   const preview = el('div', {style:'background:var(--surface-2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:16px'});
   order.items.slice(0,5).forEach(({itemId,qty}) => {
-    const item = catSource.find(c=>c.id===itemId);
+    const item = catalog.find(c=>c.id===itemId);
     const row = el('div', {style:'display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--text-2)'});
     row.appendChild(el('span', {}, item?.name||'\u2014'));
     row.appendChild(el('span', {style:'font-weight:600;color:var(--accent)'}, `${qty} ${item?.unit||''}`));
@@ -4721,7 +4724,7 @@ function showIncompleteModal(order) {
 
   const inputs = [];
   order.items.forEach(({itemId, qty}) => {
-    const item = catSource.find(c=>c.id===itemId);
+    const item = catalog.find(c=>c.id===itemId);
     const row = el('div', {cls:'checklist-row'});
     row.appendChild(el('span', {cls:'check-name'}, item?.name||'\u2014'));
     row.appendChild(el('span', {cls:'check-sent'}, `Pedido: ${qty} ${item?.unit||''}`));
@@ -4859,7 +4862,7 @@ function viewDashboard() {
   }
 
   function openDashModal(label, stockObj) {
-    const allIssues = catSource.filter(i => {
+    const allIssues = catalog.filter(i => {
       const qty = stockObj[i.id] || 0;
       const min = minimums[i.id] || 0;
       return qty === 0 || (min > 0 && qty < min);
@@ -4915,14 +4918,14 @@ function viewDashboard() {
   }
 
   function buildSummaryCard(label, stockObj) {
-    const allIssues = catSource.filter(i => {
+    const allIssues = catalog.filter(i => {
       const qty = stockObj[i.id] || 0;
       const min = minimums[i.id] || 0;
       return qty === 0 || (min > 0 && qty < min);
     });
-    const zeroCount = catSource.filter(i => (stockObj[i.id]||0) === 0).length;
+    const zeroCount = catalog.filter(i => (stockObj[i.id]||0) === 0).length;
     const lowCount  = allIssues.filter(i => (stockObj[i.id]||0) > 0).length;
-    const okCount   = catSource.length - zeroCount - lowCount;
+    const okCount   = catalog.length - zeroCount - lowCount;
 
     const card = el('div', {cls:'dash-summary-card', onclick: () => openDashModal(label, stockObj)});
 
@@ -5016,11 +5019,11 @@ function viewRelatorio() {
     const byCat = {};
     CATEGORIES.forEach(c=>{byCat[c]={entrada:0,saida:0};});
     saidas.forEach(m=>{
-      const item=catSource.find(i=>i.id===m.itemId);
+      const item=catalog.find(i=>i.id===m.itemId);
       if(item) byCat[item.category].saida += m.qty;
     });
     entradas.forEach(m=>{
-      const item=catSource.find(i=>i.id===m.itemId);
+      const item=catalog.find(i=>i.id===m.itemId);
       if(item) byCat[item.category].entrada += m.qty;
     });
 
@@ -5030,7 +5033,7 @@ function viewRelatorio() {
     saidas.forEach(m=>{ if(m.unitName && byUnit[m.unitName]!==undefined) byUnit[m.unitName]+=m.qty; });
 
     // Value
-    const totalValue = catSource.reduce((s,i)=>s+(cpd[i.id]||0)*(prices[i.id]||0),0);
+    const totalValue = catalog.reduce((s,i)=>s+(cpd[i.id]||0)*(prices[i.id]||0),0);
 
     reportOut.innerHTML = '';
 
@@ -5150,7 +5153,7 @@ function viewHistorico() {
       // Recalculate category data
       const catTotals = {};
       filtered.forEach(m => {
-        const item = catSource.find(c => c.id === m.itemId);
+        const item = catalog.find(c => c.id === m.itemId);
         if (!item) return;
         catTotals[item.category] = (catTotals[item.category]||0) + m.qty;
       });
@@ -5202,8 +5205,8 @@ function viewCpd() {
   // Banner de divergências de entregas (itens faltantes)
   const divBanner = buildDivergenceBanner();
   if (divBanner) frag.appendChild(divBanner);
-  const inStock = catSource.filter(i => (cpd[i.id]||0) > 0).length;
-  const zeroStock = catSource.length - inStock;
+  const inStock = catalog.filter(i => (cpd[i.id]||0) > 0).length;
+  const zeroStock = catalog.length - inStock;
 
   // Stock minimum alerts (Feature 1)
   const cpdAlerts = buildAlerts(cpd, 'CPD');
@@ -5218,7 +5221,7 @@ function viewCpd() {
     c.appendChild(el('div', {cls:'metric-value '+cls}, String(value)));
     return c;
   };
-  metrics.appendChild(makeMetric('Total de Itens', catSource.length));
+  metrics.appendChild(makeMetric('Total de Itens', catalog.length));
   metrics.appendChild(makeMetric('Com Estoque', inStock, 'success'));
   metrics.appendChild(makeMetric('Sem Estoque', zeroStock, zeroStock > 0 ? 'danger' : ''));
   metrics.appendChild(makeMetric('Movimenta\u00E7\u00F5es', movements.length, 'accent'));
@@ -5303,8 +5306,8 @@ function viewUnits() {
   }
 
   const ustock  = unitStock[activeUnit] || {};
-  const inStock = catSource.filter(i => (ustock[i.id]||0) > 0).length;
-  const zero    = catSource.length - inStock;
+  const inStock = catalog.filter(i => (ustock[i.id]||0) > 0).length;
+  const zero    = catalog.length - inStock;
 
   const metrics = el('div', {cls:'metrics-grid'});
   const mc = el('div', {cls:'metric-card'});
@@ -5339,7 +5342,7 @@ function viewUnits() {
     unitName: activeUnit,
     showEnviar: isCPD(),
     unitForDisplay: activeUnit,
-    catSource: unitCatalog,     // catálogo das unidades (separado do CPD)
+    catalog: unitCatalog,     // catálogo das unidades (separado do CPD)
   }));
   tableBlock.appendChild(inner);
   frag.appendChild(tableBlock);
@@ -5365,7 +5368,7 @@ function separarParaEnvio(unit, dayCode) {
       if (q <= 0) return;
       // Mapear item do plano para item do catálogo (por nome normalizado)
       const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-      const catItem = catSource.find(i => norm(i.name) === norm(planItem.name));
+      const catItem = unitCatalog.find(i => norm(i.name) === norm(planItem.name));
       if (catItem) {
         itemsMap[catItem.id] = (itemsMap[catItem.id] || 0) + q;
       }
@@ -5419,7 +5422,7 @@ function viewEnvios() {
     pendBox.appendChild(el('div', {style:'font-weight:700;font-size:13px;color:var(--warning);margin-bottom:6px'},
       '\u26A0\uFE0F ' + pendCount + (pendCount===1?' item pendente':' itens pendentes') + ' de entregas anteriores'));
     const pendList = Object.entries(unitPend).filter(([,q])=>q>0).map(([id,q]) => {
-      const it = catSource.find(i=>i.id===id);
+      const it = unitCatalog.find(i=>i.id===id);
       return (it?it.name:id) + ' (' + q + ')';
     }).join(' \u00B7 ');
     pendBox.appendChild(el('div', {style:'font-size:12px;color:var(--text-2)'}, pendList));
@@ -5579,7 +5582,7 @@ function showShipmentReceiptModal(shipment) {
   table.appendChild(thead);
   const tbody = el('tbody', {});
   shipment.items.forEach(({itemId, qty}) => {
-    const item = catSource.find(i => i.id === itemId);
+    const item = activeCatalog().find(i => i.id === itemId);
     const tr = el('tr', {});
     tr.appendChild(el('td', {cls:'item-name'}, item ? item.name : itemId));
     tr.appendChild(el('td', {style:'text-align:center;font-weight:700'}, String(qty)));
@@ -5683,7 +5686,7 @@ function buildDivergenceBanner() {
     const row = el('div', {style:'margin-top:10px;padding-top:10px;border-top:1px solid var(--border)'});
     row.appendChild(el('div', {style:'font-size:13px;font-weight:700'}, sh.unit + ' \u2014 ' + new Date(sh.receivedAt||sh.date).toLocaleDateString('pt-BR')));
     const list = (sh.faltantes||[]).map(f => {
-      const it = catSource.find(i=>i.id===f.itemId);
+      const it = activeCatalog().find(i=>i.id===f.itemId);
       return (it?it.name:f.itemId) + ' (' + f.qty + ')';
     }).join(' \u00B7 ');
     row.appendChild(el('div', {style:'font-size:12px;color:var(--text-2);margin:4px 0 8px'}, 'Faltou: ' + list));
@@ -5914,7 +5917,7 @@ function viewBatchOperation(mode) {
       entries.forEach(([itemId, qty]) => {
         const avail = cpd[itemId] || 0;
         if (qty > avail) {
-          const item = catalog.find(i => i.id === itemId);
+          const item = activeCatalog().find(i => i.id === itemId);
           insufficient.push(`\u00B7 ${item?.name || itemId}: pedido ${qty}, dispon\u00EDvel ${avail}`);
         }
       });
@@ -6021,7 +6024,7 @@ function viewBatchOperation(mode) {
   CATEGORIES.forEach(c => {
     if (preload) {
       const hasItem = preload.items.some(({itemId}) => {
-        const item = catalog.find(i => i.id === itemId);
+        const item = activeCatalog().find(i => i.id === itemId);
         return item?.category === c;
       });
       openCats[c] = hasItem;
