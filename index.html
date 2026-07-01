@@ -1430,12 +1430,13 @@ auth.onAuthStateChanged(user => {
       // ═══ MIGRAÇÃO DE CATÁLOGO v11 (planilha consolidada) ═══
       // Substitui o catálogo antigo pelo novo e zera as contagens —
       // nova contagem será feita do zero com a lista atualizada.
-      const CATALOG_VER = 'v12';
+      const CATALOG_VER = 'v13';
       if (!window._migrandoV11 && data.pizza_catalog_ver !== CATALOG_VER && fbCatalogLen > 0) {
         window._migrandoV11 = true;
         console.log('[Migração v12] Substituindo catálogo e zerando contagens...');
         Promise.all([
           db.ref('dados/pizza_catalog').set(SEED_CATALOG),
+          db.ref('dados/pizza_unit_catalog').set(UNIT_SEED_CATALOG),
           db.ref('dados/pizza_cpd').set({}),
           db.ref('dados/pizza_units').set({}),
           db.ref('dados/pizza_minimums').set({}),
@@ -1537,6 +1538,10 @@ auth.onAuthStateChanged(user => {
         countedMap = data.pizza_counted;
         saveLocal('pizza_counted', countedMap);
       }
+      if (data.pizza_unit_catalog) {
+        unitCatalog = data.pizza_unit_catalog;
+        saveLocal('pizza_unit_catalog', unitCatalog);
+      }
       if (data.pizza_confirmados) {
         confirmados = data.pizza_confirmados;
         saveLocal('pizza_confirmados', confirmados);
@@ -1589,6 +1594,7 @@ auth.onAuthStateChanged(user => {
         <option value="Asa Sul">Asa Sul</option>
         <option value="SIG">SIG</option>
         <option value="Vicente Pires">Vicente Pires</option>
+        <option value="Delivery">Delivery</option>
       </select>
     </div>
     <div class="login-field">
@@ -1776,7 +1782,7 @@ auth.onAuthStateChanged(user => {
 
 <script>
 // DATA
-const UNIT_NAMES = ['Asa Sul', 'SIG', 'Vicente Pires'];
+const UNIT_NAMES = ['Asa Sul', 'SIG', 'Vicente Pires', 'Delivery'];
 const CATEGORIES = [
   'Refrigerados',
   'Pré Produzidos',
@@ -2156,6 +2162,283 @@ const SEED_CATALOG = [
 // ENVIOS: plano de envios por unidade/dia (seed da planilha consolidada)
 const ENVIOS_SEED = {"Refrigerados":{"days":["SEG","QUA","SEX"],"items":[{"name":"Muçarela 20kg","emb":"Caixa","qty":{"Asa Sul":{"SEG":2,"QUA":2,"SEX":3},"SIG":{"SEG":1,"QUA":1,"SEX":2},"Vicente Pires":{"SEG":2,"QUA":2,"SEX":3}}},{"name":"Muçarela lacfree","emb":"Un","qty":{"Asa Sul":{"SEG":4,"QUA":4,"SEX":4},"SIG":{"SEG":2,"QUA":2,"SEX":3},"Vicente Pires":{"SEG":4,"QUA":4,"SEX":4}}},{"name":"Muçarela de búfala 2kg","emb":"Balde","qty":{"Asa Sul":{"SEG":10,"QUA":10,"SEX":12},"SIG":{"SEG":4,"QUA":4,"SEX":7},"Vicente Pires":{"SEG":10,"QUA":10,"SEX":15}}},{"name":"Parmesão grana padano 300g","emb":"Peça","qty":{"Asa Sul":{"SEG":7,"QUA":8,"SEX":13},"SIG":{"SEG":6,"QUA":7,"SEX":8},"Vicente Pires":{"SEG":8,"QUA":8,"SEX":12}}},{"name":"Parmesão ralado 2kg","emb":"Peça","qty":{"Asa Sul":{"SEG":4,"QUA":6,"SEX":8},"SIG":{"SEG":3,"QUA":3,"SEX":4},"Vicente Pires":{"SEG":6,"QUA":6,"SEX":9}}},{"name":"Provolone 300g","emb":"Porção","qty":{"Asa Sul":{"SEG":4,"QUA":6,"SEX":6},"SIG":{"SEG":4,"QUA":4,"SEX":6},"Vicente Pires":{"SEG":6,"QUA":6,"SEX":8}}},{"name":"Requeijão bisnaga 1,5kg","emb":"Un","qty":{"Asa Sul":{"SEG":10,"QUA":10,"SEX":8},"SIG":{"SEG":3,"QUA":3,"SEX":4},"Vicente Pires":{"SEG":10,"QUA":10,"SEX":10}}},{"name":"Gorgonzola 300g","emb":"Peça","qty":{"Asa Sul":{"SEG":8,"QUA":8,"SEX":10},"SIG":{"SEG":6,"QUA":6,"SEX":8},"Vicente Pires":{"SEG":7,"QUA":6,"SEX":10}}},{"name":"Burrata de búfala 200g","emb":"Un","qty":{"Asa Sul":{"SEG":48,"QUA":52,"SEX":62},"SIG":{"SEG":12,"QUA":12,"SEX":24},"Vicente Pires":{"SEG":40,"QUA":42,"SEX":62}}},{"name":"Queijo brie","emb":"Peça","qty":{"Asa Sul":{"SEG":6,"QUA":6,"SEX":9},"SIG":{"SEG":4,"QUA":4,"SEX":6},"Vicente Pires":{"SEG":6,"QUA":10,"SEX":10}}},{"name":"Anchovas 50g","emb":"Un","qty":{"Asa Sul":{"SEG":3,"QUA":4,"SEX":5},"SIG":{"SEG":3,"QUA":3,"SEX":3},"Vicente Pires":{"SEG":3,"QUA":3,"SEX":4}}},{"name":"Cream cheese","emb":"Un","qty":{"Asa Sul":{"SEG":2,"QUA":2,"SEX":2},"SIG":{"SEG":1,"QUA":1,"SEX":1},"Vicente Pires":{"SEG":1,"QUA":2,"SEX":2}}},{"name":"Linguiça calabresa 2,5kg","emb":"PCT","qty":{"Asa Sul":{"SEG":6,"QUA":6,"SEX":8},"SIG":{"SEG":3,"QUA":3,"SEX":5},"Vicente Pires":{"SEG":4,"QUA":6,"SEX":8}}},{"name":"Lombo canadense 500g","emb":"Peça","qty":{"Asa Sul":{"SEG":6,"QUA":6,"SEX":8},"SIG":{"SEG":3,"QUA":3,"SEX":6},"Vicente Pires":{"SEG":6,"QUA":6,"SEX":8}}},{"name":"Salaminho italiano","emb":"Peça","qty":{"Asa Sul":{"SEG":6,"QUA":6,"SEX":7},"SIG":{"SEG":3,"QUA":3,"SEX":6},"Vicente Pires":{"SEG":6,"QUA":6,"SEX":8}}},{"name":"Peperoni 1kg","emb":"PCT","qty":{"Asa Sul":{"SEG":4,"QUA":4,"SEX":6},"SIG":{"SEG":3,"QUA":3,"SEX":4},"Vicente Pires":{"SEG":6,"QUA":6,"SEX":6}}},{"name":"Bacon fatiado cru","emb":"Bandeja","qty":{"Asa Sul":{"SEG":7,"QUA":6,"SEX":8},"SIG":{"SEG":3,"QUA":3,"SEX":6},"Vicente Pires":{"SEG":6,"QUA":7,"SEX":9}}},{"name":"Presunto cozido","emb":"Bandeja","qty":{"Asa Sul":{"SEG":8,"QUA":6,"SEX":10},"SIG":{"SEG":4,"QUA":4,"SEX":8},"Vicente Pires":{"SEG":6,"QUA":7,"SEX":10}}},{"name":"Presunto parma 500g","emb":"PCT","qty":{"Asa Sul":{"SEG":7,"QUA":8,"SEX":10},"SIG":{"SEG":4,"QUA":4,"SEX":6},"Vicente Pires":{"SEG":8,"QUA":8,"SEX":10}}},{"name":"Sorvete de creme 10L","emb":"Caixa","qty":{"Asa Sul":{"SEG":2,"QUA":3,"SEX":4},"SIG":{"SEG":2,"QUA":2,"SEX":3},"Vicente Pires":{"SEG":2,"QUA":3,"SEX":3}}},{"name":"Chocolate ao leite ralado","emb":"PCT","qty":{"Asa Sul":{"SEG":4,"QUA":4,"SEX":5},"SIG":{"SEG":2,"QUA":2,"SEX":3},"Vicente Pires":{"SEG":3,"QUA":3,"SEX":5}}},{"name":"Chocolate branco ralado","emb":"PCT","qty":{"Asa Sul":{"SEG":1,"QUA":1,"SEX":1},"SIG":{"SEG":1,"QUA":1,"SEX":1},"Vicente Pires":{"SEG":1,"QUA":1,"SEX":1}}},{"name":"Molho de tomate 5L","emb":"Balde","qty":{"Asa Sul":{"SEG":8,"QUA":8,"SEX":10},"SIG":{"SEG":4,"QUA":4,"SEX":6},"Vicente Pires":{"SEG":6,"QUA":8,"SEX":12}}},{"name":"Salva borda brigadeiro","emb":"PCT","qty":{"Asa Sul":{"SEG":3,"QUA":4,"SEX":5},"SIG":{"SEG":1,"QUA":2,"SEX":2},"Vicente Pires":{"SEG":4,"QUA":4,"SEX":4}}},{"name":"Salva borda doce de leite","emb":"PCT","qty":{"Asa Sul":{"SEG":3,"QUA":4,"SEX":5},"SIG":{"SEG":1,"QUA":2,"SEX":2},"Vicente Pires":{"SEG":4,"QUA":4,"SEX":4}}},{"name":"Tomate seco 500g","emb":"PCT","qty":{"Asa Sul":{"SEG":7,"QUA":8,"SEX":10},"SIG":{"SEG":4,"QUA":5,"SEX":8},"Vicente Pires":{"SEG":8,"QUA":10,"SEX":10}}},{"name":"Palmito de pupunha 1kg","emb":"PCT","qty":{"Asa Sul":{"SEG":6,"QUA":8,"SEX":10},"SIG":{"SEG":6,"QUA":6,"SEX":8},"Vicente Pires":{"SEG":7,"QUA":8,"SEX":10}}},{"name":"Lascas de coco 200g","emb":"PCT","qty":{"Asa Sul":{"SEG":6,"QUA":6,"SEX":8},"SIG":{"SEG":4,"QUA":6,"SEX":6},"Vicente Pires":{"SEG":6,"QUA":6,"SEX":8}}},{"name":"Carne de sol desfiada 1kg","emb":"PCT","qty":{"Asa Sul":{"SEG":6,"QUA":6,"SEX":8},"SIG":{"SEG":3,"QUA":4,"SEX":5},"Vicente Pires":{"SEG":6,"QUA":7,"SEX":10}}},{"name":"Frango desfiado 1kg","emb":"PCT","qty":{"Asa Sul":{"SEG":8,"QUA":7,"SEX":13},"SIG":{"SEG":4,"QUA":4,"SEX":7},"Vicente Pires":{"SEG":8,"QUA":8,"SEX":12}}},{"name":"Creme de pistache 400g","emb":"Un","qty":{"Asa Sul":{"SEG":8,"QUA":8,"SEX":10},"SIG":{"SEG":6,"QUA":6,"SEX":7},"Vicente Pires":{"SEG":7,"QUA":7,"SEX":10}}},{"name":"Guianduela branca","emb":"Un","qty":{"Asa Sul":{"SEG":10,"QUA":10,"SEX":12},"SIG":{"SEG":7,"QUA":7,"SEX":8},"Vicente Pires":{"SEG":8,"QUA":10,"SEX":12}}},{"name":"Nutella 400g","emb":"Un","qty":{"Asa Sul":{"SEG":10,"QUA":10,"SEX":12},"SIG":{"SEG":7,"QUA":7,"SEX":8},"Vicente Pires":{"SEG":8,"QUA":10,"SEX":12}}},{"name":"Molho pesto bisnaga","emb":"Un","qty":{"Asa Sul":{"SEG":1,"QUA":1,"SEX":1},"SIG":{"SEG":1,"QUA":1,"SEX":1},"Vicente Pires":{"SEG":1,"QUA":1,"SEX":1}}},{"name":"Molho pesto de azeitona","emb":"Un","qty":{"Asa Sul":{"SEG":2,"QUA":2,"SEX":3},"SIG":{"SEG":1,"QUA":1,"SEX":2},"Vicente Pires":{"SEG":2,"QUA":2,"SEX":2}}},{"name":"Geleia amora framboesa pizza","emb":"Un","qty":{"Asa Sul":{"SEG":2,"QUA":2,"SEX":3},"SIG":{"SEG":2,"QUA":2,"SEX":2},"Vicente Pires":{"SEG":2,"QUA":2,"SEX":3}}},{"name":"Purê de abóbora 500g","emb":"Un","qty":{"Asa Sul":{"SEG":6,"QUA":7,"SEX":12},"SIG":{"SEG":4,"QUA":5,"SEX":7},"Vicente Pires":{"SEG":6,"QUA":7,"SEX":12}}},{"name":"Creme de gorgonzola","emb":"Un","qty":{"Asa Sul":{"SEG":3,"QUA":3,"SEX":4},"SIG":{"SEG":2,"QUA":2,"SEX":3},"Vicente Pires":{"SEG":2,"QUA":2,"SEX":3}}},{"name":"Massa de pizza","emb":"Un","qty":{"Asa Sul":{"SEG":2,"QUA":3,"SEX":7},"SIG":{"SEG":2,"QUA":2,"SEX":3},"Vicente Pires":{"SEG":2,"QUA":3,"SEX":8}}},{"name":"Morango 400g","emb":"Bandeja","qty":{"Asa Sul":{"SEG":20,"QUA":20,"SEX":30},"SIG":{"SEG":12,"QUA":12,"SEX":20},"Vicente Pires":{"SEG":20,"QUA":20,"SEX":30}}},{"name":"Uva verde 500g","emb":"Bandeja","qty":{"Asa Sul":{"SEG":3,"QUA":3,"SEX":4},"SIG":{"SEG":2,"QUA":2,"SEX":2},"Vicente Pires":{"SEG":3,"QUA":3,"SEX":4}}},{"name":"Banana nanica 27kg","emb":"Kg","qty":{"Asa Sul":{"SEG":1,"QUA":4,"SEX":1},"SIG":{"SEG":1,"QUA":1,"SEX":1},"Vicente Pires":{"SEG":1,"QUA":1,"SEX":1}}},{"name":"Figo","emb":"Kg","qty":{"Asa Sul":{"SEG":3,"QUA":3,"SEX":5},"SIG":{"SEG":2,"QUA":2,"SEX":3},"Vicente Pires":{"SEG":2,"QUA":2,"SEX":4}}},{"name":"Pêra","emb":"Kg","qty":{"Asa Sul":{"SEG":8,"QUA":8,"SEX":15},"SIG":{"SEG":6,"QUA":8,"SEX":10},"Vicente Pires":{"SEG":10,"QUA":10,"SEX":15}}},{"name":"Abobrinha italiana","emb":"Kg","qty":{"Asa Sul":{"SEG":10,"QUA":10,"SEX":15},"SIG":{"SEG":10,"QUA":10,"SEX":10},"Vicente Pires":{"SEG":12,"QUA":10,"SEX":16}}},{"name":"Alho descascado para pizza","emb":"PCT 50g","qty":{"Asa Sul":{"SEG":3,"QUA":3,"SEX":3},"SIG":{"SEG":3,"QUA":3,"SEX":3},"Vicente Pires":{"SEG":3,"QUA":3,"SEX":3}}},{"name":"Manjericão","emb":"Maço","qty":{"Asa Sul":{"SEG":30,"QUA":20,"SEX":10},"SIG":{"SEG":20,"QUA":12,"SEX":10},"Vicente Pires":{"SEG":30,"QUA":20,"SEX":15}}},{"name":"Manjerona","emb":"Maco","qty":{"Asa Sul":{"SEG":1,"QUA":1,"SEX":1},"SIG":{"SEG":1,"QUA":1,"SEX":1},"Vicente Pires":{"SEG":1,"QUA":1,"SEX":1}}},{"name":"Cebola roxa","emb":"Kg","qty":{"Asa Sul":{"SEG":1,"QUA":1,"SEX":1},"SIG":{"SEG":1,"QUA":0,"SEX":10},"Vicente Pires":{"SEG":1,"QUA":1,"SEX":1}}},{"name":"Rúcula","emb":"Maço","qty":{"Asa Sul":{"SEG":20,"QUA":20,"SEX":20},"SIG":{"SEG":12,"QUA":15,"SEX":20},"Vicente Pires":{"SEG":20,"QUA":20,"SEX":25}}},{"name":"Alecrim","emb":"Maço","qty":{"Asa Sul":{"SEG":1,"QUA":3,"SEX":4},"SIG":{"SEG":3,"QUA":3,"SEX":2},"Vicente Pires":{"SEG":3,"QUA":3,"SEX":4}}},{"name":"Tomate cereja 300g","emb":"Bandeja","qty":{"Asa Sul":{"SEG":30,"QUA":20,"SEX":30},"SIG":{"SEG":20,"QUA":20,"SEX":20},"Vicente Pires":{"SEG":30,"QUA":30,"SEX":30}}},{"name":"Tomate extra grande","emb":"Kg","qty":{"Asa Sul":{"SEG":1,"QUA":40,"SEX":30},"SIG":{"SEG":20,"QUA":1,"SEX":20},"Vicente Pires":{"SEG":40,"QUA":40,"SEX":40}}},{"name":"Pimentão verde","emb":"Kg","qty":{"Asa Sul":{"SEG":20,"QUA":20,"SEX":20},"SIG":{"SEG":15,"QUA":4,"SEX":20},"Vicente Pires":{"SEG":30,"QUA":30,"SEX":15}}},{"name":"Champignon Paris 300g","emb":"Bandeja","qty":{"Asa Sul":{"SEG":10,"QUA":10,"SEX":15},"SIG":{"SEG":6,"QUA":6,"SEX":10},"Vicente Pires":{"SEG":10,"QUA":10,"SEX":15}}},{"name":"TOTAL  (55 itens)","emb":"Un","qty":{"Asa Sul":{"SEG":0,"QUA":0,"SEX":0},"SIG":{"SEG":0,"QUA":0,"SEX":0},"Vicente Pires":{"SEG":0,"QUA":0,"SEX":0}}}],"schedule":"Contagem: Domingo / Terça / Quinta     |     Entrega: Segunda / Quarta / Sexta"},"Estoque Seco":{"days":["SEG","SEX"],"items":[{"name":"Semolina 10kg","emb":"Saco","qty":{"Asa Sul":{"SEG":6,"SEX":6},"SIG":{"SEG":2,"SEX":4},"Vicente Pires":{"SEG":6,"SEX":6}}},{"name":"Canela c/açúcar mix 500g","emb":"PCT","qty":{"Asa Sul":{"SEG":3,"SEX":3},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":3,"SEX":3}}},{"name":"Canela em pó 200g","emb":"PCT","qty":{"Asa Sul":{"SEG":3,"SEX":3},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":3,"SEX":3}}},{"name":"Orégano 250g","emb":"PCT","qty":{"Asa Sul":{"SEG":3,"SEX":4},"SIG":{"SEG":3,"SEX":4},"Vicente Pires":{"SEG":3,"SEX":4}}},{"name":"Nozes 100g","emb":"Kg","qty":{"Asa Sul":{"SEG":6,"SEX":4},"SIG":{"SEG":3,"SEX":3},"Vicente Pires":{"SEG":3,"SEX":4}}},{"name":"Pistache 250g","emb":"PCT","qty":{"Asa Sul":{"SEG":4,"SEX":4},"SIG":{"SEG":3,"SEX":3},"Vicente Pires":{"SEG":3,"SEX":4}}},{"name":"Atum natural lata","emb":"Un","qty":{"Asa Sul":{"SEG":12,"SEX":15},"SIG":{"SEG":10,"SEX":12},"Vicente Pires":{"SEG":12,"SEX":13}}},{"name":"Aceto balsâmico 250ml","emb":"Garrafa","qty":{"Asa Sul":{"SEG":5,"SEX":5},"SIG":{"SEG":12,"SEX":2},"Vicente Pires":{"SEG":4,"SEX":4}}},{"name":"Creme de leite cx 200ml","emb":"Un","qty":{"Asa Sul":{"SEG":27,"SEX":27},"SIG":{"SEG":10,"SEX":27},"Vicente Pires":{"SEG":27,"SEX":27}}},{"name":"Azeitona preta 2kg","emb":"Balde","qty":{"Asa Sul":{"SEG":6,"SEX":6},"SIG":{"SEG":4,"SEX":6},"Vicente Pires":{"SEG":6,"SEX":8}}},{"name":"Leite condensado 400ml","emb":"Un","qty":{"Asa Sul":{"SEG":27,"SEX":27},"SIG":{"SEG":12,"SEX":27},"Vicente Pires":{"SEG":27,"SEX":27}}},{"name":"Doce de leite argentino 1kg","emb":"Pote","qty":{"Asa Sul":{"SEG":8,"SEX":8},"SIG":{"SEG":4,"SEX":6},"Vicente Pires":{"SEG":6,"SEX":8}}},{"name":"Geleia abacaxi c/pimenta 500g","emb":"Pote","qty":{"Asa Sul":{"SEG":24,"SEX":24},"SIG":{"SEG":8,"SEX":16},"Vicente Pires":{"SEG":14,"SEX":20}}},{"name":"Geléia de damasco 1kg","emb":"PCT","qty":{"Asa Sul":{"SEG":1,"SEX":1},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Mel 1,1kg","emb":"Pote","qty":{"Asa Sul":{"SEG":4,"SEX":4},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":3,"SEX":3}}},{"name":"Marshmallows 250g","emb":"PCT","qty":{"Asa Sul":{"SEG":8,"SEX":8},"SIG":{"SEG":3,"SEX":6},"Vicente Pires":{"SEG":6,"SEX":6}}},{"name":"Ovos","emb":"Caixa","qty":{"Asa Sul":{"SEG":130,"SEX":140},"SIG":{"SEG":30,"SEX":60},"Vicente Pires":{"SEG":40,"SEX":160}}},{"name":"Pistache torrado 250g","emb":"Kg","qty":{"Asa Sul":{"SEG":3,"SEX":3},"SIG":{"SEG":3,"SEX":1},"Vicente Pires":{"SEG":3,"SEX":3}}},{"name":"Kinder bueno branco - CX","emb":"Cx","qty":{"Asa Sul":{"SEG":1,"SEX":2},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":1,"SEX":2}}},{"name":"Bobina seg plast 30x40","emb":"Un","qty":{"Asa Sul":{"SEG":3,"SEX":2},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Bobina seg plast 20x30","emb":"Un","qty":{"Asa Sul":{"SEG":6,"SEX":6},"SIG":{"SEG":3,"SEX":4},"Vicente Pires":{"SEG":4,"SEX":4}}},{"name":"Lenha 25kg","emb":"Saco","qty":{"Asa Sul":{"SEG":20,"SEX":20},"SIG":{"SEG":10,"SEX":10},"Vicente Pires":{"SEG":20,"SEX":20}}},{"name":"Álcool em gel p/forno","emb":"Un","qty":{"Asa Sul":{"SEG":6,"SEX":6},"SIG":{"SEG":6,"SEX":6},"Vicente Pires":{"SEG":8,"SEX":8}}},{"name":"TOTAL  (23 itens)","emb":"Un","qty":{"Asa Sul":{"SEG":0,"SEX":0},"SIG":{"SEG":0,"SEX":0},"Vicente Pires":{"SEG":0,"SEX":0}}}],"schedule":"Contagem: Domingo / Quinta     |     Entrega: Segunda / Sexta"},"Bar":{"days":["SEG","SEX"],"items":[{"name":"Vodka Absolut","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Gin Gordons","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":1},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Rum","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":1},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Martiny","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":1},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Campari","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":1},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Aperol","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Cachaça 51","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Duo Mix Maçã Verde","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Duo Mix Limão Siciliano","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Duo Mix Gengibre","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Duo Mix Grenadine","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Duo Mix Tangerina","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Duo Mix Morango","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Duo Mix Morango Le Fruit","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":1},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Duo Mix Maracujá","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":1,"SEX":2}}},{"name":"Duo Mix Le Fruit Jabuticaba","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Espuma de limão","emb":"Un","qty":{"Asa Sul":{"SEG":5,"SEX":5},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Espuma de gengibre","emb":"Un","qty":{"Asa Sul":{"SEG":5,"SEX":5},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Água sem gás 500ml","emb":"Un","qty":{"Asa Sul":{"SEG":180,"SEX":180},"SIG":{"SEG":100,"SEX":100},"Vicente Pires":{"SEG":110,"SEX":110}}},{"name":"Água com gás 500ml","emb":"Un","qty":{"Asa Sul":{"SEG":130,"SEX":160},"SIG":{"SEG":100,"SEX":137},"Vicente Pires":{"SEG":154,"SEX":154}}},{"name":"Água tônica lata 350","emb":"Un","qty":{"Asa Sul":{"SEG":15,"SEX":15},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":5,"SEX":7}}},{"name":"Água tônica zero lata 350","emb":"Un","qty":{"Asa Sul":{"SEG":15,"SEX":15},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":5,"SEX":7}}},{"name":"Coca Cola KS normal 290ml","emb":"Un","qty":{"Asa Sul":{"SEG":130,"SEX":180},"SIG":{"SEG":100,"SEX":100},"Vicente Pires":{"SEG":80,"SEX":80}}},{"name":"Coca Cola KS zero 290ml","emb":"Un","qty":{"Asa Sul":{"SEG":150,"SEX":180},"SIG":{"SEG":100,"SEX":108},"Vicente Pires":{"SEG":100,"SEX":100}}},{"name":"Coca Cola lata 310ml","emb":"Un","qty":{"Asa Sul":{"SEG":130,"SEX":130},"SIG":{"SEG":100,"SEX":140},"Vicente Pires":{"SEG":58,"SEX":58}}},{"name":"Coca Cola zero lata 310ml","emb":"Un","qty":{"Asa Sul":{"SEG":150,"SEX":165},"SIG":{"SEG":100,"SEX":140},"Vicente Pires":{"SEG":58,"SEX":58}}},{"name":"Sprite lata 310ml","emb":"Un","qty":{"Asa Sul":{"SEG":40,"SEX":40},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":11,"SEX":11}}},{"name":"Schweppes citrus zero 310ml","emb":"Un","qty":{"Asa Sul":{"SEG":30,"SEX":30},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":10,"SEX":10}}},{"name":"Schweppes citrus 310ml","emb":"Un","qty":{"Asa Sul":{"SEG":25,"SEX":25},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":10,"SEX":10}}},{"name":"H2O 500ml","emb":"Un","qty":{"Asa Sul":{"SEG":20,"SEX":28},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":20,"SEX":20}}},{"name":"H2O limoneto 500ml","emb":"Un","qty":{"Asa Sul":{"SEG":30,"SEX":30},"SIG":{"SEG":30,"SEX":53},"Vicente Pires":{"SEG":20,"SEX":20}}},{"name":"Guaraná Antarctica lata 350","emb":"Un","qty":{"Asa Sul":{"SEG":70,"SEX":70},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":26,"SEX":26}}},{"name":"Guaraná zero lata 350","emb":"Un","qty":{"Asa Sul":{"SEG":30,"SEX":50},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":20,"SEX":20}}},{"name":"Suco de abacaxi 500ml","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":2},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Suco de uva integral 1L","emb":"Un","qty":{"Asa Sul":{"SEG":25,"SEX":25},"SIG":{"SEG":5,"SEX":5},"Vicente Pires":{"SEG":14,"SEX":16}}},{"name":"Suco de uva integral 300ml","emb":"Un","qty":{"Asa Sul":{"SEG":20,"SEX":20},"SIG":{"SEG":10,"SEX":10},"Vicente Pires":{"SEG":14,"SEX":16}}},{"name":"Stella Artois","emb":"Un","qty":{"Asa Sul":{"SEG":22,"SEX":26},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":26,"SEX":26}}},{"name":"Budweiser","emb":"Un","qty":{"Asa Sul":{"SEG":22,"SEX":26},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":26,"SEX":26}}},{"name":"Corona","emb":"Un","qty":{"Asa Sul":{"SEG":22,"SEX":26},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":26,"SEX":26}}},{"name":"Heineken zero","emb":"Un","qty":{"Asa Sul":{"SEG":22,"SEX":30},"SIG":{"SEG":12,"SEX":30},"Vicente Pires":{"SEG":26,"SEX":26}}},{"name":"Stella Puro Gold","emb":"Un","qty":{"Asa Sul":{"SEG":22,"SEX":53},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":53,"SEX":53}}},{"name":"Spaten","emb":"Un","qty":{"Asa Sul":{"SEG":22,"SEX":55},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":30,"SEX":30}}},{"name":"Gelato pistache 5L","emb":"Cx","qty":{"Asa Sul":{"SEG":1,"SEX":2},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Gelato doce de leite 5L","emb":"Cx","qty":{"Asa Sul":{"SEG":1,"SEX":2},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Gelato fior de latte 5L","emb":"Cx","qty":{"Asa Sul":{"SEG":1,"SEX":2},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Morango congelado","emb":"PCT","qty":{"Asa Sul":{"SEG":8,"SEX":8},"SIG":{"SEG":5,"SEX":5},"Vicente Pires":{"SEG":11,"SEX":11}}},{"name":"Panacotta c/geleia frutas","emb":"Un","qty":{"Asa Sul":{"SEG":3,"SEX":7},"SIG":{"SEG":3,"SEX":3},"Vicente Pires":{"SEG":3,"SEX":3}}},{"name":"Tiramisu taça 160g","emb":"Un","qty":{"Asa Sul":{"SEG":20,"SEX":20},"SIG":{"SEG":3,"SEX":5},"Vicente Pires":{"SEG":10,"SEX":10}}},{"name":"Canudo sachê preto","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":3,"SEX":3}}},{"name":"Canudo sachê colorido","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Laranja Bahia","emb":"Un","qty":{"Asa Sul":{"SEG":8,"SEX":8},"SIG":{"SEG":3,"SEX":3},"Vicente Pires":{"SEG":6,"SEX":6}}},{"name":"Laranja suco saco 20kg","emb":"Saco","qty":{"Asa Sul":{"SEG":6,"SEX":6},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":6,"SEX":6}}},{"name":"Morango 400g","emb":"Bandeja","qty":{"Asa Sul":{"SEG":7,"SEX":7},"SIG":{"SEG":3,"SEX":3},"Vicente Pires":{"SEG":6,"SEX":6}}},{"name":"Limão","emb":"Saco","qty":{"Asa Sul":{"SEG":3,"SEX":3},"SIG":{"SEG":1,"SEX":1},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Limão siciliano","emb":"Un","qty":{"Asa Sul":{"SEG":6,"SEX":13},"SIG":{"SEG":5,"SEX":5},"Vicente Pires":{"SEG":13,"SEX":13}}},{"name":"Maracujá","emb":"Kg","qty":{"Asa Sul":{"SEG":3,"SEX":14},"SIG":{"SEG":4,"SEX":5},"Vicente Pires":{"SEG":11,"SEX":11}}},{"name":"Maçã verde","emb":"Un","qty":{"Asa Sul":{"SEG":7,"SEX":10},"SIG":{"SEG":3,"SEX":4},"Vicente Pires":{"SEG":11,"SEX":11}}},{"name":"Uva preta 500g","emb":"Bandeja","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":0,"SEX":1},"Vicente Pires":{"SEG":3,"SEX":3}}},{"name":"Abacaxi","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":3},"SIG":{"SEG":1,"SEX":2},"Vicente Pires":{"SEG":3,"SEX":3}}},{"name":"Don Segundo chardonnay","emb":"Un","qty":{"Asa Sul":{"SEG":4,"SEX":4},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":8,"SEX":8}}},{"name":"Don Segundo cab. sauvignon","emb":"Un","qty":{"Asa Sul":{"SEG":3,"SEX":4},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":12,"SEX":12}}},{"name":"Don Segundo carmenere","emb":"Un","qty":{"Asa Sul":{"SEG":4,"SEX":4},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":12,"SEX":12}}},{"name":"Don Segundo rosé","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":3},"SIG":{"SEG":2,"SEX":2},"Vicente Pires":{"SEG":5,"SEX":5}}},{"name":"Choop claro","emb":"Un","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":0,"SEX":0},"Vicente Pires":{"SEG":2,"SEX":2}}},{"name":"Choop escuro","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":1},"SIG":{"SEG":0,"SEX":0},"Vicente Pires":{"SEG":1,"SEX":1}}},{"name":"Guaraná Pepsi lata","emb":"Un","qty":{"Asa Sul":{"SEG":15,"SEX":20},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":53,"SEX":53}}},{"name":"Eisenbahn","emb":"Un","qty":{"Asa Sul":{"SEG":26,"SEX":26},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":15,"SEX":26}}},{"name":"Fanta laranja lata","emb":"Un","qty":{"Asa Sul":{"SEG":8,"SEX":8},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":8,"SEX":8}}},{"name":"Heineken normal","emb":"Un","qty":{"Asa Sul":{"SEG":24,"SEX":24},"SIG":{"SEG":30,"SEX":30},"Vicente Pires":{"SEG":92,"SEX":92}}},{"name":"Barril chopp claro","emb":"Barril","qty":{"Asa Sul":{"SEG":2,"SEX":2},"SIG":{"SEG":0,"SEX":0},"Vicente Pires":{"SEG":0,"SEX":0}}},{"name":"Barril chopp escuro","emb":"Barril","qty":{"Asa Sul":{"SEG":1,"SEX":2},"SIG":{"SEG":0,"SEX":0},"Vicente Pires":{"SEG":0,"SEX":0}}},{"name":"Gas para chopp","emb":"Un","qty":{"Asa Sul":{"SEG":1,"SEX":1},"SIG":{"SEG":0,"SEX":0},"Vicente Pires":{"SEG":0,"SEX":0}}},{"name":"TOTAL  (74 itens)","emb":"Un","qty":{"Asa Sul":{"SEG":0,"SEX":0},"SIG":{"SEG":0,"SEX":0},"Vicente Pires":{"SEG":0,"SEX":0}}}],"schedule":"Contagem: Domingo / Quarta     |     Entrega: Segunda / Sexta"},"Salão":{"days":["QUA"],"items":[{"name":"Álcool","emb":"Un","qty":{"Asa Sul":{"QUA":10},"SIG":{"QUA":10},"Vicente Pires":{"QUA":15}}},{"name":"Acqua perfumante 400ml","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":2},"Vicente Pires":{"QUA":2}}},{"name":"Óleo de peroba 100ml","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Limpa alumínio politriz","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":2},"Vicente Pires":{"QUA":4}}},{"name":"Inseticida","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":2},"Vicente Pires":{"QUA":4}}},{"name":"Guardanapo sachê cx-2000","emb":"PCT","qty":{"Asa Sul":{"QUA":8},"SIG":{"QUA":3},"Vicente Pires":{"QUA":10}}},{"name":"Bobina térmica fiscal 80x40","emb":"Un","qty":{"Asa Sul":{"QUA":8},"SIG":{"QUA":15},"Vicente Pires":{"QUA":20}}},{"name":"Bobina térmica cartão 57mm","emb":"Cx","qty":{"Asa Sul":{"QUA":8},"SIG":{"QUA":15},"Vicente Pires":{"QUA":20}}},{"name":"Redinha de cabelo","emb":"Un","qty":{"Asa Sul":{"QUA":8},"SIG":{"QUA":2},"Vicente Pires":{"QUA":10}}},{"name":"Velas sparkes","emb":"Un","qty":{"Asa Sul":{"QUA":8},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Palito de dente","emb":"Cx","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":1}}},{"name":"Caneta","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":10},"Vicente Pires":{"QUA":10}}},{"name":"Bloco de papel","emb":"Un","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Borrifador","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Fita adesiva fina 12mmx50m","emb":"Un","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":2},"Vicente Pires":{"QUA":6}}},{"name":"Copo descartável","emb":"PCT","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":1},"Vicente Pires":{"QUA":4}}},{"name":"Ketchup","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":1}}},{"name":"Mostarda","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":1}}},{"name":"Maionese","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":1}}},{"name":"Acucar","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":1}}},{"name":"Adocante","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":1}}},{"name":"Fita adesiva durex","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":2},"Vicente Pires":{"QUA":6}}},{"name":"Marca texto","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":2},"Vicente Pires":{"QUA":5}}},{"name":"TOTAL  (25 itens)","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":0},"Vicente Pires":{"QUA":0}}}],"schedule":"Contagem: Terça     |     Entrega: Quarta"},"Vinhos":{"days":["QUA"],"items":[{"name":"Rio Valley Brut","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":5},"Vicente Pires":{"QUA":3}}},{"name":"Rio Valley Brut Rosé","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":5},"Vicente Pires":{"QUA":3}}},{"name":"Rio Valley Moscatel","emb":"Un","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":5},"Vicente Pires":{"QUA":3}}},{"name":"Valdemiz Brut","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":1},"Vicente Pires":{"QUA":3}}},{"name":"Valdemiz Moscatel","emb":"Un","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":1},"Vicente Pires":{"QUA":3}}},{"name":"Garziera Classico Chardonnay","emb":"Un","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Garziera Reserva Chardonnay","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":2}}},{"name":"Boscato Cave Riesling","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":2}}},{"name":"Finca Flichman Branco","emb":"Un","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":0},"Vicente Pires":{"QUA":2}}},{"name":"Riscos Classic Chardonnay","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":12}}},{"name":"Riscos Gran Reserva Chardonnay","emb":"Un","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":0},"Vicente Pires":{"QUA":4}}},{"name":"Ponte da Barca Vinho Verde","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":6}}},{"name":"Atalaya Beira Interior Branco","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Fiano Salento","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Kriya Pecorino IGP","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Chablis Domaine Collet","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":2}}},{"name":"Garziera Classico Rosé","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Riscos Classic Rosé","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":10},"Vicente Pires":{"QUA":12}}},{"name":"Cuvée Sidoine","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":4}}},{"name":"Garziera Classico Malbec","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Garziera Classico Shiraz","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Videiras Reserva","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"1550 Reserva Merlot","emb":"Un","qty":{"Asa Sul":{"QUA":7},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Garziera Reserva Malbec","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Garziera Reserva Cab. Sauv","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Boscato Cave Merlot","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Boscato Cave Cab. Sauv","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Boscato Cave Cab. Franc","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Boscato Cave Touriga Nacional","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Boscato Gran Cave Cab. Sauv","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Boscato Gran Cave Merlot","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Finca Flichman","emb":"Un","qty":{"Asa Sul":{"QUA":10},"SIG":{"QUA":0},"Vicente Pires":{"QUA":15}}},{"name":"Sin Palabras","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Cruz Alta","emb":"Un","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Finca Flichman Reserva","emb":"Un","qty":{"Asa Sul":{"QUA":7},"SIG":{"QUA":0},"Vicente Pires":{"QUA":15}}},{"name":"Cepa Tradicional","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Trumpeter Cab. Franc","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":2}}},{"name":"Trumpeter Pinot Noir","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Marcelo Pelleriti Sig. Reserve","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":2}}},{"name":"Finca Flichman Dedicado G.C.","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":2}}},{"name":"Riscos Classic Carmenere","emb":"Un","qty":{"Asa Sul":{"QUA":6},"SIG":{"QUA":25},"Vicente Pires":{"QUA":15}}},{"name":"Riscos Classic Pinot Noir","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":5},"Vicente Pires":{"QUA":15}}},{"name":"Riscos Classic Red Blend","emb":"Un","qty":{"Asa Sul":{"QUA":6},"SIG":{"QUA":10},"Vicente Pires":{"QUA":15}}},{"name":"Riscos Classic Cab. Sauv","emb":"Un","qty":{"Asa Sul":{"QUA":6},"SIG":{"QUA":10},"Vicente Pires":{"QUA":15}}},{"name":"Herencia","emb":"Un","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":1},"Vicente Pires":{"QUA":3}}},{"name":"Donoso Estate Cab. Sauv","emb":"Un","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":1},"Vicente Pires":{"QUA":6}}},{"name":"Riscos Gran Res. Carmenere","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":5},"Vicente Pires":{"QUA":2}}},{"name":"Riscos Gran Res. Malbec","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":5},"Vicente Pires":{"QUA":2}}},{"name":"Riscos Gran Res. Cab. Sauv","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":5},"Vicente Pires":{"QUA":2}}},{"name":"Riscos Gran Res. Cab. Franc","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":5},"Vicente Pires":{"QUA":2}}},{"name":"Donoso Bourbon Barrel","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":6}}},{"name":"LFE 360 Carignan","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"LFE 360 Cab. Franc","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Aleixo Garcia","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Esperança Reg Alentejo","emb":"Un","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Encostas de Penalva","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Atalaya Beira Interior","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Sossego","emb":"Un","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Roboredo Douro","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Berteletti Sangiovese","emb":"Un","qty":{"Asa Sul":{"QUA":7},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Vulcanici","emb":"Un","qty":{"Asa Sul":{"QUA":6},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"L’Opis Primitivo di Salento","emb":"Un","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":1},"Vicente Pires":{"QUA":5}}},{"name":"Prestige Sangiovese","emb":"Un","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":0},"Vicente Pires":{"QUA":5}}},{"name":"Chianti Ghibello DOCG","emb":"Un","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Toso Barolo DOCG","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Aradon Rioja","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Calabuig","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Ré Minor Ribeira del Duero","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":3}}},{"name":"Chateau Bauvallon","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":2}}},{"name":"Old Bean","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":6}}},{"name":"Quereu 375ml Carmenere","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":6}}},{"name":"Callia 375ml Malbec","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":6}}},{"name":"Quereu 375ml Chardonnay","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":0},"Vicente Pires":{"QUA":6}}},{"name":"Porto Menéres Fine Tawny","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":0},"Vicente Pires":{"QUA":6}}},{"name":"Rutini Wines Malbec","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":1},"Vicente Pires":{"QUA":0}}},{"name":"Riscos Classic Malbec","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":10},"Vicente Pires":{"QUA":12}}},{"name":"Contessa Carola Prim.+Negr.","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":1},"Vicente Pires":{"QUA":0}}},{"name":"Metafora Rosso Montepulciano","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":1},"Vicente Pires":{"QUA":0}}},{"name":"Terras de Cartaxo","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":1},"Vicente Pires":{"QUA":0}}},{"name":"Riscos Gran Res. Cab. Franc SIG","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":1},"Vicente Pires":{"QUA":0}}},{"name":"Riscos Classic Chardonnay SIG","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":1},"Vicente Pires":{"QUA":0}}},{"name":"TOTAL  (81 itens)","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":0},"Vicente Pires":{"QUA":0}}}],"schedule":"Contagem: Terça     |     Entrega: Quarta"},"Delivery":{"days":["QUA"],"items":[{"name":"Coca-Cola zero 1,5L","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":96},"Vicente Pires":{"QUA":210}}},{"name":"Coca-Cola 1,5L","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":96},"Vicente Pires":{"QUA":210}}},{"name":"Guaraná 1,5L","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":30},"Vicente Pires":{"QUA":210}}},{"name":"Guaraná zero 1,5L","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":30},"Vicente Pires":{"QUA":210}}},{"name":"Coca Cola lata 330","emb":"Un","qty":{"Asa Sul":{"QUA":120},"SIG":{"QUA":15},"Vicente Pires":{"QUA":210}}},{"name":"Coca Cola zero lata 330","emb":"Un","qty":{"Asa Sul":{"QUA":130},"SIG":{"QUA":15},"Vicente Pires":{"QUA":210}}},{"name":"Guaraná lata","emb":"Un","qty":{"Asa Sul":{"QUA":130},"SIG":{"QUA":15},"Vicente Pires":{"QUA":200}}},{"name":"Guaraná zero lata","emb":"Un","qty":{"Asa Sul":{"QUA":130},"SIG":{"QUA":15},"Vicente Pires":{"QUA":210}}},{"name":"Caixa de pizza pequena","emb":"PCT","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Caixa de pizza grande","emb":"PCT","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Caixa fatia de pizza","emb":"Cx","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":2},"Vicente Pires":{"QUA":5}}},{"name":"Forro caixa pequena","emb":"PCT","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Forro caixa grande","emb":"PCT","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Bobina plástica 20x30","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":2},"Vicente Pires":{"QUA":2}}},{"name":"Bobina plástica 30x40","emb":"Un","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Lacre de caixa de pizza","emb":"PCT","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Caneta","emb":"Un","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":10},"Vicente Pires":{"QUA":10}}},{"name":"Bloco de papel","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":5},"Vicente Pires":{"QUA":7}}},{"name":"TOTAL  (24 itens)","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":0},"Vicente Pires":{"QUA":0}}}],"schedule":"Contagem: Terça     |     Entrega: Quarta"},"Limpeza":{"days":["QUA"],"items":[{"name":"Touca de cabelo","emb":"Cx","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":1},"Vicente Pires":{"QUA":6}}},{"name":"Luva nitrilo sem pó P","emb":"Cx","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":5}}},{"name":"Luva nitrilo sem pó M","emb":"Cx","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":2},"Vicente Pires":{"QUA":5}}},{"name":"Luva nitrilo sem pó G","emb":"Cx","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":2},"Vicente Pires":{"QUA":5}}},{"name":"Luva nitrilo sem pó GG","emb":"Cx","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":3},"Vicente Pires":{"QUA":5}}},{"name":"Máscara facial","emb":"Cx","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":2},"Vicente Pires":{"QUA":3}}},{"name":"Pano de chão azul xadrez","emb":"Un","qty":{"Asa Sul":{"QUA":6},"SIG":{"QUA":20},"Vicente Pires":{"QUA":50}}},{"name":"Saco de lixo azul 30x40L","emb":"PCT","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":2},"Vicente Pires":{"QUA":2}}},{"name":"Pano perfex 600 panos","emb":"Rolo","qty":{"Asa Sul":{"QUA":15},"SIG":{"QUA":2},"Vicente Pires":{"QUA":4}}},{"name":"Saco de lixo preto 100L","emb":"PCT","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Saco de lixo preto 200L","emb":"PCT","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Saco de lixo preto 40/60L","emb":"PCT","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Papel higiênico banheiro","emb":"PCT","qty":{"Asa Sul":{"QUA":4},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Papel higiênico interfolhado","emb":"Cx","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":1},"Vicente Pires":{"QUA":7}}},{"name":"Rolo de papel toalha","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":2},"Vicente Pires":{"QUA":5}}},{"name":"Papel toalha interfolhada","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":5},"Vicente Pires":{"QUA":7}}},{"name":"Saco de lixo azul 60x40L","emb":"PCT","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Saco de lixo azul 100L","emb":"PCT","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Saco de lixo azul 200L","emb":"PCT","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Saco de lixo cinza 60L","emb":"PCT","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Álcool","emb":"Un","qty":{"Asa Sul":{"QUA":10},"SIG":{"QUA":10},"Vicente Pires":{"QUA":15}}},{"name":"Desinfetante 5L","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":5},"Vicente Pires":{"QUA":8}}},{"name":"Detergente 5L","emb":"Un","qty":{"Asa Sul":{"QUA":5},"SIG":{"QUA":5},"Vicente Pires":{"QUA":8}}},{"name":"Sabão em pó","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":2},"Vicente Pires":{"QUA":2}}},{"name":"Água sanitária","emb":"Un","qty":{"Asa Sul":{"QUA":7},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Limp sabonete 5L","emb":"Galão","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":1}}},{"name":"Bucha de pia","emb":"PCT","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":4},"Vicente Pires":{"QUA":12}}},{"name":"Pano de prato xadrez 100un","emb":"Un","qty":{"Asa Sul":{"QUA":7},"SIG":{"QUA":20},"Vicente Pires":{"QUA":50}}},{"name":"Luva amarela","emb":"PCT","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Água oxigenada","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Bombril","emb":"PCT","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Acqua perfumante 400ml","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"Inseticida","emb":"Un","qty":{"Asa Sul":{"QUA":1},"SIG":{"QUA":2},"Vicente Pires":{"QUA":4}}},{"name":"Borrifador de álcool","emb":"Un","qty":{"Asa Sul":{"QUA":3},"SIG":{"QUA":5},"Vicente Pires":{"QUA":10}}},{"name":"Propé pacote de 100","emb":"PCT","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":2},"Vicente Pires":{"QUA":2}}},{"name":"Poliflor","emb":"Un","qty":{"Asa Sul":{"QUA":2},"SIG":{"QUA":1},"Vicente Pires":{"QUA":2}}},{"name":"TOTAL  (36 itens)","emb":"Un","qty":{"Asa Sul":{"QUA":0},"SIG":{"QUA":0},"Vicente Pires":{"QUA":0}}}],"schedule":"Contagem: Terça     |     Entrega: Quarta"}};
 
+// Catálogo das Unidades (Asa Sul, SIG, Vicente Pires, Delivery) — separado do CPD
+const UNIT_CATEGORIES = [
+  'Refrigerados',
+  'Estoque Seco',
+  'Bar',
+  'Salão',
+  'Delivery',
+  'Limpeza',
+  'Alimentação dos Funcionários',
+];
+
+const UNIT_SEED_CATALOG = [
+  {id:'ur01',name:'Massa de pizza',category:'Refrigerados',unit:'Un'},
+  {id:'ur02',name:'Muçarela 20kg',category:'Refrigerados',unit:'Un'},
+  {id:'ur03',name:'Molho de tomate 5L',category:'Refrigerados',unit:'Un'},
+  {id:'ur04',name:'Muçarela lacfree',category:'Refrigerados',unit:'Un'},
+  {id:'ur05',name:'Muçarela de búfala 2kg',category:'Refrigerados',unit:'Un'},
+  {id:'ur06',name:'Parmesão grana padano 300g',category:'Refrigerados',unit:'Un'},
+  {id:'ur07',name:'Parmesão ralado 2kg',category:'Refrigerados',unit:'Un'},
+  {id:'ur08',name:'Provolone 300g',category:'Refrigerados',unit:'Un'},
+  {id:'ur09',name:'Gorgonzola 300g',category:'Refrigerados',unit:'Un'},
+  {id:'ur10',name:'Burrata de búfala 200g',category:'Refrigerados',unit:'Un'},
+  {id:'ur11',name:'Queijo brie',category:'Refrigerados',unit:'Un'},
+  {id:'ur12',name:'Requeijão bisnaga 1,5kg',category:'Refrigerados',unit:'Un'},
+  {id:'ur13',name:'Cream cheese',category:'Refrigerados',unit:'Un'},
+  {id:'ur14',name:'Anchovas 50g',category:'Refrigerados',unit:'Un'},
+  {id:'ur15',name:'Linguiça calabresa 2,5kg',category:'Refrigerados',unit:'Un'},
+  {id:'ur16',name:'Carne de sol desfiada 1kg',category:'Refrigerados',unit:'Un'},
+  {id:'ur17',name:'Frango desfiado 1kg',category:'Refrigerados',unit:'Un'},
+  {id:'ur18',name:'Lombo canadense 500g',category:'Refrigerados',unit:'Un'},
+  {id:'ur19',name:'Salaminho italiano',category:'Refrigerados',unit:'Un'},
+  {id:'ur20',name:'Tomate seco 500g',category:'Refrigerados',unit:'Un'},
+  {id:'ur21',name:'Presunto cozido',category:'Refrigerados',unit:'Un'},
+  {id:'ur22',name:'Peperoni 1kg',category:'Refrigerados',unit:'Un'},
+  {id:'ur23',name:'Bacon fatiado cru',category:'Refrigerados',unit:'Un'},
+  {id:'ur24',name:'Presunto parma 500g',category:'Refrigerados',unit:'Un'},
+  {id:'ur25',name:'Lascas de coco 200g',category:'Refrigerados',unit:'Un'},
+  {id:'ur26',name:'Nutella 400g',category:'Refrigerados',unit:'Un'},
+  {id:'ur27',name:'Guianduela branca',category:'Refrigerados',unit:'Un'},
+  {id:'ur28',name:'Creme de pistache 400g',category:'Refrigerados',unit:'Un'},
+  {id:'ur29',name:'Geleia amora framboesa pizza',category:'Refrigerados',unit:'Un'},
+  {id:'ur30',name:'Purê de abóbora 500g',category:'Refrigerados',unit:'Un'},
+  {id:'ur31',name:'Molho pesto de azeitona',category:'Refrigerados',unit:'Un'},
+  {id:'ur32',name:'Molho pesto bisnaga',category:'Refrigerados',unit:'Un'},
+  {id:'ur33',name:'Creme de gorgonzola',category:'Refrigerados',unit:'Un'},
+  {id:'ur34',name:'Chocolate ao leite ralado',category:'Refrigerados',unit:'Un'},
+  {id:'ur35',name:'Chocolate branco ralado',category:'Refrigerados',unit:'Un'},
+  {id:'ur36',name:'Salva borda brigadeiro',category:'Refrigerados',unit:'Un'},
+  {id:'ur37',name:'Salva borda doce de leite',category:'Refrigerados',unit:'Un'},
+  {id:'ur38',name:'Sorvete de creme 10L',category:'Refrigerados',unit:'Un'},
+  {id:'ur39',name:'Morango 400g',category:'Refrigerados',unit:'Un'},
+  {id:'ur40',name:'Uva verde 500g',category:'Refrigerados',unit:'Un'},
+  {id:'ur41',name:'Banana nanica 27kg',category:'Refrigerados',unit:'Un'},
+  {id:'ur42',name:'Figo',category:'Refrigerados',unit:'Un'},
+  {id:'ur43',name:'Pêra',category:'Refrigerados',unit:'Un'},
+  {id:'ur44',name:'Abobrinha italiana',category:'Refrigerados',unit:'Un'},
+  {id:'ur45',name:'Alho descascado para pizza',category:'Refrigerados',unit:'Un'},
+  {id:'ur46',name:'Manjericão',category:'Refrigerados',unit:'Un'},
+  {id:'ur47',name:'Manjerona',category:'Refrigerados',unit:'Un'},
+  {id:'ur48',name:'Cebola roxa',category:'Refrigerados',unit:'Un'},
+  {id:'ur49',name:'Rúcula',category:'Refrigerados',unit:'Un'},
+  {id:'ur50',name:'Alecrim',category:'Refrigerados',unit:'Un'},
+  {id:'ur51',name:'Tomate cereja 300g',category:'Refrigerados',unit:'Un'},
+  {id:'ur52',name:'Tomate extra grande',category:'Refrigerados',unit:'Un'},
+  {id:'ur53',name:'Pimentão verde',category:'Refrigerados',unit:'Un'},
+  {id:'ur54',name:'Champignon Paris 300g',category:'Refrigerados',unit:'Un'},
+  {id:'ue01',name:'Semolina 10kg',category:'Estoque Seco',unit:'Un'},
+  {id:'ue02',name:'Canela c/açúcar mix 500g',category:'Estoque Seco',unit:'Un'},
+  {id:'ue03',name:'Canela em pó 200g',category:'Estoque Seco',unit:'Un'},
+  {id:'ue04',name:'Orégano 250g',category:'Estoque Seco',unit:'Un'},
+  {id:'ue05',name:'Nozes 100g',category:'Estoque Seco',unit:'Un'},
+  {id:'ue06',name:'Pistache 250g',category:'Estoque Seco',unit:'Un'},
+  {id:'ue07',name:'Atum natural lata',category:'Estoque Seco',unit:'Un'},
+  {id:'ue08',name:'Aceto balsâmico 250ml',category:'Estoque Seco',unit:'Un'},
+  {id:'ue09',name:'Creme de leite cx 200ml',category:'Estoque Seco',unit:'Un'},
+  {id:'ue10',name:'Azeitona preta 2kg',category:'Estoque Seco',unit:'Un'},
+  {id:'ue11',name:'Leite condensado 400ml',category:'Estoque Seco',unit:'Un'},
+  {id:'ue12',name:'Doce de leite argentino 1kg',category:'Estoque Seco',unit:'Un'},
+  {id:'ue13',name:'Geleia abacaxi c/pimenta 500g',category:'Estoque Seco',unit:'Un'},
+  {id:'ue14',name:'Geléia de damasco 1kg',category:'Estoque Seco',unit:'Un'},
+  {id:'ue15',name:'Mel 1,1kg',category:'Estoque Seco',unit:'Un'},
+  {id:'ue16',name:'Marshmallows 250g',category:'Estoque Seco',unit:'Un'},
+  {id:'ue17',name:'Ovos',category:'Estoque Seco',unit:'Un'},
+  {id:'ue18',name:'Pistache torrado 250g',category:'Estoque Seco',unit:'Un'},
+  {id:'ue19',name:'Kinder bueno branco - CX',category:'Estoque Seco',unit:'Un'},
+  {id:'ue20',name:'Bobina seg plast 30x40',category:'Estoque Seco',unit:'Un'},
+  {id:'ue21',name:'Bobina seg plast 20x30',category:'Estoque Seco',unit:'Un'},
+  {id:'ue22',name:'Lenha 25kg',category:'Estoque Seco',unit:'Un'},
+  {id:'ue23',name:'Álcool em gel p/forno',category:'Estoque Seco',unit:'Un'},
+  {id:'ue24',name:'Palmito de pupunha 1kg',category:'Estoque Seco',unit:'Un'},
+  {id:'ub01',name:'Vodka Absolut',category:'Bar',unit:'Un'},
+  {id:'ub02',name:'Gin Gordons',category:'Bar',unit:'Un'},
+  {id:'ub03',name:'Rum',category:'Bar',unit:'Un'},
+  {id:'ub04',name:'Martiny',category:'Bar',unit:'Un'},
+  {id:'ub05',name:'Campari',category:'Bar',unit:'Un'},
+  {id:'ub06',name:'Aperol',category:'Bar',unit:'Un'},
+  {id:'ub07',name:'Cachaça 51',category:'Bar',unit:'Un'},
+  {id:'ub08',name:'Duo Mix Maçã Verde',category:'Bar',unit:'Un'},
+  {id:'ub09',name:'Duo Mix Limão Siciliano',category:'Bar',unit:'Un'},
+  {id:'ub10',name:'Duo Mix Gengibre',category:'Bar',unit:'Un'},
+  {id:'ub11',name:'Duo Mix Grenadine',category:'Bar',unit:'Un'},
+  {id:'ub12',name:'Duo Mix Tangerina',category:'Bar',unit:'Un'},
+  {id:'ub13',name:'Duo Mix Morango',category:'Bar',unit:'Un'},
+  {id:'ub14',name:'Duo Mix Morango Le Fruit',category:'Bar',unit:'Un'},
+  {id:'ub15',name:'Duo Mix Maracujá',category:'Bar',unit:'Un'},
+  {id:'ub16',name:'Duo Mix Le Fruit Jabuticaba',category:'Bar',unit:'Un'},
+  {id:'ub17',name:'Espuma de limão',category:'Bar',unit:'Un'},
+  {id:'ub18',name:'Espuma de gengibre',category:'Bar',unit:'Un'},
+  {id:'ub19',name:'Água sem gás 500ml',category:'Bar',unit:'Un'},
+  {id:'ub20',name:'Água com gás 500ml',category:'Bar',unit:'Un'},
+  {id:'ub21',name:'Água tônica lata 350',category:'Bar',unit:'Un'},
+  {id:'ub22',name:'Água tônica zero lata 350',category:'Bar',unit:'Un'},
+  {id:'ub23',name:'Coca Cola KS normal 290ml',category:'Bar',unit:'Un'},
+  {id:'ub24',name:'Coca Cola KS zero 290ml',category:'Bar',unit:'Un'},
+  {id:'ub25',name:'Coca Cola lata 310ml',category:'Bar',unit:'Un'},
+  {id:'ub26',name:'Coca Cola zero lata 310ml',category:'Bar',unit:'Un'},
+  {id:'ub27',name:'Sprite lata 310ml',category:'Bar',unit:'Un'},
+  {id:'ub28',name:'Schweppes citrus zero 310ml',category:'Bar',unit:'Un'},
+  {id:'ub29',name:'Schweppes citrus 310ml',category:'Bar',unit:'Un'},
+  {id:'ub30',name:'H2O 500ml',category:'Bar',unit:'Un'},
+  {id:'ub31',name:'H2O limoneto 500ml',category:'Bar',unit:'Un'},
+  {id:'ub32',name:'Guaraná Antarctica lata 350',category:'Bar',unit:'Un'},
+  {id:'ub33',name:'Guaraná zero lata 350',category:'Bar',unit:'Un'},
+  {id:'ub34',name:'Suco de abacaxi 500ml',category:'Bar',unit:'Un'},
+  {id:'ub35',name:'Suco de uva integral 1L',category:'Bar',unit:'Un'},
+  {id:'ub36',name:'Suco de uva integral 300ml',category:'Bar',unit:'Un'},
+  {id:'ub37',name:'Stella Artois',category:'Bar',unit:'Un'},
+  {id:'ub38',name:'Budweiser',category:'Bar',unit:'Un'},
+  {id:'ub39',name:'Corona',category:'Bar',unit:'Un'},
+  {id:'ub40',name:'Heineken zero',category:'Bar',unit:'Un'},
+  {id:'ub41',name:'Stella Puro Gold',category:'Bar',unit:'Un'},
+  {id:'ub42',name:'Spaten',category:'Bar',unit:'Un'},
+  {id:'ub43',name:'Gelato pistache 5L',category:'Bar',unit:'Un'},
+  {id:'ub44',name:'Gelato doce de leite 5L',category:'Bar',unit:'Un'},
+  {id:'ub45',name:'Gelato fior de latte 5L',category:'Bar',unit:'Un'},
+  {id:'ub46',name:'Morango congelado',category:'Bar',unit:'Un'},
+  {id:'ub47',name:'Panacotta c/geleia frutas',category:'Bar',unit:'Un'},
+  {id:'ub48',name:'Tiramisu taça 160g',category:'Bar',unit:'Un'},
+  {id:'ub49',name:'Canudo sachê preto',category:'Bar',unit:'Un'},
+  {id:'ub50',name:'Canudo sachê colorido',category:'Bar',unit:'Un'},
+  {id:'ub51',name:'Laranja Bahia',category:'Bar',unit:'Un'},
+  {id:'ub52',name:'Laranja suco saco 20kg',category:'Bar',unit:'Un'},
+  {id:'ub53',name:'Morango 400g',category:'Bar',unit:'Un'},
+  {id:'ub54',name:'Limão',category:'Bar',unit:'Un'},
+  {id:'ub55',name:'Limão siciliano',category:'Bar',unit:'Un'},
+  {id:'ub56',name:'Maracujá',category:'Bar',unit:'Un'},
+  {id:'ub57',name:'Maçã verde',category:'Bar',unit:'Un'},
+  {id:'ub58',name:'Hortelã',category:'Bar',unit:'Un'},
+  {id:'ub59',name:'Uva preta 500g',category:'Bar',unit:'Un'},
+  {id:'ub60',name:'Capim santo',category:'Bar',unit:'Un'},
+  {id:'ub61',name:'Abacaxi',category:'Bar',unit:'Un'},
+  {id:'ub62',name:'Don Segundo chardonnay',category:'Bar',unit:'Un'},
+  {id:'ub63',name:'Don Segundo cab. sauvignon',category:'Bar',unit:'Un'},
+  {id:'ub64',name:'Don Segundo carmenere',category:'Bar',unit:'Un'},
+  {id:'ub65',name:'Don Segundo rosé',category:'Bar',unit:'Un'},
+  {id:'ub66',name:'Choop claro',category:'Bar',unit:'Un'},
+  {id:'ub67',name:'Choop escuro',category:'Bar',unit:'Un'},
+  {id:'ub68',name:'Guaraná Pepsi lata',category:'Bar',unit:'Un'},
+  {id:'ub69',name:'Eisenbahn',category:'Bar',unit:'Un'},
+  {id:'ub70',name:'Fanta laranja lata',category:'Bar',unit:'Un'},
+  {id:'ub71',name:'Heineken normal',category:'Bar',unit:'Un'},
+  {id:'ub72',name:'Barril chopp claro',category:'Bar',unit:'Un'},
+  {id:'ub73',name:'Barril chopp escuro',category:'Bar',unit:'Un'},
+  {id:'ub74',name:'Gas para chopp',category:'Bar',unit:'Un'},
+  {id:'us01',name:'Álcool',category:'Salão',unit:'Un'},
+  {id:'us02',name:'Acqua perfumante 400ml',category:'Salão',unit:'Un'},
+  {id:'us03',name:'Óleo de peroba 100ml',category:'Salão',unit:'Un'},
+  {id:'us04',name:'Limpa alumínio politriz',category:'Salão',unit:'Un'},
+  {id:'us05',name:'Inseticida',category:'Salão',unit:'Un'},
+  {id:'us06',name:'Guardanapo sachê cx-2000',category:'Salão',unit:'Un'},
+  {id:'us07',name:'Bobina térmica fiscal 80x40',category:'Salão',unit:'Un'},
+  {id:'us08',name:'Bobina térmica cartão 57mm',category:'Salão',unit:'Un'},
+  {id:'us09',name:'Redinha de cabelo',category:'Salão',unit:'Un'},
+  {id:'us10',name:'Velas sparkes',category:'Salão',unit:'Un'},
+  {id:'us11',name:'Palito de dente',category:'Salão',unit:'Un'},
+  {id:'us12',name:'Caneta',category:'Salão',unit:'Un'},
+  {id:'us13',name:'Bloco de papel',category:'Salão',unit:'Un'},
+  {id:'us14',name:'Borrifador',category:'Salão',unit:'Un'},
+  {id:'us15',name:'Fita adesiva fina 12mmx50m',category:'Salão',unit:'Un'},
+  {id:'us16',name:'Copo descartável',category:'Salão',unit:'Un'},
+  {id:'us17',name:'Ketchup',category:'Salão',unit:'Un'},
+  {id:'us18',name:'Mostarda',category:'Salão',unit:'Un'},
+  {id:'us19',name:'Maionese',category:'Salão',unit:'Un'},
+  {id:'us20',name:'Acucar',category:'Salão',unit:'Un'},
+  {id:'us21',name:'Adocante',category:'Salão',unit:'Un'},
+  {id:'us22',name:'Fita adesiva durex',category:'Salão',unit:'Un'},
+  {id:'us23',name:'Agenda',category:'Salão',unit:'Un'},
+  {id:'us24',name:'Caderno',category:'Salão',unit:'Un'},
+  {id:'us25',name:'Marca texto',category:'Salão',unit:'Un'},
+  {id:'ud01',name:'Coca-Cola zero 1,5L',category:'Delivery',unit:'Un'},
+  {id:'ud02',name:'Coca-Cola 1,5L',category:'Delivery',unit:'Un'},
+  {id:'ud03',name:'Guaraná 1,5L',category:'Delivery',unit:'Un'},
+  {id:'ud04',name:'Guaraná zero 1,5L',category:'Delivery',unit:'Un'},
+  {id:'ud05',name:'Coca Cola lata 330',category:'Delivery',unit:'Un'},
+  {id:'ud06',name:'Coca Cola zero lata 330',category:'Delivery',unit:'Un'},
+  {id:'ud07',name:'Guaraná lata',category:'Delivery',unit:'Un'},
+  {id:'ud08',name:'Guaraná zero lata',category:'Delivery',unit:'Un'},
+  {id:'ud09',name:'Caixa de pizza pequena',category:'Delivery',unit:'Un'},
+  {id:'ud10',name:'Caixa de pizza grande',category:'Delivery',unit:'Un'},
+  {id:'ud11',name:'Caixa fatia de pizza',category:'Delivery',unit:'Un'},
+  {id:'ud12',name:'Forro caixa pequena',category:'Delivery',unit:'Un'},
+  {id:'ud13',name:'Forro caixa grande',category:'Delivery',unit:'Un'},
+  {id:'ud14',name:'Bobina plástica 20x30',category:'Delivery',unit:'Un'},
+  {id:'ud15',name:'Bobina plástica 30x40',category:'Delivery',unit:'Un'},
+  {id:'ud16',name:'Lacre de caixa de pizza',category:'Delivery',unit:'Un'},
+  {id:'ud17',name:'Caneta',category:'Delivery',unit:'Un'},
+  {id:'ud18',name:'Bloco de papel',category:'Delivery',unit:'Un'},
+  {id:'ud19',name:'Fita adesiva durex',category:'Delivery',unit:'Un'},
+  {id:'ud20',name:'Fita adesiva fina 12mmx50m',category:'Delivery',unit:'Un'},
+  {id:'ud21',name:'Agenda',category:'Delivery',unit:'Un'},
+  {id:'ud22',name:'Caderno',category:'Delivery',unit:'Un'},
+  {id:'ud23',name:'Marca texto',category:'Delivery',unit:'Un'},
+  {id:'ud24',name:'Forro caixa fatia',category:'Delivery',unit:'Un'},
+  {id:'ul01',name:'Touca de cabelo',category:'Limpeza',unit:'Un'},
+  {id:'ul02',name:'Luva nitrilo sem pó P',category:'Limpeza',unit:'Un'},
+  {id:'ul03',name:'Luva nitrilo sem pó M',category:'Limpeza',unit:'Un'},
+  {id:'ul04',name:'Luva nitrilo sem pó G',category:'Limpeza',unit:'Un'},
+  {id:'ul05',name:'Luva nitrilo sem pó GG',category:'Limpeza',unit:'Un'},
+  {id:'ul06',name:'Máscara facial',category:'Limpeza',unit:'Un'},
+  {id:'ul07',name:'Pano de chão azul xadrez',category:'Limpeza',unit:'Un'},
+  {id:'ul08',name:'Saco de lixo azul 30x40L',category:'Limpeza',unit:'Un'},
+  {id:'ul09',name:'Pano perfex 600 panos',category:'Limpeza',unit:'Un'},
+  {id:'ul10',name:'Saco de lixo preto 100L',category:'Limpeza',unit:'Un'},
+  {id:'ul11',name:'Saco de lixo preto 200L',category:'Limpeza',unit:'Un'},
+  {id:'ul12',name:'Saco de lixo preto 40/60L',category:'Limpeza',unit:'Un'},
+  {id:'ul13',name:'Papel higiênico banheiro',category:'Limpeza',unit:'Un'},
+  {id:'ul14',name:'Papel higiênico interfolhado',category:'Limpeza',unit:'Un'},
+  {id:'ul15',name:'Rolo de papel toalha',category:'Limpeza',unit:'Un'},
+  {id:'ul16',name:'Papel toalha interfolhada',category:'Limpeza',unit:'Un'},
+  {id:'ul17',name:'Saco de lixo azul 60x40L',category:'Limpeza',unit:'Un'},
+  {id:'ul18',name:'Saco de lixo azul 100L',category:'Limpeza',unit:'Un'},
+  {id:'ul19',name:'Saco de lixo azul 200L',category:'Limpeza',unit:'Un'},
+  {id:'ul20',name:'Saco de lixo cinza 60L',category:'Limpeza',unit:'Un'},
+  {id:'ul21',name:'Álcool',category:'Limpeza',unit:'Un'},
+  {id:'ul22',name:'Desinfetante 5L',category:'Limpeza',unit:'Un'},
+  {id:'ul23',name:'Detergente 5L',category:'Limpeza',unit:'Un'},
+  {id:'ul24',name:'Sabão em pó',category:'Limpeza',unit:'Un'},
+  {id:'ul25',name:'Água sanitária',category:'Limpeza',unit:'Un'},
+  {id:'ul26',name:'Limp sabonete 5L',category:'Limpeza',unit:'Un'},
+  {id:'ul27',name:'Bucha de pia',category:'Limpeza',unit:'Un'},
+  {id:'ul28',name:'Pano de prato xadrez 100un',category:'Limpeza',unit:'Un'},
+  {id:'ul29',name:'Luva amarela',category:'Limpeza',unit:'Un'},
+  {id:'ul30',name:'Bombril',category:'Limpeza',unit:'Un'},
+  {id:'ul31',name:'Acqua perfumante 400ml',category:'Limpeza',unit:'Un'},
+  {id:'ul32',name:'Inseticida',category:'Limpeza',unit:'Un'},
+  {id:'ul33',name:'Borrifador de álcool',category:'Limpeza',unit:'Un'},
+  {id:'ul34',name:'Propé pacote de 100',category:'Limpeza',unit:'Un'},
+  {id:'ul35',name:'Poliflor',category:'Limpeza',unit:'Un'},
+  {id:'ua01',name:'Óleo de soja 900ml',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua02',name:'Ketchup 1kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua03',name:'Maionese 1kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua04',name:'Molho de tomate 1kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua05',name:'Café 500g',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua06',name:'Gelatina',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua07',name:'Coador',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua08',name:'Coador de pano',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua09',name:'Tempero cominho em pó',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua10',name:'Azeite de dendê',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua11',name:'Farinha Panko',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua12',name:'Açafrão',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua13',name:'Colorífico',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua14',name:'Farinha de mandioca 1kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua15',name:'Caldo de galinha Knorr',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua16',name:'Milho verde 170g',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua17',name:'Ervilha 170g',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua18',name:'Sal Jasmine 1kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua19',name:'Sal refinado 1kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua20',name:'Açúcar cristal 5kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua21',name:'Açúcar refinado 1kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua22',name:'Arroz 5kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua23',name:'Feijão carioca 1kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua24',name:'Feijão fradinho 1kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua25',name:'Flocão',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua26',name:'Macarão parafuso 500g',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'ua27',name:'Macarão espaguete 500g',category:'Alimentação dos Funcionários',unit:'Un'},
+]
+
 function load(key, fallback) {
   try {
     const v = localStorage.getItem(key);
@@ -2240,7 +2523,8 @@ function logAction(type, description, extra) {
   save('pizza_log', activityLog);
 }
 
-let catalog   = load('pizza_catalog', SEED_CATALOG);
+let catalog     = load('pizza_catalog', SEED_CATALOG);       // CPD
+let unitCatalog = load('pizza_unit_catalog', null) || JSON.parse(JSON.stringify(UNIT_SEED_CATALOG)); // Unidades
 // If catalog is empty (corrupted localStorage or first run), use SEED_CATALOG
 if (!catalog || catalog.length === 0) {
   catalog = SEED_CATALOG.slice();
@@ -2377,7 +2661,8 @@ function categoriaLiberada(cat) {
   if (!dentroDoHorario()) return false;
   const allowed = CONTAGEM_JANELAS[diaOperacional()];
   if (!allowed) return false;
-  return allowed.includes('ALL') || allowed.includes(cat);
+  if (allowed.includes('ALL')) return UNIT_CATEGORIES.includes(cat);
+  return allowed.includes(cat);
 }
 
 // Próxima janela em que a categoria estará liberada (para mensagens)
@@ -2400,6 +2685,7 @@ const UNIT_PASSWORDS = {
   'Asa Sul':       'SescoAsaSul@',
   'Vicente Pires': 'Sesco#VP',
   'SIG':           'SescoSIG#',
+  'Delivery':      'SescoDlv#',
 };
 
 // LOGIN/LOGOUT
@@ -2684,6 +2970,7 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
   const unitMins      = opts.unitMins     || {};
   const unitName      = opts.unitName     || null;  // unidade para botão confirmar
   const showConfirm   = opts.showConfirm === true;  // mostrar botão ✓ por item
+  const catSource     = opts.catSource || catalog;   // catálogo a usar (padrão: CPD)
   const editable = typeof onUpdate === 'function';
   const showMin  = false; // M\u00CDN column removed from stock table \u2014 editable only in Cat\u00E1logo
   const wrap = el('div', {});
@@ -2722,7 +3009,7 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
   function updateQty(itemId, newQty, inp, tr, inlineSpan) {
     // Trava de janela: recusa gravação fora do horário/dia de contagem
     if (lockByWindow) {
-      const it = catalog.find(i => i.id === itemId);
+      const it = catSource.find(i => i.id === itemId);
       if (it && !categoriaLiberada(it.category)) {
         toast('\uD83D\uDD12 Contagem de ' + it.category + ' dispon\u00EDvel ' + proximaJanela(it.category) + '.');
         return;
@@ -2761,7 +3048,7 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
 
   function renderRows(q) {
     tbody.innerHTML = '';
-    const filtered = catalog.filter(i => i.name.toLowerCase().includes(q.toLowerCase()));
+    const filtered = catSource.filter(i => i.name.toLowerCase().includes(q.toLowerCase()));
     if (!filtered.length) {
       tbody.appendChild(el('tr', {}, el('td', {colspan: colCount, cls:'empty'}, 'Nenhum item encontrado')));
       return;
@@ -3020,7 +3307,7 @@ function buildBatchMovList(movs, limit) {
 
     // Sub: first 2 item names + "e mais X"
     const preview = batch.slice(0, 2).map(m => {
-      const item = catalog.find(i => i.id === m.itemId);
+      const item = catSource.find(i => i.id === m.itemId);
       return item ? item.name : '\u2014';
     });
     let subText = preview.join(', ');
@@ -3076,7 +3363,7 @@ function openBatchModal(batch) {
   table.innerHTML = '<thead><tr style="background:var(--surface-2)"><th style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-2);text-align:left;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid var(--border)">Item</th><th style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-2);text-align:right;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid var(--border)">Qtd</th><th style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-2);text-align:left;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid var(--border)">Un.</th></tr></thead>';
   const tbody = el('tbody', {});
   batch.forEach((m, i) => {
-    const item = catalog.find(c => c.id === m.itemId);
+    const item = catSource.find(c => c.id === m.itemId);
     const tr = el('tr', {style: i % 2 === 0 ? '' : 'background:var(--surface-2)'});
     tr.appendChild(el('td', {style:'padding:9px 10px;font-size:13px;font-weight:500;border-bottom:1px solid var(--border-light)'}, item?.name || '\u2014'));
     tr.appendChild(el('td', {style:'padding:9px 10px;font-size:13px;font-weight:700;color:var(--accent);text-align:right;border-bottom:1px solid var(--border-light)'}, String(m.qty)));
@@ -3119,7 +3406,7 @@ function printBatchPdf(batch) {
 
   // Build row data
   const rows = batch.map(m => {
-    const item = catalog.find(c => c.id === m.itemId);
+    const item = catSource.find(c => c.id === m.itemId);
     return { name: item?.name || '-', qty: String(m.qty), unit: item?.unit || '' };
   });
 
@@ -3410,7 +3697,7 @@ function viewPedido() {
 
   function renderRows(q) {
     tbody.innerHTML = '';
-    const filtered = catalog.filter(i => i.name.toLowerCase().includes(q.toLowerCase()));
+    const filtered = catSource.filter(i => i.name.toLowerCase().includes(q.toLowerCase()));
     if (!filtered.length) { tbody.appendChild(el('tr',{},el('td',{colspan:'3',cls:'empty'},'Nenhum item encontrado'))); return; }
     const usedCats = CATEGORIES.filter(cat => filtered.some(i => i.category === cat));
     usedCats.forEach(cat => {
@@ -3486,7 +3773,7 @@ function showOrderConfirmModal(order, entries, unitName) {
 
   const body = el('div', {cls:'confirm-modal-body'});
   order.items.forEach(({itemId, qty}) => {
-    const item = catalog.find(c => c.id === itemId);
+    const item = catSource.find(c => c.id === itemId);
     const row = el('div', {cls:'confirm-modal-row'});
     row.appendChild(el('span', {cls:'confirm-modal-item'}, item?.name||'\u2014'));
     row.appendChild(el('span', {cls:'confirm-modal-qty'}, `${qty} ${item?.unit||''}`));
@@ -3562,7 +3849,7 @@ function viewSeparacao() {
         order.items.forEach(({itemId}) => { order.separation[itemId] = 'aguardando'; });
       }
       order.items.forEach(({itemId, qty}) => {
-        const item = catalog.find(c => c.id === itemId);
+        const item = catSource.find(c => c.id === itemId);
         const state = order.separation[itemId] || 'aguardando';
 
         const row = el('div', {cls:'sep-item-row', style: `
@@ -3627,7 +3914,7 @@ function viewSeparacao() {
 
     } else {
       order.items.forEach(({itemId, qty}) => {
-        const item = catalog.find(c => c.id === itemId);
+        const item = catSource.find(c => c.id === itemId);
         const state = order.separation?.[itemId];
         const row = el('div', {cls:'order-item-row'});
         if (state === 'falta') {
@@ -3808,9 +4095,11 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
   const user = session?.name || '';
 
   // Group items by category — TODOS os itens, inclusive zerados e sem mínimo
+  const pdfCatSrc = (unitLabel === 'CPD') ? catalog : unitCatalog;
+  const pdfCats   = (unitLabel === 'CPD') ? CATEGORIES : UNIT_CATEGORIES;
   const byCategory = {};
-  CATEGORIES.forEach(cat => { byCategory[cat] = []; });
-  catalog.forEach(item => {
+  pdfCats.forEach(cat => { byCategory[cat] = []; });
+  pdfCatSrc.forEach(item => {
     if (onlyCategory && item.category !== onlyCategory) return;
     const qty = stockObj[item.id] || 0;
     const min = minimums[item.id] || 0;
@@ -3818,7 +4107,7 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
     byCategory[item.category].push({name: item.name, unit: item.unit, qty, min});
   });
   // Remove categorias sem nenhum item cadastrado (ou fora do filtro)
-  CATEGORIES.forEach(cat => { if (byCategory[cat].length === 0) delete byCategory[cat]; });
+  pdfCats.forEach(cat => { if (byCategory[cat].length === 0) delete byCategory[cat]; });
 
   // Build PDF rows
   const W = 595, ML = 40, MR = 40, TW = W - ML - MR;
@@ -3931,7 +4220,7 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
       else if (isLow) ops.push(`1 0.97 0.87 rg ${ML} ${y-2} ${TW} 13 re f 0 0 0 rg`);
       // Verificar se item foi confirmado na janela atual
       const itemConfirmed = !showMinCol && unitLabel !== 'CPD'
-        ? isConfirmed(unitLabel, (catalog.find(i => i.name === item.name) || {}).id || '')
+        ? isConfirmed(unitLabel, (catSource.find(i => i.name === item.name) || {}).id || '')
         : true; // CPD sempre "confirmado" (não usa esse sistema)
       const itemName = itemConfirmed ? item.name : ('! nao contado ! ' + item.name);
       ops.push(`BT /F2 8 Tf ${colX[0]+3} ${y+1} Td ${pdfStr(itemName)} Tj ET`);
@@ -4182,7 +4471,7 @@ function printOrderPdf(order) {
   const grouped = CATEGORIES.map(cat => ({
     cat,
     items: order.items.filter(({itemId}) => {
-      const it = catalog.find(c=>c.id===itemId);
+      const it = catSource.find(c=>c.id===itemId);
       return it?.category === cat;
     })
   })).filter(g => g.items.length > 0);
@@ -4195,7 +4484,7 @@ function printOrderPdf(order) {
     rowY -= rowH;
 
     items.forEach(({itemId,qty}) => {
-      const item=catalog.find(c=>c.id===itemId);
+      const item=catSource.find(c=>c.id===itemId);
       if(rowAltIndex%2===1) c(`${rgb(245,242,232)} rg ${ml} ${rowY} ${W-ml-mr} ${rowH} re f`);
       else c(`${rgb(253,252,247)} rg ${ml} ${rowY} ${W-ml-mr} ${rowH} re f`);
       c(`${rgb(218,215,197)} RG 0.3 w ${ml} ${rowY} m ${W-mr} ${rowY} l S`);
@@ -4287,7 +4576,7 @@ function hidePush() {
 
 // Feature1:Stockminimumalerts
 function getLowStockItems(stockObj) {
-  return catalog.filter(item => {
+  return catSource.filter(item => {
     const min = minimums[item.id];
     if (!min || min <= 0) return false;
     const qty = stockObj[item.id] || 0;
@@ -4352,7 +4641,7 @@ function getCategoryConsumption(weeks=4) {
   const result = {};
   CATEGORIES.forEach(cat => { result[cat] = 0; });
   movements.filter(m => m.type==='saida' && new Date(m.date).getTime()>=from).forEach(m => {
-    const item = catalog.find(i=>i.id===m.itemId);
+    const item = catSource.find(i=>i.id===m.itemId);
     if (item) result[item.category] = (result[item.category]||0) + m.qty;
   });
   return result;
@@ -4374,7 +4663,7 @@ function showReceiptModal(order) {
   // Item preview
   const preview = el('div', {style:'background:var(--surface-2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:16px'});
   order.items.slice(0,5).forEach(({itemId,qty}) => {
-    const item = catalog.find(c=>c.id===itemId);
+    const item = catSource.find(c=>c.id===itemId);
     const row = el('div', {style:'display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--text-2)'});
     row.appendChild(el('span', {}, item?.name||'\u2014'));
     row.appendChild(el('span', {style:'font-weight:600;color:var(--accent)'}, `${qty} ${item?.unit||''}`));
@@ -4432,7 +4721,7 @@ function showIncompleteModal(order) {
 
   const inputs = [];
   order.items.forEach(({itemId, qty}) => {
-    const item = catalog.find(c=>c.id===itemId);
+    const item = catSource.find(c=>c.id===itemId);
     const row = el('div', {cls:'checklist-row'});
     row.appendChild(el('span', {cls:'check-name'}, item?.name||'\u2014'));
     row.appendChild(el('span', {cls:'check-sent'}, `Pedido: ${qty} ${item?.unit||''}`));
@@ -4570,7 +4859,7 @@ function viewDashboard() {
   }
 
   function openDashModal(label, stockObj) {
-    const allIssues = catalog.filter(i => {
+    const allIssues = catSource.filter(i => {
       const qty = stockObj[i.id] || 0;
       const min = minimums[i.id] || 0;
       return qty === 0 || (min > 0 && qty < min);
@@ -4626,14 +4915,14 @@ function viewDashboard() {
   }
 
   function buildSummaryCard(label, stockObj) {
-    const allIssues = catalog.filter(i => {
+    const allIssues = catSource.filter(i => {
       const qty = stockObj[i.id] || 0;
       const min = minimums[i.id] || 0;
       return qty === 0 || (min > 0 && qty < min);
     });
-    const zeroCount = catalog.filter(i => (stockObj[i.id]||0) === 0).length;
+    const zeroCount = catSource.filter(i => (stockObj[i.id]||0) === 0).length;
     const lowCount  = allIssues.filter(i => (stockObj[i.id]||0) > 0).length;
-    const okCount   = catalog.length - zeroCount - lowCount;
+    const okCount   = catSource.length - zeroCount - lowCount;
 
     const card = el('div', {cls:'dash-summary-card', onclick: () => openDashModal(label, stockObj)});
 
@@ -4727,11 +5016,11 @@ function viewRelatorio() {
     const byCat = {};
     CATEGORIES.forEach(c=>{byCat[c]={entrada:0,saida:0};});
     saidas.forEach(m=>{
-      const item=catalog.find(i=>i.id===m.itemId);
+      const item=catSource.find(i=>i.id===m.itemId);
       if(item) byCat[item.category].saida += m.qty;
     });
     entradas.forEach(m=>{
-      const item=catalog.find(i=>i.id===m.itemId);
+      const item=catSource.find(i=>i.id===m.itemId);
       if(item) byCat[item.category].entrada += m.qty;
     });
 
@@ -4741,7 +5030,7 @@ function viewRelatorio() {
     saidas.forEach(m=>{ if(m.unitName && byUnit[m.unitName]!==undefined) byUnit[m.unitName]+=m.qty; });
 
     // Value
-    const totalValue = catalog.reduce((s,i)=>s+(cpd[i.id]||0)*(prices[i.id]||0),0);
+    const totalValue = catSource.reduce((s,i)=>s+(cpd[i.id]||0)*(prices[i.id]||0),0);
 
     reportOut.innerHTML = '';
 
@@ -4861,7 +5150,7 @@ function viewHistorico() {
       // Recalculate category data
       const catTotals = {};
       filtered.forEach(m => {
-        const item = catalog.find(c => c.id === m.itemId);
+        const item = catSource.find(c => c.id === m.itemId);
         if (!item) return;
         catTotals[item.category] = (catTotals[item.category]||0) + m.qty;
       });
@@ -4913,8 +5202,8 @@ function viewCpd() {
   // Banner de divergências de entregas (itens faltantes)
   const divBanner = buildDivergenceBanner();
   if (divBanner) frag.appendChild(divBanner);
-  const inStock = catalog.filter(i => (cpd[i.id]||0) > 0).length;
-  const zeroStock = catalog.length - inStock;
+  const inStock = catSource.filter(i => (cpd[i.id]||0) > 0).length;
+  const zeroStock = catSource.length - inStock;
 
   // Stock minimum alerts (Feature 1)
   const cpdAlerts = buildAlerts(cpd, 'CPD');
@@ -4929,7 +5218,7 @@ function viewCpd() {
     c.appendChild(el('div', {cls:'metric-value '+cls}, String(value)));
     return c;
   };
-  metrics.appendChild(makeMetric('Total de Itens', catalog.length));
+  metrics.appendChild(makeMetric('Total de Itens', catSource.length));
   metrics.appendChild(makeMetric('Com Estoque', inStock, 'success'));
   metrics.appendChild(makeMetric('Sem Estoque', zeroStock, zeroStock > 0 ? 'danger' : ''));
   metrics.appendChild(makeMetric('Movimenta\u00E7\u00F5es', movements.length, 'accent'));
@@ -5014,8 +5303,8 @@ function viewUnits() {
   }
 
   const ustock  = unitStock[activeUnit] || {};
-  const inStock = catalog.filter(i => (ustock[i.id]||0) > 0).length;
-  const zero    = catalog.length - inStock;
+  const inStock = catSource.filter(i => (ustock[i.id]||0) > 0).length;
+  const zero    = catSource.length - inStock;
 
   const metrics = el('div', {cls:'metrics-grid'});
   const mc = el('div', {cls:'metric-card'});
@@ -5048,8 +5337,9 @@ function viewUnits() {
     lockByWindow: !isCPD(),
     showConfirm: !isCPD(),
     unitName: activeUnit,
-    showEnviar: isCPD(),        // coluna A Enviar só para CPD
-    unitForDisplay: activeUnit, // unidade cujo unitMinimums usar
+    showEnviar: isCPD(),
+    unitForDisplay: activeUnit,
+    catSource: unitCatalog,     // catálogo das unidades (separado do CPD)
   }));
   tableBlock.appendChild(inner);
   frag.appendChild(tableBlock);
@@ -5075,7 +5365,7 @@ function separarParaEnvio(unit, dayCode) {
       if (q <= 0) return;
       // Mapear item do plano para item do catálogo (por nome normalizado)
       const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-      const catItem = catalog.find(i => norm(i.name) === norm(planItem.name));
+      const catItem = catSource.find(i => norm(i.name) === norm(planItem.name));
       if (catItem) {
         itemsMap[catItem.id] = (itemsMap[catItem.id] || 0) + q;
       }
@@ -5129,7 +5419,7 @@ function viewEnvios() {
     pendBox.appendChild(el('div', {style:'font-weight:700;font-size:13px;color:var(--warning);margin-bottom:6px'},
       '\u26A0\uFE0F ' + pendCount + (pendCount===1?' item pendente':' itens pendentes') + ' de entregas anteriores'));
     const pendList = Object.entries(unitPend).filter(([,q])=>q>0).map(([id,q]) => {
-      const it = catalog.find(i=>i.id===id);
+      const it = catSource.find(i=>i.id===id);
       return (it?it.name:id) + ' (' + q + ')';
     }).join(' \u00B7 ');
     pendBox.appendChild(el('div', {style:'font-size:12px;color:var(--text-2)'}, pendList));
@@ -5289,7 +5579,7 @@ function showShipmentReceiptModal(shipment) {
   table.appendChild(thead);
   const tbody = el('tbody', {});
   shipment.items.forEach(({itemId, qty}) => {
-    const item = catalog.find(i => i.id === itemId);
+    const item = catSource.find(i => i.id === itemId);
     const tr = el('tr', {});
     tr.appendChild(el('td', {cls:'item-name'}, item ? item.name : itemId));
     tr.appendChild(el('td', {style:'text-align:center;font-weight:700'}, String(qty)));
@@ -5393,7 +5683,7 @@ function buildDivergenceBanner() {
     const row = el('div', {style:'margin-top:10px;padding-top:10px;border-top:1px solid var(--border)'});
     row.appendChild(el('div', {style:'font-size:13px;font-weight:700'}, sh.unit + ' \u2014 ' + new Date(sh.receivedAt||sh.date).toLocaleDateString('pt-BR')));
     const list = (sh.faltantes||[]).map(f => {
-      const it = catalog.find(i=>i.id===f.itemId);
+      const it = catSource.find(i=>i.id===f.itemId);
       return (it?it.name:f.itemId) + ' (' + f.qty + ')';
     }).join(' \u00B7 ');
     row.appendChild(el('div', {style:'font-size:12px;color:var(--text-2);margin:4px 0 8px'}, 'Faltou: ' + list));
