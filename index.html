@@ -1430,10 +1430,10 @@ auth.onAuthStateChanged(user => {
       // ═══ MIGRAÇÃO DE CATÁLOGO v11 (planilha consolidada) ═══
       // Substitui o catálogo antigo pelo novo e zera as contagens —
       // nova contagem será feita do zero com a lista atualizada.
-      const CATALOG_VER = 'v13';
+      const CATALOG_VER = 'v14';
       if (!window._migrandoV11 && data.pizza_catalog_ver !== CATALOG_VER && fbCatalogLen > 0) {
         window._migrandoV11 = true;
-        console.log('[Migração v12] Substituindo catálogo e zerando contagens...');
+        console.log('[Migração v14] Substituindo catálogo e zerando contagens...');
         Promise.all([
           db.ref('dados/pizza_catalog').set(SEED_CATALOG),
           db.ref('dados/pizza_unit_catalog').set(UNIT_SEED_CATALOG),
@@ -1443,10 +1443,10 @@ auth.onAuthStateChanged(user => {
           db.ref('dados/pizza_prices').set({}),
           db.ref('dados/pizza_catalog_ver').set(CATALOG_VER),
         ]).then(() => {
-          console.log('[Migração v12] Concluída! Catálogo novo com ' + SEED_CATALOG.length + ' itens.');
+          console.log('[Migração v14] Concluída! Catálogo novo com ' + SEED_CATALOG.length + ' itens.');
           window._migrandoV11 = false;
         }).catch(e => {
-          console.error('[Migração v12] Erro:', e);
+          console.error('[Migração v14] Erro:', e);
           window._migrandoV11 = false;
         });
         return; // aguarda o próximo evento do listener já com dados migrados
@@ -5342,7 +5342,7 @@ function viewUnits() {
     unitName: activeUnit,
     showEnviar: isCPD(),
     unitForDisplay: activeUnit,
-    catalog: unitCatalog,     // catálogo das unidades (separado do CPD)
+    catSource: unitCatalog,   // catálogo das unidades (separado do CPD)
   }));
   tableBlock.appendChild(inner);
   frag.appendChild(tableBlock);
