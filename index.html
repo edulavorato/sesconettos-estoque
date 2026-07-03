@@ -395,7 +395,18 @@
   }
   .cat-toggle.open .cat-chevron { transform: rotate(180deg); }
 
-
+  /* Janelas de contagem — cores no cabeçalho de categoria (unidades) */
+  .cat-toggle.janela-aberta {
+    background: rgba(56, 161, 105, 0.14);
+    border-left: 3px solid var(--success, #38A169);
+    color: var(--success, #276749);
+  }
+  .cat-toggle.janela-aberta .cat-count { color: #276749; font-weight: 700; }
+  .cat-toggle.janela-fechada {
+    background: rgba(214, 158, 46, 0.10);
+    border-left: 3px solid #D69E2E;
+  }
+  .cat-toggle.janela-fechada .cat-count { color: #975A16; }
 
   /* Botão confirmar item */
   .confirm-btn {
@@ -445,7 +456,10 @@
   .cat-row:hover { background: none !important; }
   .cat-row > td { padding: 0 !important; border: none; }
   .cat-toggle { box-sizing: border-box; width: 100%; }
-
+  .cat-toggle.janela-aberta  { background: rgba(34,139,34,.10); border-left: 4px solid #2a9148; color: #1e7a38; }
+  .cat-toggle.janela-fechada { background: rgba(200,150,0,.08); border-left: 4px solid #C89600; color: #8a6500; }
+  .cat-toggle.janela-aberta .cat-count  { color: #2a9148 !important; }
+  .cat-toggle.janela-fechada .cat-count { color: #C89600 !important; }
   .confirm-btn { flex:0 0 auto; width:32px; height:32px; border-radius:50%; border:2px solid var(--border); background:transparent; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .18s; }
   .confirm-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
   .confirm-btn.conf-ok   { border-color:#2a9148; background:rgba(34,139,34,.12); color:#2a9148; }
@@ -1524,9 +1538,22 @@ auth.onAuthStateChanged(user => {
         countedMap = data.pizza_counted;
         saveLocal('pizza_counted', countedMap);
       }
-      if (data.pizza_unit_catalog) {
+      if (data.pizza_unit_catalog && data.pizza_unit_catalog.length > 0) {
+        // Firebase tem catálogo das unidades — usar ele
         unitCatalog = data.pizza_unit_catalog;
         saveLocal('pizza_unit_catalog', unitCatalog);
+      } else if (!window._unitCatalogPushed) {
+        // Firebase não tem pizza_unit_catalog ainda — enviar o seed agora
+        window._unitCatalogPushed = true;
+        console.log('[Firebase] Enviando UNIT_SEED_CATALOG ao banco...');
+        db.ref('dados/pizza_unit_catalog').set(UNIT_SEED_CATALOG)
+          .then(() => console.log('[Firebase] UNIT_SEED_CATALOG enviado:', UNIT_SEED_CATALOG.length, 'itens'))
+          .catch(e => { console.error('[Firebase] Erro ao enviar unit_catalog:', e); window._unitCatalogPushed = false; });
+        // Garantir que unitCatalog local está correto enquanto aguarda
+        if (!unitCatalog || unitCatalog.length === 0) {
+          unitCatalog = UNIT_SEED_CATALOG.slice();
+          saveLocal('pizza_unit_catalog', unitCatalog);
+        }
       }
       if (data.pizza_confirmados) {
         confirmados = data.pizza_confirmados;
@@ -1570,33 +1597,12 @@ auth.onAuthStateChanged(user => {
     </div>
     <div class="login-field">
       <label class="login-label" for="login-name">Seu nome</label>
-      <input class="login-input" id="login-name" type="text" placeholder="Ex: João Silva" autocomplete="off">
-    </div>
-    <div class="login-field">
-      <label class="login-label" for="login-unit">Unidade</label>
-      <select class="login-input" id="login-unit">
-        <option value="">Selecione a unidade...</option>
-        <option value="cpd">CPD</option>
-        <option value="Asa Sul">Asa Sul</option>
-        <option value="SIG">SIG</option>
-        <option value="Vicente Pires">Vicente Pires</option>
-        <option value="Delivery">Delivery</option>
-      </select>
-    </div>
-    <div class="login-field">
-      <label class="login-label" for="login-role">Função</label>
-      <select class="login-input" id="login-role">
-        <option value="">Selecione a função...</option>
-        <option value="Gerente">Gerente</option>
-        <option value="Estoquista">Estoquista</option>
-        <option value="Operador">Operador</option>
-        <option value="Supervisor">Supervisor</option>
-      </select>
+      <input class="login-input" id="login-name" type="text" placeholder="Ex: João Silva" autocomplete="given-name">
     </div>
     <div class="login-field">
       <label class="login-label" for="login-pass">Senha</label>
       <div style="position:relative">
-        <input class="login-input" id="login-pass" type="password" placeholder="Digite a senha da unidade" autocomplete="off" style="padding-right:42px">
+        <input class="login-input" id="login-pass" type="password" placeholder="Digite a senha da sua unidade" autocomplete="current-password" style="padding-right:42px">
         <button type="button" onclick="(function(){var i=document.getElementById('login-pass');i.type=i.type==='password'?'text':'password'})()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#5A7A62;font-size:16px;padding:4px;line-height:1">👁</button>
       </div>
     </div>
@@ -2535,10 +2541,12 @@ let countedMap = load('pizza_counted', {});  // {unit: {windowKey: {itemId: true
 
 // Chave única da janela de contagem atual (ex: "2026-06-15-0" = domingo 15/06)
 function windowKey() {
-  // Chave única por data (meia-noite) — reseta contagem a cada novo dia
   const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return now.toISOString().slice(0, 10);
+  // Entre 0h e 3h, pertence ao dia anterior
+  if (now.getHours() < 3) now.setDate(now.getDate() - 1);
+  now.setHours(12, 0, 0, 0);
+  const iso = now.toISOString().slice(0, 10);
+  return iso + '-' + diaOperacional();
 }
 
 // Marcar/desmarcar item como confirmado na janela atual
@@ -2615,45 +2623,93 @@ function defaultView() {
 }
 
 // Senhas por unidade (n\u00E3o exibir em logs ou console)
+// ═══ JANELAS DE CONTAGEM (unidades) ═══
+// Dia operacional: 15h00 do dia até 03h00 da manhã seguinte.
+// 0=Domingo, 1=Segunda, 2=Terça, 3=Quarta, 4=Quinta, 5=Sexta, 6=Sábado
+// 'ALL' libera todas as categorias naquele dia.
+// >>> EDITE AQUI quando a lista categoria × dia for definida <<<
+const CONTAGEM_JANELAS = {
+  0: ['ALL'],   // Domingo: todas as categorias
+  2: ['ALL'],   // Terça: todas as categorias
+  3: ['Bar'],     // Quarta: bar
+  4: ['ALL'],   // Quinta: todas as categorias
+};
+const DIAS_SEMANA = ['Domingo','Segunda','Ter\u00E7a','Quarta','Quinta','Sexta','S\u00E1bado'];
 
-const UNIT_PASSWORDS = {
-  'cpd':           'Sesco@CPD',
-  'Asa Sul':       'SescoAsaSul@',
-  'Vicente Pires': 'Sesco#VP',
-  'SIG':           'SescoSIG#',
-  'Delivery':      'SescoDlv#',
+// Retorna o dia operacional atual (0-6). Entre 0h-3h, conta como o dia anterior.
+function diaOperacional() {
+  const now = new Date();
+  let d = now.getDay();
+  if (now.getHours() < 3) d = (d + 6) % 7;
+  return d;
+}
+
+// Está dentro do horário de funcionamento (15h-3h)?
+function dentroDoHorario() {
+  return true; // Trava de horário removida
+}
+
+// A categoria pode ser contada agora? (CPD sempre pode)
+function categoriaLiberada(cat) {
+  if (isCPD()) return true;
+  if (!dentroDoHorario()) return false;
+  const allowed = CONTAGEM_JANELAS[diaOperacional()];
+  if (!allowed) return false;
+  if (allowed.includes('ALL')) return UNIT_CATEGORIES.includes(cat);
+  return allowed.includes(cat);
+}
+
+// Próxima janela em que a categoria estará liberada (para mensagens)
+function proximaJanela(cat) {
+  const hoje = diaOperacional();
+  for (let i = 0; i <= 7; i++) {
+    const d = (hoje + i) % 7;
+    const allowed = CONTAGEM_JANELAS[d];
+    if (allowed && (allowed.includes('ALL') || allowed.includes(cat))) {
+      if (i === 0 && !dentroDoHorario()) return DIAS_SEMANA[d] + ' a partir das 15h';
+      if (i === 0) return 'hoje';
+      return DIAS_SEMANA[d] + ' a partir das 15h';
+    }
+  }
+  return 'a definir';
+}
+
+const PASS_TO_UNIT = {
+  'Sesco@CPD':      { unit: 'cpd',          role: 'Equipe' },
+  'SescoAsaSul@':   { unit: 'Asa Sul',       role: 'Equipe' },
+  'Sesco#VP':       { unit: 'Vicente Pires', role: 'Equipe' },
+  'SescoSIG#':      { unit: 'SIG',           role: 'Equipe' },
+  'SescoDlv#':      { unit: 'Delivery',      role: 'Equipe' },
+  'SescoDelivery%': { unit: 'Delivery',      role: 'Equipe' },
 };
 
 // LOGIN/LOGOUT
 function doLogin() {
-  const name = document.getElementById('login-name').value.trim();
-  const unit = document.getElementById('login-unit').value;
-  const role = document.getElementById('login-role').value;
-  const pass = document.getElementById('login-pass').value;
+  const name   = (document.getElementById('login-name').value || '').trim();
+  const pass   = (document.getElementById('login-pass').value || '');
   const errDiv = document.getElementById('login-error');
 
-  if (!name || !unit || !role || !pass) {
-    errDiv.textContent = 'Preencha todos os campos para continuar.';
+  if (!name || !pass) {
+    errDiv.textContent = 'Preencha seu nome e a senha para continuar.';
     errDiv.style.display = 'block';
     return;
   }
 
-  // Validate password
-  const expected = UNIT_PASSWORDS[unit];
-  if (!expected || pass !== expected) {
-    errDiv.textContent = 'Senha incorreta. Verifique com o respons\u00E1vel da unidade.';
+  const match = PASS_TO_UNIT[pass];
+  if (!match) {
+    errDiv.textContent = 'Senha incorreta. Verifique com o responsável.';
     errDiv.style.display = 'block';
-    // Shake animation
     const passInp = document.getElementById('login-pass');
-    passInp.style.borderColor = 'var(--danger)';
-    passInp.style.animation = 'none';
-    setTimeout(() => { passInp.style.borderColor = ''; }, 2000);
+    if (passInp) {
+      passInp.style.borderColor = 'var(--danger)';
+      setTimeout(() => { passInp.style.borderColor = ''; }, 2000);
+    }
     return;
   }
 
   errDiv.style.display = 'none';
-  session = { name, unit, role };
-  save('pizza_session', session);
+  session = { name, unit: match.unit, role: match.role };
+  try { localStorage.setItem('pizza_session', JSON.stringify(session)); } catch(e) {}
   applySession();
 }
 
@@ -2901,6 +2957,7 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
   opts = opts || {};
   const useMin        = opts.useMin !== false;
   const pdfLabel      = opts.pdfLabel     || null;
+  const lockByWindow  = opts.lockByWindow === true;
   const unitForConf   = opts.unitForConf  || null;
   const unitMins      = opts.unitMins     || {};
   const unitName      = opts.unitName     || null;  // unidade para botão confirmar
@@ -2942,7 +2999,14 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
   let saveTimer = {};
 
   function updateQty(itemId, newQty, inp, tr, inlineSpan) {
-
+    // Trava de janela: recusa gravação fora do horário/dia de contagem
+    if (lockByWindow) {
+      const it = catSource.find(i => i.id === itemId);
+      if (it && !categoriaLiberada(it.category)) {
+        toast('\uD83D\uDD12 Contagem de ' + it.category + ' dispon\u00EDvel ' + proximaJanela(it.category) + '.');
+        return;
+      }
+    }
     const raw = typeof newQty === 'string' ? parseFloat(newQty.replace(',', '.')) : newQty;
     const q = Math.max(0, isNaN(raw) ? 0 : raw);
     stockObj[itemId] = q;
@@ -2991,7 +3055,10 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
       const catTd = document.createElement('td');
       catTd.setAttribute('colspan', colCount);
       catTd.style.cssText = 'padding:0;width:100%;';
-      const togBtn = el('button', {cls:'cat-toggle' + (isOpen ? ' open' : '')});
+      const catJanela = (lockByWindow && !isCPD())
+        ? (categoriaLiberada(cat) ? ' janela-aberta' : ' janela-fechada')
+        : '';
+      const togBtn = el('button', {cls:'cat-toggle' + (isOpen ? ' open' : '') + catJanela});
       togBtn.appendChild(document.createTextNode(cat));
 
       // Alert count
@@ -2999,10 +3066,13 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
         const qty = stockObj[i.id]||0; const min = minimums[i.id]||0;
         return min>0 && qty<min;
       }).length;
-      const countText = alertCount > 0
-        ? `${catItems.length} itens \u00B7 \u26A0\uFE0F ${alertCount}`
-        : `${catItems.length} itens`;
-      const countSpan = el('span', {cls:'cat-count', style: alertCount>0?'color:var(--warning);font-weight:700':''}, countText);
+      const catLocked = lockByWindow && !categoriaLiberada(cat);
+      const countText = catLocked
+        ? `\uD83D\uDD12 Contagem ${proximaJanela(cat)}`
+        : (alertCount > 0
+          ? `${catItems.length} itens \u00B7 \u26A0\uFE0F ${alertCount}`
+          : `${catItems.length} itens`);
+      const countSpan = el('span', {cls:'cat-count', style: catLocked ? 'color:var(--text-3)' : (alertCount>0?'color:var(--warning);font-weight:700':'')}, countText);
       const chevron = el('span', {cls:'cat-chevron'}, '\u25BC');
       togBtn.appendChild(countSpan);
       togBtn.appendChild(chevron);
@@ -3083,9 +3153,10 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
 
           const ctrlTd = el('td', {cls:'qty-controls-cell', style:'text-align:right; padding: 6px 16px;'});
           const wrap2 = el('div', {cls:'qty-controls'});
-
+          const rowLocked = lockByWindow && !categoriaLiberada(item.category);
+          if (rowLocked) wrap2.style.opacity = '0.45';
           const minBtn = el('button', {cls:'qty-btn-sm'}, '-');
-
+          if (rowLocked) minBtn.disabled = true;
 
           // Colour input based on stock status
           let inpCls = 'qty-inp-sm';
@@ -3098,9 +3169,9 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
             type: 'text', inputmode: 'decimal', pattern: '[0-9]*',
             cls: inpCls, value: String(qty)
           });
-
+          if (rowLocked) { inp.disabled = true; inp.title = 'Contagem dispon\u00EDvel ' + proximaJanela(item.category); }
           const plusBtn = el('button', {cls:'qty-btn-sm'}, '+');
-
+          if (rowLocked) plusBtn.disabled = true;
           minBtn.addEventListener('click', () => {
             const cur = parseFloat(inp.value.replace(',', '.')) || 0;
             updateQty(item.id, cur - 1, inp, tr, inlineUnit);
@@ -5180,6 +5251,33 @@ function viewUnits() {
   if (shipBanner) frag.appendChild(shipBanner);
 
   // Banner da janela de contagem (apenas unidades)
+  if (!isCPD()) {
+    const d = diaOperacional();
+    const allowed = CONTAGEM_JANELAS[d];
+    const aberto = dentroDoHorario();
+    let msg, cor;
+    if (aberto && allowed) {
+      const cats = allowed.includes('ALL') ? 'todas as categorias' : allowed.join(', ');
+      msg = '\u2705 Janela de contagem ABERTA (' + DIAS_SEMANA[d] + '): ' + cats + '.';
+      cor = 'border-color:var(--success);background:var(--success-bg, rgba(50,160,80,.08))';
+    } else {
+      // achar próxima janela geral
+      let prox = 'a definir';
+      for (let i = aberto && allowed ? 1 : 0; i <= 7; i++) {
+        const dd = (d + i) % 7;
+        if (CONTAGEM_JANELAS[dd]) {
+          prox = DIAS_SEMANA[dd] + ' a partir das 15h';
+          if (i === 0 && !aberto) prox = 'hoje a partir das 15h';
+          break;
+        }
+      }
+      msg = '\uD83D\uDD12 Fora da janela de contagem. Pr\u00F3xima: ' + prox + '.';
+      cor = 'border-color:var(--border);background:var(--surface-2)';
+    }
+    const winBanner = el('div', {cls:'table-wrap', style:'padding:11px 16px;margin-bottom:14px;font-size:12.5px;color:var(--text-2);' + cor}, msg);
+    frag.appendChild(winBanner);
+  }
+
   // CPD users see unit tabs; unit users are locked to their own unit
   if (isCPD()) {
     const tabs = el('div', {cls:'unit-tabs'});
@@ -5232,7 +5330,7 @@ function viewUnits() {
     unitName: activeUnit,
     showEnviar: isCPD(),
     unitForDisplay: activeUnit,
-    catalog: unitCatalog,     // catálogo das unidades (separado do CPD)
+    catSource: unitCatalog,   // catálogo das unidades — SEPARADO do catalog (CPD)
   }));
   tableBlock.appendChild(inner);
   frag.appendChild(tableBlock);
@@ -5432,7 +5530,7 @@ function getMyTransitShipments() {
 function buildShipmentBanner() {
   const transit = getMyTransitShipments();
   if (transit.length === 0) return null;
-  const isGerente = (session.role || '').toLowerCase() === 'gerente';
+  const isGerente = true; // Opção D: qualquer usuário pode confirmar recebimento
 
   const box = el('div', {cls:'table-wrap', style:'padding:14px 18px;margin-bottom:14px;border-color:var(--accent);background:var(--accent-light);cursor:' + (isGerente?'pointer':'default')});
   const title = el('div', {style:'font-weight:700;font-size:14px;color:var(--accent-dark);display:flex;align-items:center;gap:8px'});
