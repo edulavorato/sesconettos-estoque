@@ -1638,32 +1638,12 @@ auth.onAuthStateChanged(user => {
         confirmados = data.pizza_confirmados;
         saveLocal('pizza_confirmados', confirmados);
       }
-      // Atualização inteligente: patch cirúrgico preferível ao render() completo
+      // Só re-renderiza se foi outro dispositivo que enviou — não write local
+      // Throttle adicional: máximo 1 render por segundo para evitar avalanche de updates
       if (typeof render === 'function' && session && !window._fb.localWrite) {
         clearTimeout(window._fb.renderThrottleTimer);
         window._fb.renderThrottleTimer = setTimeout(() => {
-          if (!session || window._fb.localWrite) return;
-
-          const hasStockRows = document.querySelectorAll('tr[data-item-id]').length > 0;
-
-          if (hasStockRows && (currentView === 'cpd' || currentView === 'units')) {
-            // DOM já existe: fazer patch cirúrgico (preserva foco, categorias abertas)
-            try {
-              if (currentView === 'cpd') {
-                patchStockValues(cpd, false, {});
-              } else {
-                const ustock = unitStock[activeUnit] || {};
-                patchStockValues(ustock, false, {});
-                if (isCPD()) patchUnitReadValues(ustock, activeUnit);
-              }
-              return; // patch bem-sucedido — não precisa do render() completo
-            } catch(e) {
-              console.warn('[Render] Patch falhou, fazendo render completo:', e);
-            }
-          }
-
-          // Fallback: render() completo (primeira carga ou views que não têm patch)
-          render();
+          if (typeof render === 'function' && session && !window._fb.localWrite) render();
         }, 800);
       }
     }
@@ -3112,7 +3092,6 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
       : '<tr><th>Item</th><th style="width:18%;text-align:right">Qtd</th><th class="col-unit" style="width:18%">Medida</th><th style="width:8%"></th></tr>';
   }
   const tbody = el('tbody', {id:'tbody-'+searchInp.id});
-  tbody.setAttribute('data-stock-table', _tableId);
   table.appendChild(thead);
   table.appendChild(tbody);
   tableWrap.appendChild(table);
@@ -3158,15 +3137,7 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
   }
 
   // track open state per table instance -- all closed by default
-  // openCats persiste entre renders usando um mapa global keyed por tableId
-  // Assim categorias abertas não fecham quando o Firebase atualiza dados
-  const _tableId = searchInputId || ('tbl-' + Date.now());
-  if (!window._openCatsMap) window._openCatsMap = {};
-  if (!window._openCatsMap[_tableId]) {
-    // Primeira vez: todas fechadas
-    window._openCatsMap[_tableId] = {};
-  }
-  const openCats = window._openCatsMap[_tableId];
+  const openCats = Object.fromEntries(CATEGORIES.map(c => [c, false]));
 
   function renderRows(q) {
     tbody.innerHTML = '';
@@ -3253,7 +3224,6 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
 
         const tr = el('tr', {});
         tr.setAttribute('data-cat', cat);
-        tr.setAttribute('data-item-id', item.id); // permite patch cirúrgico
         if (!isOpen) tr.style.display = 'none';
         // Cor da linha: confirmados → classes CSS; CPD → background direto
         if (showConfirm && confirmed) {
@@ -3300,7 +3270,6 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
             type: 'text', inputmode: 'decimal', pattern: '[0-9]*',
             cls: inpCls, value: String(qty)
           });
-          inp.setAttribute('data-qty-input', item.id); // para patch cirúrgico
           if (rowLocked) { inp.disabled = true; inp.title = 'Contagem dispon\u00EDvel ' + proximaJanela(item.category); }
           const plusBtn = el('button', {cls:'qty-btn-sm'}, '+');
           if (rowLocked) plusBtn.disabled = true;
@@ -3352,7 +3321,6 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
           // Read-only: show qty with status colour + min as small text
           const qtyColor = isZero ? 'var(--danger)' : isLow ? '#E8A020' : 'var(--success)';
           const qtyTd = el('td', {style:`text-align:right;font-weight:700;color:${qtyColor}`});
-          qtyTd.setAttribute('data-qty-cell', item.id);
           qtyTd.textContent = String(qty);
           if (min > 0) {
             const minLabel = el('div', {style:'font-size:10px;color:var(--text-3);font-weight:400'}, `m\u00EDn: ${min}`);
@@ -3364,7 +3332,6 @@ function buildStockTable(stockObj, searchInputId, onUpdate, opts) {
             const uMin  = uMins[item.id] || 0;
             const aEnviar = Math.max(0, uMin - qty);
             const envTd = el('td', {style:'text-align:right;font-weight:700;color:' + (aEnviar > 0 ? 'var(--accent-dark,#2a6049)' : 'var(--text-3)')});
-            envTd.setAttribute('data-aenviar-cell', item.id);
             envTd.textContent = aEnviar > 0 ? String(aEnviar) : '—';
             if (uMin > 0) envTd.title = 'Mín: ' + uMin + ' | Estoque: ' + qty;
             tr.appendChild(envTd);
@@ -3818,15 +3785,7 @@ function viewPedido() {
   tableWrap.appendChild(table);
   wrap.appendChild(tableWrap);
 
-  // openCats persiste entre renders usando um mapa global keyed por tableId
-  // Assim categorias abertas não fecham quando o Firebase atualiza dados
-  const _tableId = searchInputId || ('tbl-' + Date.now());
-  if (!window._openCatsMap) window._openCatsMap = {};
-  if (!window._openCatsMap[_tableId]) {
-    // Primeira vez: todas fechadas
-    window._openCatsMap[_tableId] = {};
-  }
-  const openCats = window._openCatsMap[_tableId];
+  const openCats = Object.fromEntries(CATEGORIES.map(c => [c, false]));
   CATEGORIES.forEach(c => { openCats[c] = false; });
 
   function renderRows(q) {
@@ -6150,15 +6109,7 @@ function viewBatchOperation(mode) {
   tableWrap.appendChild(table);
   wrap.appendChild(tableWrap);
 
-  // openCats persiste entre renders usando um mapa global keyed por tableId
-  // Assim categorias abertas não fecham quando o Firebase atualiza dados
-  const _tableId = searchInputId || ('tbl-' + Date.now());
-  if (!window._openCatsMap) window._openCatsMap = {};
-  if (!window._openCatsMap[_tableId]) {
-    // Primeira vez: todas fechadas
-    window._openCatsMap[_tableId] = {};
-  }
-  const openCats = window._openCatsMap[_tableId];
+  const openCats = Object.fromEntries(CATEGORIES.map(c => [c, false]));
   CATEGORIES.forEach(c => {
     if (preload) {
       const hasItem = preload.items.some(({itemId}) => {
@@ -6213,7 +6164,6 @@ function viewBatchOperation(mode) {
 
         const tr = el('tr', {});
         tr.setAttribute('data-cat', cat);
-        tr.setAttribute('data-item-id', item.id); // permite patch cirúrgico
         if (!isOpen) tr.style.display = 'none';
 
         // Name + inline stock info (mobile)
@@ -6458,15 +6408,7 @@ function viewCatalogo() {
     }
 
     const tbody = el('tbody', {});
-    // openCats persiste entre renders usando um mapa global keyed por tableId
-  // Assim categorias abertas não fecham quando o Firebase atualiza dados
-  const _tableId = searchInputId || ('tbl-' + Date.now());
-  if (!window._openCatsMap) window._openCatsMap = {};
-  if (!window._openCatsMap[_tableId]) {
-    // Primeira vez: todas fechadas
-    window._openCatsMap[_tableId] = {};
-  }
-  const openCats = window._openCatsMap[_tableId];
+    const openCats = Object.fromEntries(CATEGORIES.map(c => [c, false]));
 
     const renderRows = (search) => {
       tbody.innerHTML = '';
@@ -6628,92 +6570,9 @@ function svgCheck() {
 }
 
 // RENDER
-// ═══ PATCH CIRÚRGICO DE VALORES ══════════════════════════════════════════════
-// Atualiza apenas os números no DOM já existente quando o Firebase sincroniza.
-// Preserva: foco do teclado, categorias abertas, estado de digitação.
-// Usado pelo listener Firebase em vez de render() completo.
-function patchStockValues(stockObj, useMin, unitMins) {
-  useMin  = useMin  || false;
-  unitMins = unitMins || {};
-
-  // Elemento com foco atual — não tocar nele
-  const focused = document.activeElement;
-  const focusedItemId = focused ? focused.getAttribute('data-qty-input') : null;
-
-  // Percorrer todos os <tr> marcados com data-item-id
-  const rows = document.querySelectorAll('tr[data-item-id]');
-  rows.forEach(tr => {
-    const itemId = tr.getAttribute('data-item-id');
-    if (!itemId) return;
-
-    const newQty = stockObj[itemId] || 0;
-    const inp = tr.querySelector('[data-qty-input]');
-
-    // Atualizar input apenas se: não está com foco E valor mudou
-    if (inp && inp.getAttribute('data-qty-input') !== focusedItemId) {
-      const curVal = parseFloat(inp.value.replace(',','.')) || 0;
-      if (curVal !== newQty) {
-        inp.value = String(newQty);
-        // Atualizar classe visual do input
-        const uMin = useMin ? (unitMins[itemId] || 0) : 0;
-        if (newQty === 0 && uMin > 0) inp.className = 'qty-inp-sm has-error';
-        else if (newQty > 0)         inp.className = 'qty-inp-sm has-val';
-        else                          inp.className = 'qty-inp-sm';
-      }
-    }
-
-    // Atualizar classe da linha (cor de fundo) sem recriar
-    const uMin = useMin ? (unitMins[itemId] || 0) : 0;
-    const newQtyN = stockObj[itemId] || 0;
-    const isZero = newQtyN === 0;
-    const isLow  = uMin > 0 && newQtyN < uMin && !isZero;
-
-    // Só mudar se a classe realmente mudou (evita reflow desnecessário)
-    const wantClass = isZero ? 'count-danger' : isLow ? 'count-warn' : '';
-    const curClass  = tr.className || '';
-    if (wantClass && !curClass.includes(wantClass)) {
-      tr.className = wantClass;
-      tr.style.background = '';
-    } else if (!wantClass && (curClass.includes('count-'))) {
-      tr.className = '';
-      if (!useMin) tr.style.background = '';
-    }
-  });
-}
-
-// Versão especializada para o painel de unidades (read-only, coluna A Enviar)
-function patchUnitReadValues(unitStockObj, unitName) {
-  const focused = document.activeElement;
-  const rows = document.querySelectorAll('tr[data-item-id]');
-  const uMins = (window.unitMinimums && window.unitMinimums[unitName]) || {};
-
-  rows.forEach(tr => {
-    const itemId = tr.getAttribute('data-item-id');
-    if (!itemId) return;
-    const qty = unitStockObj[itemId] || 0;
-
-    // Célula de quantidade (read-only: td com font-weight:700, não input)
-    const qtyTd = tr.querySelector('td[data-qty-cell]');
-    if (qtyTd) qtyTd.textContent = String(qty);
-
-    // Célula A Enviar
-    const envTd = tr.querySelector('td[data-aenviar-cell]');
-    if (envTd) {
-      const uMin = uMins[itemId] || 0;
-      const aEnviar = Math.max(0, uMin - qty);
-      envTd.textContent = aEnviar > 0 ? String(aEnviar) : '\u2014';
-      envTd.style.color = aEnviar > 0 ? 'var(--accent-dark,#2a6049)' : 'var(--text-3)';
-    }
-  });
-}
-
 function render() {
-  const contentEl = document.getElementById('content');
-
-  // Guardar posição de scroll antes de recriar (melhora UX no fallback)
-  const prevScrollY = window.scrollY || document.documentElement.scrollTop;
-
-  contentEl.innerHTML = '';
+  const content = document.getElementById('content');
+  content.innerHTML = '';
   let node;
   if (currentView === 'cpd')         node = viewCpd();
   else if (currentView === 'units')      node = viewUnits();
@@ -6725,14 +6584,8 @@ function render() {
   else if (currentView === 'relatorio')  node = viewRelatorio();
   else if (currentView === 'historico')  node = viewHistorico();
   else if (currentView === 'log')        node = viewLog();
-  if (node) contentEl.appendChild(node);
-
-  // Restaurar scroll após render (evita que a tela "pule" para o topo)
-  if (prevScrollY > 0) {
-    requestAnimationFrame(() => window.scrollTo(0, prevScrollY));
-  }
-
-  // Notificações de recebimento pendentes
+  if (node) content.appendChild(node);
+  // Check for pending receipt notifications for unit users
   setTimeout(checkPendingReceiptNotifications, 500);
 }
 
