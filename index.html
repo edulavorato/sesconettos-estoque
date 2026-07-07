@@ -1783,10 +1783,24 @@ auth.onAuthStateChanged(user => {
       if (!window._fb.ready) return;
       const val = snap.val() || {};
 
-      // Proteção zero-flash: só aceita vazio se migração já confirmou que dados foram escritos
-      if (Object.keys(val).length === 0 && !window._migrationConfirmed && window._migrandoUnits) {
-        console.log('[Gate] Aguardando migração para', unitName, '— ignorando snapshot vazio');
-        return;
+      // Proteção zero-flash AMPLIADA: não aceitar snapshot vazio SE
+      // (a) a migração ainda está rodando OU
+      // (b) não há confirmação de migração E já tínhamos dados locais
+      const localKey = 'pizza_unit_' + slug;
+      const hasLocalData = (() => {
+        try { const d = localStorage.getItem(localKey); return d && JSON.parse(d) && Object.keys(JSON.parse(d)).length > 0; } catch(e) { return false; }
+      })();
+      if (Object.keys(val).length === 0) {
+        if (window._migrandoUnits || (!window._migrationConfirmed && hasLocalData)) {
+          console.log('[Guard] Ignorando snapshot vazio para', unitName, '— dados locais preservados');
+          // Restaurar dados do localStorage
+          try {
+            const local = JSON.parse(localStorage.getItem(localKey) || '{}');
+            if (!unitStock[unitName]) unitStock[unitName] = {};
+            Object.assign(unitStock[unitName], local);
+          } catch(e) {}
+          return;
+        }
       }
 
       if (!unitStock[unitName]) unitStock[unitName] = {};
@@ -3567,6 +3581,12 @@ window.addEventListener('beforeunload', () => {
 // e migra automaticamente para a nova estrutura granular.
 function _migrarEstruturaPizzaUnits() {
   if (window._migrandoUnits) return;
+  // Não rodar migração offline — dados do cache podem estar incompletos
+  if (!window._fb || !window._fb.ready) {
+    console.log('[Migração] Adiada — Firebase não está pronto');
+    setTimeout(_migrarEstruturaPizzaUnits, 3000);
+    return;
+  }
   window._migrandoUnits = true;
   db.ref('dados/pizza_units').once('value').then(snap => {
     const val = snap.val();
@@ -3585,21 +3605,30 @@ function _migrarEstruturaPizzaUnits() {
       _gateStep('migrate', 'Dados prontos!');
       return;
     }
-    console.log('[Migração] Migrando pizza_units para estrutura granular...');
-    const writes = keys
-      .filter(k => UNIT_NAMES.includes(k))
-      .map(unitName => db.ref('dados/pizza_units/' + unitSlug(unitName)).set(val[unitName]));
-    Promise.all(writes).then(() => {
+    // Verificar conexão antes de escrever (evita sobrescrever com dados offline)
+    db.ref('.info/connected').once('value').then(connSnap => {
+      if (!connSnap.val()) {
+        console.warn('[Migração] Abortada — sem conexão. Tentará novamente em 5s');
+        window._migrandoUnits = false;
+        setTimeout(_migrarEstruturaPizzaUnits, 5000);
+        return;
+      }
+      console.log('[Migração] Migrando pizza_units para estrutura granular...');
+      const writes = keys
+        .filter(k => UNIT_NAMES.includes(k))
+        .map(unitName => db.ref('dados/pizza_units/' + unitSlug(unitName)).set(val[unitName]));
+      Promise.all(writes).then(() => {
       console.log('[Migração] Estrutura de unidades migrada!', keys.length, 'unidades');
-      window._migrandoUnits = false;
-      window._migrationConfirmed = true;
-      _gateStep('migrate', 'Dados prontos!');
-    }).catch(e => {
-      console.error('[Migração] Erro:', e);
-      window._migrandoUnits = false;
-      window._migrationConfirmed = true; // liberar guard mesmo com erro — melhor do que travar
-      _gateStep('migrate', 'Pronto (com aviso)');
-    });
+        window._migrandoUnits = false;
+        window._migrationConfirmed = true;
+        _gateStep('migrate', 'Dados prontos!');
+      }).catch(e => {
+        console.error('[Migração] Erro:', e);
+        window._migrandoUnits = false;
+        window._migrationConfirmed = true;
+        _gateStep('migrate', 'Pronto (com aviso)');
+      });
+    }); // .info/connected
   });
 }
 
