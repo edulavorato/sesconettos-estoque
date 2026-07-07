@@ -1639,14 +1639,16 @@ auth.onAuthStateChanged(user => {
       if (!window._fb.ready) return;
       const val = snap.val();
       // Se é o catálogo da unidade logada, atualizar unitCatalog global
-      if (val && session && unitSlug(session.unit) === slug) {
-        unitCatalog = val;
+      // Guardar catálogo recebido em cache por slug (independente de sessão)
+      if (val && Array.isArray(val) && val.length > 0) {
+        if (!window._unitCatalogCache) window._unitCatalogCache = {};
+        window._unitCatalogCache[slug] = val;
         try { localStorage.setItem('pizza_unit_catalog_' + slug, JSON.stringify(val)); } catch(e) {}
-      }
-      if (val && val.length > 0) {
-        // Firebase tem catálogo — usar (permite edição futura via app)
-        // Por ora mantemos os seeds hardcoded — sem override do Firebase
-        console.log('[Firebase] Unit catalog ' + unitName + ':', val.length, 'itens (seed prevalece)');
+        // Se é a unidade logada, atualizar unitCatalog imediatamente
+        if (session && unitSlug(session.unit) === slug) {
+          unitCatalog = val;
+          if (typeof _scheduleRender === 'function') _scheduleRender();
+        }
       } else if (!window._unitCatalogPushed) {
         // Primeira vez: publicar os seeds de cada unidade no Firebase
         if (!window._unitCatalogPushing) window._unitCatalogPushing = {};
@@ -3598,8 +3600,13 @@ function _migrarEstruturaPizzaUnits() {
     }
     // Verificar se é estrutura antiga: chaves são nomes de unidade (ex: 'Asa Sul')
     const keys = Object.keys(val);
+    // Estrutura antiga: chaves são nomes de unidade (ex: 'Asa Sul', 'SIG')
+    // Estrutura nova: chaves são slugs (ex: 'asa_sul', 'sig')
+    const unitSlugs = UNIT_NAMES.map(n => unitSlug(n));
     const isOldStructure = keys.some(k => UNIT_NAMES.includes(k));
-    if (!isOldStructure) {
+    const isNewStructure = keys.some(k => unitSlugs.includes(k));
+    if (!isOldStructure || isNewStructure) {
+      // Já está na estrutura nova (ou vazia) — não migrar
       window._migrandoUnits = false;
       window._migrationConfirmed = true;
       _gateStep('migrate', 'Dados prontos!');
@@ -3925,15 +3932,35 @@ function applySession() {
   buildDrawerNav();
   updateHamburgerVisibility();
 
-  // Resolver catálogo correto para a unidade logada (imediato, sem esperar Firebase)
+  // Resolver catálogo correto para a unidade logada
   if (session.unit !== 'cpd') {
-    const _uc = getUnitCatalog(session.unit);
-    unitCatalog = _uc.catalog;
+    const slug = unitSlug(session.unit);
+    // Prioridade: 1) cache do Firebase 2) localStorage 3) seed hardcoded
+    if (window._unitCatalogCache && window._unitCatalogCache[slug]) {
+      unitCatalog = window._unitCatalogCache[slug];
+    } else {
+      try {
+        const local = localStorage.getItem('pizza_unit_catalog_' + slug);
+        if (local) { unitCatalog = JSON.parse(local); }
+        else { unitCatalog = getUnitCatalog(session.unit).catalog; }
+      } catch(e) { unitCatalog = getUnitCatalog(session.unit).catalog; }
+    }
   }
 
   // Navigate to default view
   currentView = defaultView();
   if (session.unit !== 'cpd') activeUnit = session.unit;
+  // Após resolver unitCatalog, garantir re-render se já tinha renderizado
+  if (session.unit !== 'cpd') {
+    // Aguardar Firebase sincronizar o catálogo da unidade antes de renderizar
+    setTimeout(() => {
+      const slug = unitSlug(session.unit);
+      if (window._unitCatalogCache && window._unitCatalogCache[slug]) {
+        unitCatalog = window._unitCatalogCache[slug];
+      }
+      if (typeof render === 'function') render();
+    }, 1500);
+  }
 
   resolveUnitCatalog(); // carregar catálogo correto para esta unidade
   setView(currentView);
@@ -4092,6 +4119,10 @@ function el(tag, attrs={}, ...children) {
   const unitName      = opts.unitName     || null;  // unidade para botão confirmar
   const showConfirm   = opts.showConfirm === true;  // mostrar botão ✓ por item
   const catSource     = opts.catSource || catalog;   // catálogo a usar (padrão: CPD)
+  // Diagnóstico: alertar se catSource parece ser o catálogo do CPD para uma unidade
+  if (!isCPD() && catSource === catalog && catalog.length > 300) {
+    console.warn('[buildStockTable] ATENÇÃO: usando catálogo do CPD (' + catalog.length + ' itens) para unidade. unitCatalog tem', unitCatalog ? unitCatalog.length : 0, 'itens');
+  }
   const editable = typeof onUpdate === 'function';
   const showMin  = false; // M\u00CDN column removed from stock table \u2014 editable only in Cat\u00E1logo
   const wrap = el('div', {});
