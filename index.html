@@ -1645,8 +1645,11 @@ auth.onAuthStateChanged(user => {
         window._unitCatalogCache[slug] = val;
         try { localStorage.setItem('pizza_unit_catalog_' + slug, JSON.stringify(val)); } catch(e) {}
         // Se é a unidade logada, atualizar unitCatalog imediatamente
-        if (session && unitSlug(session.unit) === slug) {
-          unitCatalog = val;
+        // Usar localStorage para verificar sessão (session pode não existir no bloco Firebase)
+        const _sess = (typeof session !== 'undefined' && session) ||
+          (() => { try { return JSON.parse(localStorage.getItem('pizza_session')); } catch(e) { return null; } })();
+        if (_sess && unitSlug(_sess.unit) === slug) {
+          if (typeof unitCatalog !== 'undefined') unitCatalog = val;
           if (typeof _scheduleRender === 'function') _scheduleRender();
         }
       } else if (!window._unitCatalogPushed) {
@@ -1681,7 +1684,7 @@ auth.onAuthStateChanged(user => {
 
   // ── 4. ESTOQUE CPD ──────────────────────────────────────────────────────────
   db.ref('dados/pizza_cpd').on('value', snap => {
-    if (!window._fb.ready) return;
+    if (!window._fb.ready || typeof cpd === 'undefined') return;
     const val = snap.val();
     if (!val) return;
     Object.keys(cpd).forEach(k => delete cpd[k]);
@@ -1693,7 +1696,7 @@ auth.onAuthStateChanged(user => {
 
   // ── 5. MÍNIMOS / PREÇOS / MÍNIMOS-UNIDADE ──────────────────────────────────
   db.ref('dados/pizza_minimums').on('value', snap => {
-    if (!window._fb.ready) return;
+    if (!window._fb.ready || typeof minimums === 'undefined') return;
     const val = snap.val(); if (!val) return;
     Object.keys(minimums).forEach(k => delete minimums[k]);
     Object.assign(minimums, val);
@@ -1701,7 +1704,7 @@ auth.onAuthStateChanged(user => {
     _scheduleRender();
   });
   db.ref('dados/pizza_prices').on('value', snap => {
-    if (!window._fb.ready) return;
+    if (!window._fb.ready || typeof prices === 'undefined') return;
     const val = snap.val(); if (!val) return;
     Object.assign(prices, val);
     saveLocal('pizza_prices', prices);
@@ -1717,7 +1720,7 @@ auth.onAuthStateChanged(user => {
 
   // ── 6. MOVIMENTAÇÕES E PEDIDOS (só CPD precisa em tempo real) ──────────────
   db.ref('dados/pizza_movements').on('value', snap => {
-    if (!window._fb.ready) return;
+    if (!window._fb.ready || typeof movements === 'undefined') return;
     const val = snap.val();
     movements.length = 0;
     if (Array.isArray(val)) val.forEach(m => movements.push(m));
@@ -4667,7 +4670,7 @@ if (!catalog || catalog.length === 0) {
 }
 // Bootstrap por id desativado — a migração v11 (no listener Firebase)
 // faz a transição completa do catálogo preservando contagens por nome.
-let envios    = load(null) || JSON.parse(JSON.stringify(ENVIOS_SEED));
+let envios    = load('pizza_envios', {}); // plano de envios (do Firebase)
 let cpd       = load('pizza_cpd', {});
 // Carregar estoque de unidades: tenta localStorage granular primeiro, fallback ao objeto geral
 let unitStock = (() => {
