@@ -1793,7 +1793,8 @@ auth.onAuthStateChanged(user => {
         try { const d = localStorage.getItem(localKey); return d && JSON.parse(d) && Object.keys(JSON.parse(d)).length > 0; } catch(e) { return false; }
       })();
       if (Object.keys(val).length === 0) {
-        if (window._migrandoUnits || (!window._migrationConfirmed && hasLocalData)) {
+        const hasMemoryData = unitStock[unitName] && Object.keys(unitStock[unitName]).length > 0;
+        if (window._migrandoUnits || (!window._migrationConfirmed && (hasLocalData || hasMemoryData))) {
           console.log('[Guard] Ignorando snapshot vazio para', unitName, '— dados locais preservados');
           // Restaurar dados do localStorage
           try {
@@ -5085,8 +5086,10 @@ function printBatchPdf(batch) {
         // QTD em verde
         ops.push(`0.1 0.45 0.2 rg`);
         ops.push(`BT /F1 9 Tf ${colX[2]+3} ${y+1} Td (${item.qty !== undefined ? item.qty : '-'}) Tj ET`);
-        // A ENVIAR em azul
-        const _aEnviar = _enviarMap[_norm(item.name)] || 0;
+        // A ENVIAR em azul: Quantidade Planejada − Estoque Atual = Quantidade Real a Enviar
+        const _planejado = _enviarMap[_norm(item.name)] || 0;
+        const _estoqueAtual = item.qty || 0;
+        const _aEnviar = Math.max(0, _planejado - _estoqueAtual);
         ops.push(`0.1 0.25 0.65 rg`);
         ops.push(`BT /F1 9 Tf ${colX[3]+3} ${y+1} Td (${_aEnviar > 0 ? _aEnviar : '-'}) Tj ET`);
         // Fundo azul claro na célula A ENVIAR se tiver valor
@@ -5948,8 +5951,32 @@ function viewUnits() {
   const canEditUnit = !isCPD() && session && session.unit === activeUnit;
   inner.appendChild(buildStockTable(ustock, 'unit-search', canEditUnit ? (itemId, qty) => {
     if (!unitStock[activeUnit]) unitStock[activeUnit] = {};
+    if (!unitStock[activeUnit]) unitStock[activeUnit] = {};
     unitStock[activeUnit][itemId] = qty;
-    saveUnit(activeUnit, unitStock[activeUnit]); // granular: só salva esta unidade
+    // Salvar APENAS este item no Firebase (atômico) — evita zerar outros itens
+    // que ainda não carregaram na memória local
+    const _slug = unitSlug(activeUnit);
+    try { localStorage.setItem('pizza_unit_' + _slug, JSON.stringify(unitStock[activeUnit])); } catch(e) {}
+    if (window._fb && window._fb.ready && typeof db !== 'undefined') {
+      window._fb.localWrite = true;
+      clearTimeout(window._fb.localWriteTimer);
+      window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 5000);
+      db.ref('dados/pizza_units/' + _slug + '/' + itemId).set(qty)
+        .then(() => {
+          clearTimeout(window._fb.localWriteTimer);
+          window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 300);
+        })
+        .catch(e => {
+          console.warn('[Firebase] Erro ao salvar item', itemId, e);
+          window._fb.localWrite = false;
+          // Fallback: salvar objeto completo
+          saveUnit(activeUnit, unitStock[activeUnit]);
+        });
+    } else {
+      window._fb = window._fb || { ready: false, pendingWrites: [] };
+      window._fb.pendingWrites = window._fb.pendingWrites || [];
+      window._fb.pendingWrites.push({ key: 'pizza_units/' + _slug + '/' + itemId, data: qty });
+    }
   } : undefined, {
     useMin: false,
     pdfLabel: activeUnit,
