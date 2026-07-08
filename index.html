@@ -6822,8 +6822,7 @@ function viewCpd() {
   const zeroStock = catalog.length - inStock;
 
   // Stock minimum alerts (Feature 1)
-  const cpdAlerts = buildAlerts(cpd, 'CPD');
-  if (cpdAlerts) frag.appendChild(cpdAlerts);
+  // Alertas de estoque CPD desativados temporariamente (catálogo em atualização)
 
   // Pending orders alert
 
