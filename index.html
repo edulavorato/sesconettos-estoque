@@ -4490,13 +4490,33 @@ function el(tag, attrs={}, ...children) {
           }
           tr.appendChild(qtyTd);
           if (hasEnviarCol) {
-            const uMins = (window.unitMinimums && window.unitMinimums[opts.unitForDisplay]) || {};
-            const uMin  = uMins[item.id] || 0;
-            const aEnviar = Math.max(0, uMin - qty);
+            // A Enviar = Quantidade Planejada no envio − Estoque Atual da Unidade
+            // Mesmo cálculo do PDF: usa o plano de envios do próximo dia de entrega
+            const _unitName = opts.unitForDisplay || '';
+            const _norm2 = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+            // Determinar próximo dia de entrega
+            const _dow = new Date().getDay();
+            const _dmap = {1:'SEG',3:'QUA',5:'SEX'};
+            let _eDay = null;
+            for (let d = 0; d <= 6; d++) { const dd = (_dow+d)%7; if (_dmap[dd]) { _eDay = _dmap[dd]; break; } }
+            // Buscar quantidade planejada para este item/unidade/dia
+            let _planejado = 0;
+            if (_eDay && typeof envios === 'object' && envios) {
+              Object.values(envios).forEach(catData => {
+                if (!catData.items) return;
+                catData.items.forEach(planItem => {
+                  if (_norm2(planItem.name) === _norm2(item.name)) {
+                    const q = planItem.qty && planItem.qty[_unitName] && planItem.qty[_unitName][_eDay];
+                    if (q > 0) _planejado = q;
+                  }
+                });
+              });
+            }
+            const aEnviar = Math.max(0, _planejado - qty);
             const envTd = el('td', {style:'text-align:right;font-weight:700;color:' + (aEnviar > 0 ? 'var(--accent-dark,#2a6049)' : 'var(--text-3)')});
             envTd.setAttribute('data-aenviar-cell', item.id);
-            envTd.textContent = aEnviar > 0 ? String(aEnviar) : '—';
-            if (uMin > 0) envTd.title = 'Mín: ' + uMin + ' | Estoque: ' + qty;
+            envTd.textContent = aEnviar > 0 ? String(aEnviar) : '\u2014';
+            envTd.title = 'Planejado: ' + _planejado + ' | Estoque: ' + qty + (_eDay ? ' | Dia: ' + _eDay : '');
             tr.appendChild(envTd);
           }
           tr.appendChild(el('td', {cls:'muted col-unit'}, item.unit));
