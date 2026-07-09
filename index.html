@@ -1180,68 +1180,7 @@
   .movement-row:last-child { border-bottom: none; }
 
   /* Batch movement row — new grouped style */
-  .batch-mov-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 11px 16px;
-    border-bottom: 1px solid var(--border-light);
-    cursor: pointer;
-    transition: background .12s;
-  }
-  .batch-mov-row:last-child { border-bottom: none; }
-  .batch-mov-row:hover { background: #F3F0E8; }
 
-  .batch-mov-info { flex: 1; min-width: 0; }
-  .batch-mov-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-  .batch-mov-sub   { font-size: 11px; color: var(--text-3); }
-  .batch-mov-arrow { color: var(--text-3); font-size: 13px; flex-shrink: 0; }
-
-  /* Modal */
-  .modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(10,20,12,.55);
-    z-index: 500;
-    display: flex; align-items: center; justify-content: center;
-    padding: 16px;
-  }
-  .modal-box {
-    background: var(--surface);
-    border-radius: var(--radius);
-    box-shadow: 0 8px 40px rgba(0,0,0,.25);
-    width: 100%; max-width: 500px;
-    max-height: 88vh;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-  }
-  .modal-header {
-    padding: 16px 20px;
-    border-bottom: 1.5px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 10px; background: var(--surface-2);
-  }
-  .modal-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: var(--text); }
-  .modal-close {
-    width: 30px; height: 30px; border-radius: 50%;
-    border: 1.5px solid var(--border); background: none;
-    font-size: 16px; cursor: pointer; color: var(--text-2);
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-sans);
-  }
-  .modal-close:hover { background: var(--border-light); }
-  .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
-  .modal-footer {
-    padding: 12px 20px;
-    border-top: 1.5px solid var(--border);
-    display: flex; gap: 8px; justify-content: flex-end;
-  }
-
-  .mov-item { flex: 1; font-weight: 500; }
-  .mov-qty { font-weight: 600; min-width: 70px; text-align: right; }
-  .mov-dest { color: var(--text-3); font-size: 12px; min-width: 90px; }
-  .mov-date { color: var(--text-3); font-size: 11px; min-width: 80px; text-align: right; }
-
-  /* EMPTY STATE */
   .empty {
     padding: 40px;
     text-align: center;
@@ -1750,14 +1689,7 @@ auth.onAuthStateChanged(user => {
   });
 
   // ── 6. MOVIMENTAÇÕES E PEDIDOS (só CPD precisa em tempo real) ──────────────
-  db.ref('dados/pizza_movements').on('value', snap => {
-    if (!window._fb.ready || typeof movements === 'undefined') return;
-    const val = snap.val();
-    movements.length = 0;
-    if (Array.isArray(val)) val.forEach(m => movements.push(m));
-    saveLocal('pizza_movements', movements);
-    // movimentações sincronizadas (views de log foram removidas)
-  });
+
   db.ref('dados/pizza_orders').on('value', snap => {
     if (!window._fb.ready) return;
     const val = snap.val();
@@ -4429,7 +4361,7 @@ function saveLocal(key, data) {
 
 // Chaves que devem sincronizar com o Firebase em tempo real
 const FIREBASE_SYNC_KEYS = new Set([
-  'pizza_cpd', 'pizza_movements', 'pizza_orders',
+  'pizza_cpd', 'pizza_orders',
   'pizza_catalog', 'pizza_minimums', 'pizza_prices', 'pizza_unit_minimums',
   'pizza_confirmados',
   'pizza_counted'
@@ -4753,7 +4685,6 @@ let unitStock = (() => {
   // Fallback: se não tem granular, usa o objeto consolidado antigo
   return hasGranular ? consolidated : load('pizza_units', {});
 })();
-let movements = load('pizza_movements', []);
 let prices    = load('pizza_prices', {}); // {itemId: unitPrice}
 let orders    = load('pizza_orders', []); // [{id, unit, userName, date, status, items:[{itemId,qty}]}]
 let minimums  = load('pizza_minimums', {}); // {itemId: minQty} \u2014 feature 1: stock minimums
@@ -5556,137 +5487,6 @@ function el(tag, attrs={}, ...children) {
 }
 
 // BATCHMOVEMENTHELPERS
-
-function groupMovementsByBatch(movs) {
-  // Group by batchId; solo movements (no batchId) get their own group keyed by id
-  const grouped = new Map();
-  movs.forEach(m => {
-    const key = m.batchId || String(m.id);
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key).push(m);
-  });
-  // Return array of batch groups sorted by most recent first
-  return Array.from(grouped.values()).sort((a, b) =>
-    new Date(b[0].date) - new Date(a[0].date)
-  );
-}
-
-function buildBatchMovList(movs, limit) {
-  const wrap = el('div', {});
-  const batches = groupMovementsByBatch(movs).slice(0, limit || 15);
-
-  if (!batches.length) {
-    wrap.appendChild(el('div', {cls:'empty'}, 'Nenhuma movimenta\u00E7\u00E3o registrada.'));
-    return wrap;
-  }
-
-  batches.forEach(batch => {
-    const first   = batch[0];
-    const type    = first.type;
-    const dest    = first.unitName || '';
-    const date    = new Date(first.date);
-    const count   = batch.length;
-
-    const timeStr = date.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-    const dateStr = date.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'2-digit'});
-
-    const row = el('div', {cls:'batch-mov-row', onclick: () => openBatchModal(batch)});
-
-    // Badge
-    const badge = el('span', {cls:'badge ' + type}, type === 'entrada' ? 'Entrada' : 'Sa\u00EDda');
-
-    // Info
-    const info = el('div', {cls:'batch-mov-info'});
-    const title = el('div', {cls:'batch-mov-title'});
-    title.appendChild(badge);
-    title.appendChild(document.createTextNode(
-      `${count} ${count === 1 ? 'produto' : 'produtos'}${dest ? ' \u2192 ' + dest : ''}`
-    ));
-    info.appendChild(title);
-
-    // Sub: first 2 item names + "e mais X"
-    const preview = batch.slice(0, 2).map(m => {
-      const item = catalog.find(i => i.id === m.itemId);
-      return item ? item.name : '\u2014';
-    });
-    let subText = preview.join(', ');
-    if (batch.length > 2) subText += ` e mais ${batch.length - 2}`;
-    const sub = el('div', {cls:'batch-mov-sub'}, `${dateStr} \u0060s ${timeStr}  \u00B7  ${subText}`);
-    info.appendChild(sub);
-
-    // Arrow
-    const arrow = el('span', {cls:'batch-mov-arrow'}, '\u203A');
-
-    row.append(info, arrow);
-    wrap.appendChild(row);
-  });
-
-  return wrap;
-}
-
-function openBatchModal(batch) {
-  const first   = batch[0];
-  const type    = first.type;
-  const dest    = first.unitName || '';
-  const date    = new Date(first.date);
-  const dateStr = date.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
-  const timeStr = date.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-  const count   = batch.length;
-
-  const overlay = el('div', {cls:'modal-overlay'});
-
-  const box     = el('div', {cls:'modal-box'});
-
-  // Header
-  const header  = el('div', {cls:'modal-header'});
-  const titleEl = el('div', {cls:'modal-title'},
-    (type === 'entrada' ? 'Entrada CPD' : `Sa\u00EDda \u2192 ${dest}`)
-  );
-  const closeBtn = el('button', {cls:'modal-close', onclick: () => overlay.remove()}, '\u0057');
-  header.append(titleEl, closeBtn);
-  box.appendChild(header);
-
-  // Body
-  const body = el('div', {cls:'modal-body'});
-
-  // Meta info
-  const meta = el('div', {style:'margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border-light)'});
-  meta.appendChild(el('p', {style:'font-size:12px;color:var(--text-3);margin-bottom:3px'}, `${dateStr} \u0060s ${timeStr}`));
-  meta.appendChild(el('p', {style:'font-size:13px;font-weight:600;color:var(--text)'},
-    `${count} ${count === 1 ? 'produto movimentado' : 'produtos movimentados'}`
-  ));
-  body.appendChild(meta);
-
-  // Item table
-  const table = el('table', {style:'width:100%;border-collapse:collapse'});
-  table.innerHTML = '<thead><tr style="background:var(--surface-2)"><th style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-2);text-align:left;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid var(--border)">Item</th><th style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-2);text-align:right;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid var(--border)">Qtd</th><th style="padding:8px 10px;font-size:11px;font-weight:700;color:var(--text-2);text-align:left;text-transform:uppercase;letter-spacing:.5px;border-bottom:1.5px solid var(--border)">Un.</th></tr></thead>';
-  const tbody = el('tbody', {});
-  batch.forEach((m, i) => {
-    const item = catalog.find(c => c.id === m.itemId);
-    const tr = el('tr', {style: i % 2 === 0 ? '' : 'background:var(--surface-2)'});
-    tr.appendChild(el('td', {style:'padding:9px 10px;font-size:13px;font-weight:500;border-bottom:1px solid var(--border-light)'}, item?.name || '\u2014'));
-    tr.appendChild(el('td', {style:'padding:9px 10px;font-size:13px;font-weight:700;color:var(--accent);text-align:right;border-bottom:1px solid var(--border-light)'}, String(m.qty)));
-    tr.appendChild(el('td', {style:'padding:9px 10px;font-size:12px;color:var(--text-3);border-bottom:1px solid var(--border-light)'}, item?.unit || ''));
-    tbody.appendChild(tr);
-  });
-  table.appendChild(tbody);
-  body.appendChild(table);
-  box.appendChild(body);
-
-  // Footer
-  const footer = el('div', {cls:'modal-footer'});
-  const pdfBtn = el('button', {cls:'btn btn-primary', onclick: () => printBatchPdf(batch)},
-    '\uD83D\uDCC4 Gerar PDF'
-  );
-  const cancelBtn = el('button', {cls:'btn btn-outline', onclick: () => overlay.remove()}, 'Fechar');
-  footer.append(cancelBtn, pdfBtn);
-  box.appendChild(footer);
-
-  overlay.appendChild(box);
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
-}
-
 // PURE-JSPDFGENERATOR
 // Builds a valid PDF/1.4 file from scratch \u2014 no external libraries needed.
 // Works offline, file://, Safari, Chrome, Firefox, iOS, Android.
@@ -6536,34 +6336,6 @@ function loadTemplate(unitName) {
 }
 
 // Feature6:Consumptionanalysis
-function getConsumptionData(weeks=8) {
-  const now = Date.now();
-  const msPerWeek = 7*24*60*60*1000;
-  const data = [];
-  for (let w=weeks-1; w>=0; w--) {
-    const from = now - (w+1)*msPerWeek;
-    const to   = now - w*msPerWeek;
-    const label = `Sem ${weeks-w}`;
-    const total = movements.filter(m => {
-      const t = new Date(m.date).getTime();
-      return m.type==='saida' && t>=from && t<to;
-    }).reduce((s,m)=>s+m.qty, 0);
-    data.push({label, total});
-  }
-  return data;
-}
-
-function getCategoryConsumption(weeks=4) {
-  const now = Date.now();
-  const from = now - weeks*7*24*60*60*1000;
-  const result = {};
-  CATEGORIES.forEach(cat => { result[cat] = 0; });
-  movements.filter(m => m.type==='saida' && new Date(m.date).getTime()>=from).forEach(m => {
-    const item = catalog.find(i=>i.id===m.itemId);
-    if (item) result[item.category] = (result[item.category]||0) + m.qty;
-  });
-  return result;
-}
 
 // Feature9:Receiptconfirmation
 function showReceiptModal(order) {
@@ -6903,7 +6675,6 @@ function viewCpd() {
   metrics.appendChild(makeMetric('Total de Itens', catalog.length));
   metrics.appendChild(makeMetric('Com Estoque', inStock, 'success'));
   metrics.appendChild(makeMetric('Sem Estoque', zeroStock, zeroStock > 0 ? 'danger' : ''));
-  metrics.appendChild(makeMetric('Movimenta\u00E7\u00F5es', movements.length, 'accent'));
   frag.appendChild(metrics);
 
   const tableBlock = el('div', {cls:'table-wrap'});
@@ -6922,14 +6693,6 @@ function viewCpd() {
   tableBlock.appendChild(inner);
   frag.appendChild(tableBlock);
 
-  if (movements.length > 0) {
-    const movBlock = el('div', {cls:'table-wrap section-gap'});
-    const mh = el('div', {cls:'table-header'});
-    mh.appendChild(el('span', {cls:'table-title'}, '\u00DAltimas movimenta\u00E7\u00F5es'));
-    movBlock.appendChild(mh);
-    movBlock.appendChild(buildBatchMovList(movements, 10));
-    frag.appendChild(movBlock);
-  }
 
   return frag;
 }
