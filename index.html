@@ -487,6 +487,37 @@
   .loading-step.active  { background: #68D391; transform: scale(1.3); }
   .loading-step.error   { background: #FC8181; }
 
+  /* ── Painel Envios do Dia ───────────────────────────────────────────────── */
+  .envios-wrap { border: 1.5px solid var(--border); border-radius: var(--radius); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .envios-matrix { width: 100%; border-collapse: collapse; min-width: 680px; }
+  .envios-matrix th, .envios-matrix td { padding: 7px 10px; text-align: center; vertical-align: middle; font-size: 12px; }
+  .envios-matrix thead tr:first-child th { background: var(--surface-2); color: var(--text-3); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1.5px solid var(--border); }
+  .envios-matrix thead tr:first-child th:first-child { text-align: left; }
+  .envios-matrix thead tr:first-child th.unit-hdr { background: #EAF2EC; color: var(--accent-dark, #2a6049); border-left: 1.5px solid var(--border); }
+  .envios-matrix thead tr:nth-child(2) th { background: var(--surface-2); color: var(--text-3); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1.5px solid var(--border); }
+  .envios-matrix thead tr:nth-child(2) th.sub-first { border-left: 1.5px solid var(--border); }
+  .envios-matrix tbody td { border-bottom: 1px solid var(--border); color: var(--text); }
+  .envios-matrix tbody td:first-child { text-align: left; font-weight: 500; }
+  .envios-matrix tbody tr:last-child td { border-bottom: none; }
+  .envios-matrix tbody tr:nth-child(even) td { background: var(--surface-2); }
+  .envios-matrix .u-sep { border-left: 1.5px solid var(--border); }
+  .envios-matrix .val-env { font-weight: 700; color: var(--accent-dark, #2a6049); }
+  .envios-matrix .val-dash { color: var(--text-3); }
+  .envios-matrix .val-cpd-low { font-weight: 700; color: #C53030; }
+  .envios-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .envios-badge.ok    { background: rgba(56,161,105,.12); color: #276749; }
+  .envios-badge.falta { background: rgba(197,48,48,.12);  color: #C53030; }
+  .envios-summary-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .envios-summary-card { flex: 1; min-width: 110px; padding: 12px 16px; background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); text-align: center; }
+  .envios-summary-card .e-lbl { font-size: 11px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+  .envios-summary-card .e-val { font-size: 26px; font-weight: 700; margin-top: 4px; color: var(--text); }
+  .envios-summary-card.ok    .e-val { color: #276749; }
+  .envios-summary-card.falta .e-val { color: #C53030; }
+  .envios-filter-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .envios-filter-tab { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-2); transition: all .15s; touch-action: manipulation; }
+  .envios-filter-tab.active { background: var(--accent, #2a6049); color: #fff; border-color: var(--accent, #2a6049); }
+  .envios-dia-day-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; background: #EAF2EC; color: var(--accent-dark, #2a6049); border: 1px solid var(--accent, #2a6049); }
+
   /* Botão confirmar item */
   .confirm-btn {
     display: flex; align-items: center; justify-content: center;
@@ -1894,6 +1925,10 @@ auth.onAuthStateChanged(user => {
 
   <div class="nav-section">
     <span class="nav-label">Configuração</span>
+    <button class="nav-item" data-view="envios-dia" onclick="setView('envios-dia')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      Envios do Dia
+    </button>
     <button class="nav-item" data-view="catalogo" onclick="setView('catalogo')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
       Catálogo de Itens
@@ -3243,6 +3278,15 @@ const DELIVERY_CATALOG = [
 
 // Mapa unidade → catálogo e categorias
 function getUnitCatalog(unitName) {
+  // Priorizar cache em memória (versão editada) sobre seed hardcoded
+  const slug = typeof unitSlug === 'function' ? unitSlug(unitName) : (unitName||'').toLowerCase().replace(/[^a-z0-9]+/g,'_');
+  if (window._unitCatalogCache && window._unitCatalogCache[slug]) {
+    // Derivar categorias do catálogo em cache (preserva ordem de edição)
+    const cachedCat = window._unitCatalogCache[slug];
+    const cats = [...new Set(cachedCat.map(i => i.category))];
+    return { catalog: cachedCat, categories: cats };
+  }
+  // Fallback: seed hardcoded
   switch(unitName) {
     case 'Asa Sul':       return { catalog: ASA_SUL_CATALOG,       categories: ASA_SUL_CATEGORIES };
     case 'SIG':           return { catalog: SIG_CATALOG,           categories: SIG_CATEGORIES };
@@ -4357,6 +4401,28 @@ setTimeout(() => {
   }
 }, 15000);
 
+// Salvar catálogo de uma unidade: atualiza cache em memória + Firebase
+// Garante que viewUnits e contagem refletem a mudança imediatamente
+function saveUnitCatalog(unitName, catalogData) {
+  const slug = unitSlug(unitName);
+  // 1. Atualizar cache em memória
+  if (!window._unitCatalogCache) window._unitCatalogCache = {};
+  window._unitCatalogCache[slug] = catalogData;
+  // 2. Atualizar getUnitCatalog() — os seeds hardcoded ficam desatualizados após edição
+  //    A função getUnitCatalog retorna o seed; sobrescrever com o editado via cache
+  // 3. Atualizar unitCatalog global se for a unidade logada (para contagem imediata)
+  if (typeof session !== 'undefined' && session && unitSlug(session.unit) === slug) {
+    unitCatalog = catalogData;
+  }
+  // 4. Salvar no localStorage
+  try { localStorage.setItem('pizza_unit_catalog_' + slug, JSON.stringify(catalogData)); } catch(e) {}
+  // 5. Salvar no Firebase
+  if (window._fb && window._fb.ready && typeof db !== 'undefined') {
+    db.ref('dados/pizza_unit_catalog/' + slug).set(catalogData)
+      .catch(e => console.warn('[Firebase] Erro ao salvar catálogo de', unitName, e));
+  }
+}
+
 function saveLocal(key, data) {
   try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
 }
@@ -4769,7 +4835,7 @@ function unitKey(){ return session ? session.unit : 'cpd'; }
 // Views available per role
 function allowedViews() {
   if (!session) return [];
-  if (isCPD()) return ['cpd','units','dashboard','catalogo'];
+  if (isCPD()) return ['cpd','units','dashboard','envios-dia','catalogo'];
   return ['units']; // Unidades: apenas o Painel de Contagem
 }
 
@@ -4994,6 +5060,7 @@ function buildSidebarNav() {
     {
       label: 'Configura\u00E7\u00E3o',
       items: [
+        { view:'envios-dia', label:'Envios do Dia', icon:'<rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>' },
         { view:'catalogo',  label:'Cat\u00E1logo de Itens',  icon:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>' },
       ]
     },
@@ -6955,7 +7022,244 @@ function viewUnits() {
   return frag;
 }
 
-// ═══ ENVIOS ÀS UNIDADES ═══
+// ═══ ENVIOS DO DIA ═══════════════════════════════════════════════════════════
+function viewEnviosDia() {
+  const frag = document.createDocumentFragment();
+  const day     = nextEnviarDay();
+  const dayFull = {SEG:'Segunda-feira', QUA:'Quarta-feira', SEX:'Sexta-feira'}[day] || day;
+  const _norm   = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+
+  // ── Cabeçalho ──────────────────────────────────────────────────────────────
+  const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px'});
+  hdrWrap.appendChild(el('h2', {cls:'table-title'}, 'Envios do Dia'));
+  const dayBadge = el('span', {cls:'envios-dia-day-badge'}, '\uD83D\uDE9A ' + dayFull);
+  hdrWrap.appendChild(dayBadge);
+  frag.appendChild(hdrWrap);
+
+  // ── Coletar todos os itens que precisam de envio ───────────────────────────
+  // Um item entra na tabela se ao menos uma unidade tiver A Enviar > 0 neste dia
+  // Estrutura: Map de itemName → { unit, aEnviar, estoqueUnidade } por unidade
+  const itemMap = new Map(); // itemName → { category, unit, cpdId, perUnit: {unitName: {est, aEnv}} }
+
+  UNIT_NAMES.forEach(unitName => {
+    const ucat   = getUnitCatalog(unitName).catalog;
+    const ustock = unitStock[unitName] || {};
+    const minMap = getMinPerDay(unitName);
+
+    ucat.forEach(item => {
+      const minDia = (minMap[item.name] && minMap[item.name][day]) || 0;
+      if (minDia === 0) return;
+      const est     = ustock[item.id] || 0;
+      const aEnviar = Math.max(0, minDia - est);
+      if (aEnviar === 0) return; // unidade já tem — não incluir
+
+      if (!itemMap.has(item.name)) {
+        // Localizar item no catálogo CPD pelo nome (para pegar estoque CPD)
+        const cpdItem = catalog.find(c => _norm(c.name) === _norm(item.name));
+        itemMap.set(item.name, {
+          name: item.name, unit: item.unit, category: item.category,
+          estCPD: cpdItem ? (cpd[cpdItem.id] || 0) : 0,
+          perUnit: {}
+        });
+      }
+      itemMap.get(item.name).perUnit[unitName] = { est, aEnviar };
+    });
+  });
+
+  // Enriquecer com totais e situação
+  const rows = [];
+  itemMap.forEach(row => {
+    const totalAEnviar = UNIT_NAMES.reduce((s, u) => s + (row.perUnit[u] ? row.perUnit[u].aEnviar : 0), 0);
+    const falta   = Math.max(0, totalAEnviar - row.estCPD);
+    row.totalAEnviar = totalAEnviar;
+    row.falta    = falta;
+    row.situacao = falta > 0 ? 'falta' : 'ok';
+    rows.push(row);
+  });
+
+  // Ordenar pela posição exata no catálogo das unidades (ordem de produção)
+  // Usa a posição da primeira unidade que tiver o item (Asa Sul → SIG → VP → Delivery)
+  const _getUnitCatalogPos = (itemName) => {
+    for (const u of UNIT_NAMES) {
+      const uc = getUnitCatalog(u).catalog;
+      const idx = uc.findIndex(c => _norm(c.name) === _norm(itemName));
+      if (idx > -1) return { cat: uc[idx].category, pos: idx };
+    }
+    return { cat: '', pos: 99999 };
+  };
+  rows.forEach(r => {
+    const pos = _getUnitCatalogPos(r.name);
+    r._catOrder = pos.cat;
+    r._pos = pos.pos;
+  });
+  rows.sort((a, b) => {
+    // Primeiro ordenar por categoria (pela ordem em que aparece no catálogo)
+    const catA = a._catOrder, catB = b._catOrder;
+    if (catA !== catB) {
+      // Usar a ordem da primeira unidade que tiver ambas as categorias
+      for (const u of UNIT_NAMES) {
+        const cats = getUnitCatalog(u).categories;
+        const ia = cats.indexOf(catA);
+        const ib = cats.indexOf(catB);
+        if (ia > -1 && ib > -1) return ia - ib;
+        if (ia > -1) return -1;
+        if (ib > -1) return 1;
+      }
+    }
+    // Dentro da mesma categoria, pela posição no catálogo
+    return a._pos - b._pos;
+  });
+
+  // ── Sumário ────────────────────────────────────────────────────────────────
+  const totalItems  = rows.length;
+  const totalFaltas = rows.filter(r => r.situacao === 'falta').length;
+  const totalOk     = rows.filter(r => r.situacao === 'ok').length;
+
+  const summaryRow = el('div', {cls:'envios-summary-row'});
+  [['Total a enviar', totalItems, ''],
+   ['CPD tem estoque', totalOk, 'ok'],
+   ['Faltam no CPD',  totalFaltas, 'falta']].forEach(([lbl, val, cls]) => {
+    const card = el('div', {cls:'envios-summary-card' + (cls ? ' ' + cls : '')});
+    card.appendChild(el('div', {cls:'e-lbl'}, lbl));
+    card.appendChild(el('div', {cls:'e-val'}, String(val)));
+    summaryRow.appendChild(card);
+  });
+  frag.appendChild(summaryRow);
+
+  if (rows.length === 0) {
+    const empty = el('div', {cls:'table-wrap', style:'padding:32px;text-align:center;color:var(--text-3)'});
+    empty.textContent = '\u2705 Nenhum item a enviar para ' + dayFull + '. Todas as unidades t\u00EAm estoque suficiente.';
+    frag.appendChild(empty);
+    return frag;
+  }
+
+  // ── Filtros ────────────────────────────────────────────────────────────────
+  let activeFilter = 'todos';
+  const filterTabs = el('div', {cls:'envios-filter-tabs'});
+  const tableWrap  = el('div', {});
+  frag.appendChild(filterTabs);
+  frag.appendChild(tableWrap);
+
+  function buildMatrix() {
+    tableWrap.innerHTML = '';
+    const filtered = activeFilter === 'todos' ? rows :
+                     rows.filter(r => r.situacao === activeFilter);
+
+    if (filtered.length === 0) {
+      const empty = el('div', {style:'padding:24px;text-align:center;color:var(--text-3);font-size:13px'});
+      empty.textContent = 'Nenhum item neste filtro.';
+      tableWrap.appendChild(empty);
+      return;
+    }
+
+    const wrap  = el('div', {cls:'envios-wrap'});
+    const table = el('table', {cls:'envios-matrix'});
+
+    // ── Thead linha 1: ITEM | EST CPD | ASA SUL(2) | SIG(2) | VP(2) | DLV(2) | SITUAÇÃO
+    const thead = el('thead');
+    const tr1   = el('tr');
+    const thItem = el('th', {}, 'Item');
+    thItem.setAttribute('rowspan', '2');
+    tr1.appendChild(thItem);
+    const thCpd = el('th', {}, 'Est. CPD');
+    thCpd.setAttribute('rowspan', '2');
+    tr1.appendChild(thCpd);
+    UNIT_NAMES.forEach(u => {
+      const th = el('th', {cls:'unit-hdr'}, u);
+      th.setAttribute('colspan', '2');
+      tr1.appendChild(th);
+    });
+    const thSit = el('th', {cls:'u-sep'}, 'Situa\u00E7\u00E3o');
+    thSit.setAttribute('rowspan', '2');
+    tr1.appendChild(thSit);
+    thead.appendChild(tr1);
+
+    // ── Thead linha 2: Est. | A Env. × 4 unidades
+    const tr2 = el('tr');
+    UNIT_NAMES.forEach((u, i) => {
+      const thEst = el('th', {cls: i === 0 ? 'sub-first' : 'sub-first'}, 'Est.');
+      const thEnv = el('th', {}, 'A env.');
+      tr2.appendChild(thEst);
+      tr2.appendChild(thEnv);
+    });
+    thead.appendChild(tr2);
+    table.appendChild(thead);
+
+    // ── Tbody — agrupado por categoria
+    const tbody = el('tbody');
+    let lastCat = null;
+    filtered.forEach(row => {
+      // Inserir linha de categoria quando mudar
+      const rowCat = row._catOrder || row.category;
+      if (rowCat !== lastCat) {
+        lastCat = rowCat;
+        const catTr = el('tr');
+        const catTd = el('td');
+        catTd.setAttribute('colspan', String(2 + UNIT_NAMES.length * 2 + 1));
+        catTd.style.cssText = 'background:#EAF2EC;color:var(--accent-dark,#2a6049);font-family:Lato,sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:7px 10px;border-bottom:1px solid var(--border);border-top:1px solid var(--border)';
+        catTd.textContent = rowCat;
+        catTr.appendChild(catTd);
+        tbody.appendChild(catTr);
+      }
+      const tr = el('tr');
+      // Nome
+      const tdName = el('td', {}, row.name);
+      tr.appendChild(tdName);
+      // Est. CPD
+      const tdCpd = el('td');
+      tdCpd.textContent = String(row.estCPD);
+      if (row.estCPD < row.totalAEnviar) tdCpd.className = 'val-cpd-low';
+      tr.appendChild(tdCpd);
+      // Por unidade
+      UNIT_NAMES.forEach(u => {
+        const pu = row.perUnit[u];
+        const tdEst = el('td', {cls:'u-sep'});
+        const tdEnv = el('td');
+        if (pu) {
+          tdEst.textContent = String(pu.est);
+          tdEnv.textContent = String(pu.aEnviar);
+          tdEnv.className = 'val-env';
+        } else {
+          tdEst.textContent = '\u2014';
+          tdEst.className = 'val-dash u-sep';
+          tdEnv.textContent = '\u2014';
+          tdEnv.className = 'val-dash';
+        }
+        tr.appendChild(tdEst);
+        tr.appendChild(tdEnv);
+      });
+      // Situação
+      const tdSit = el('td', {cls:'u-sep'});
+      const badge = el('span', {cls:'envios-badge ' + row.situacao});
+      badge.textContent = row.situacao === 'ok' ? '\u2705 OK' : '\u26A0\uFE0F Falta ' + row.falta;
+      tdSit.appendChild(badge);
+      tr.appendChild(tdSit);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    tableWrap.appendChild(wrap);
+  }
+
+  // Montar botões de filtro
+  [['todos', 'Todos (' + totalItems + ')'],
+   ['falta', '\u26A0\uFE0F Falta no CPD (' + totalFaltas + ')'],
+   ['ok',    '\u2705 CPD tem estoque (' + totalOk + ')']].forEach(([key, lbl]) => {
+    const btn = el('button', {cls:'envios-filter-tab' + (key === activeFilter ? ' active' : '')});
+    btn.textContent = lbl;
+    btn.addEventListener('click', () => {
+      activeFilter = key;
+      filterTabs.querySelectorAll('.envios-filter-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      buildMatrix();
+    });
+    filterTabs.appendChild(btn);
+  });
+
+  buildMatrix();
+  return frag;
+}
+
 function viewCatalogo() {
   const frag = document.createDocumentFragment();
 
@@ -7175,7 +7479,7 @@ function viewCatalogo() {
           const saveNameFn = () => {
             const v = nameInp.value.trim() || item.name;
             item.name = v; nameLabel.textContent = v;
-            save(isCpdTab ? 'pizza_catalog' : ('pizza_unit_catalog/' + unitSlug(activeTab)), tabCatalog);
+            isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
             nameInp.style.display='none'; nameLabel.style.display='';
           };
           nameLabel.addEventListener('click', () => { nameLabel.style.display='none'; nameInp.style.display=''; nameInp.focus(); nameInp.select(); });
@@ -7192,7 +7496,7 @@ function viewCatalogo() {
           const saveUnitFn = () => {
             const v = unitInp.value.trim() || item.unit;
             item.unit = v; unitSpan.textContent = v; catInline.textContent = v;
-            save(isCpdTab ? 'pizza_catalog' : ('pizza_unit_catalog/' + unitSlug(activeTab)), tabCatalog);
+            isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
             unitInp.style.display='none'; unitSpan.style.display='';
           };
           unitInp.addEventListener('blur', saveUnitFn);
@@ -7254,12 +7558,86 @@ function viewCatalogo() {
           }
 
           // Actions
-          const actionsTd = el('td', {style:'text-align:right;white-space:nowrap'});
+          const actionsTd = el('td', {style:'text-align:right;white-space:nowrap;gap:4px;display:flex;align-items:center;justify-content:flex-end'});
+
+          // ── Mover categoria (apenas unidades, apenas CPD logado) ──────────
+          if (!isCpdTab && isCPD()) {
+            const moveCatBtn = el('button', {
+              cls:'btn btn-outline btn-sm',
+              style:'font-size:11px;padding:2px 7px',
+              title:'Mover para outra categoria'
+            }, '\uD83D\uDCC2 Categoria');
+            moveCatBtn.addEventListener('click', () => {
+              // Modal inline para escolha de categoria
+              const modal = el('div', {style:'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center'});
+              const box   = el('div', {style:'background:var(--surface);border-radius:var(--radius);padding:24px;min-width:280px;max-width:340px;box-shadow:var(--shadow-lg,0 8px 32px rgba(0,0,0,.25))'});
+              box.appendChild(el('div', {style:'font-weight:700;font-size:15px;margin-bottom:4px'}, 'Mover categoria'));
+              box.appendChild(el('div', {style:'font-size:12px;color:var(--text-3);margin-bottom:16px'}, item.name));
+              tabCats.forEach(c => {
+                const btn = el('button', {
+                  style:'display:block;width:100%;text-align:left;padding:9px 12px;margin-bottom:6px;border-radius:6px;border:1.5px solid ' + (c === item.category ? 'var(--accent)' : 'var(--border)') + ';background:' + (c === item.category ? 'var(--accent-light,#e6f4ec)' : 'var(--surface)') + ';font-size:13px;cursor:pointer;font-weight:' + (c === item.category ? '700' : '400')
+                }, (c === item.category ? '\u2713 ' : '') + c);
+                if (c !== item.category) {
+                  btn.addEventListener('click', () => {
+                    item.category = c;
+                    isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
+                    document.body.removeChild(modal);
+                    buildTable();
+                    toast('Item movido para ' + c);
+                  });
+                }
+                box.appendChild(btn);
+              });
+              const cancelBtn = el('button', {cls:'btn btn-outline btn-sm', style:'width:100%;margin-top:4px'}, 'Cancelar');
+              cancelBtn.addEventListener('click', () => document.body.removeChild(modal));
+              box.appendChild(cancelBtn);
+              modal.appendChild(box);
+              modal.addEventListener('click', e => { if (e.target === modal) document.body.removeChild(modal); });
+              document.body.appendChild(modal);
+            });
+            actionsTd.appendChild(moveCatBtn);
+          }
+
+          // ── Reordenar ↑ ↓ (apenas unidades, apenas CPD logado) ───────────
+          if (!isCpdTab && isCPD()) {
+            const moveUp = el('button', {
+              cls:'btn btn-outline btn-sm',
+              style:'font-size:12px;padding:2px 7px',
+              title:'Mover para cima'
+            }, '\u2191');
+            const moveDn = el('button', {
+              cls:'btn btn-outline btn-sm',
+              style:'font-size:12px;padding:2px 7px',
+              title:'Mover para baixo'
+            }, '\u2193');
+            const moveItem = (delta) => {
+              // Itens da mesma categoria
+              const catItems = tabCatalog.filter(i => i.category === item.category);
+              const globalIdx = tabCatalog.indexOf(item);
+              const catIdx    = catItems.indexOf(item);
+              const targetCatIdx = catIdx + delta;
+              if (targetCatIdx < 0 || targetCatIdx >= catItems.length) return;
+              // Achar posição global do vizinho
+              const neighbor   = catItems[targetCatIdx];
+              const neighborGi = tabCatalog.indexOf(neighbor);
+              // Trocar no array global
+              tabCatalog[globalIdx]    = neighbor;
+              tabCatalog[neighborGi]   = item;
+              isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
+              buildTable();
+            };
+            moveUp.addEventListener('click', () => moveItem(-1));
+            moveDn.addEventListener('click', () => moveItem(+1));
+            actionsTd.appendChild(moveUp);
+            actionsTd.appendChild(moveDn);
+          }
+
+          // ── Remover ───────────────────────────────────────────────────────
           const removeBtn = el('button', {cls:'btn btn-outline btn-sm', style:'color:var(--danger);border-color:var(--danger);font-size:11px', onclick:()=>{
             if (!confirm(`Remover "${item.name}" do cat\u00E1logo?`)) return;
             const idx = tabCatalog.indexOf(item);
             if (idx >= 0) tabCatalog.splice(idx, 1);
-            save(isCpdTab ? 'pizza_catalog' : ('pizza_unit_catalog/' + unitSlug(activeTab)), tabCatalog);
+            isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
             tr.remove();
             toast('Item removido');
           }}, 'Remover');
@@ -7383,6 +7761,7 @@ function render() {
   if (currentView === 'cpd')         node = viewCpd();
   else if (currentView === 'units')      node = viewUnits();
   else if (currentView === 'catalogo')   node = viewCatalogo();
+  else if (currentView === 'envios-dia') node = viewEnviosDia();
   else if (currentView === 'dashboard')  node = viewDashboard();
   if (node) contentEl.appendChild(node);
 
