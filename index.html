@@ -3281,6 +3281,102 @@ function getUnitCatalog(unitName) {
   }
 }
 
+// Encoder PDF Latin-1/WinAnsi — usado em todas as funções de geração de PDF
+function pdfStr(str) {
+  let out = '';
+  for (const ch of String(str)) {
+    const code = ch.charCodeAt(0);
+    if (ch === '(') out += '\\(';
+    else if (ch === ')') out += '\\)';
+    else if (ch === '\\') out += '\\\\';
+    else if (code < 128) out += ch;
+    else if (code <= 0xFF) out += '\\' + code.toString(8).padStart(3, '0');
+    else {
+      const norm = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      out += (norm && norm.charCodeAt(0) < 128) ? norm : '?';
+    }
+  }
+  return '(' + out + ')';
+}
+
+// ═══ CLASSIFICAÇÃO DE ITENS CPD (PRODUZIDOS / COMPRADOS) ════════════════════
+const ITENS_PRODUZIDOS = new Set([
+  'Massa de pizza',
+  'Muçarela 20kg',
+  'Molho de tomate 5L',
+  'Muçarela lacfree',
+  'Parmesão grana padano 300g',
+  'Parmesão ralado 2kg',
+  'Provolone 300g',
+  'Gorgonzola 300g',
+  'Linguiça calabresa 2,5kg',
+  'Carne de sol desfiada 1kg',
+  'Frango desfiado 1kg',
+  'Lombo canadense 500g',
+  'Salaminho italiano',
+  'Tomate seco 500g',
+  'Presunto cozido',
+  'Lascas de coco 200g',
+  'Nutella 400g',
+  'Guianduela branca',
+  'Creme de pistache 400g',
+  'Geleia amora framboesa pizza',
+  'Geleia abacaxi c/pimenta 500g',
+  'Purê de abóbora 500g',
+  'Molho pesto de azeitona',
+  'Molho pesto bisnaga',
+  'Creme de gorgonzola',
+  'Chocolate ao leite ralado',
+  'Chocolate branco ralado',
+  'Salva borda brigadeiro',
+  'Salva borda doce de leite',
+  'Canela c/açúcar mix 500g',
+  'Canela em pó 200g',
+  'Orégano 250g',
+  'Nozes 100g',
+  'Pistache 250g'
+]);
+
+const ITENS_COMPRADOS = new Set([
+  'Muçarela de búfala 2kg',
+  'Burrata de búfala 200g',
+  'Queijo brie',
+  'Requeijão bisnaga 1,5kg',
+  'Cream cheese',
+  'Anchovas 50g',
+  'Peperoni 1kg',
+  'Bacon fatiado cru',
+  'Presunto parma 500g',
+  'Semolina 10kg',
+  'Atum natural lata',
+  'Aceto balsâmico 250ml',
+  'Creme de leite cx 200ml',
+  'Azeitona preta 2kg',
+  'Leite condensado 400ml',
+  'Doce de leite argentino 1kg',
+  'Geléia de damasco 1kg',
+  'Mel 1,1kg',
+  'Marshmallows 250g',
+  'Ovos',
+  'Kinder bueno branco - CX',
+  'Bobina seg plast 30x40',
+  'Bobina seg plast 20x30',
+  'Lenha 25kg',
+  'Álcool em gel p/forno',
+  'Palmito de pupunha 1kg',
+  'Adaptador de isqueiro',
+  'Isqueiro'
+]);
+
+// Helper: classificar item por nome (normalizado)
+function classificarItem(itemName) {
+  const _n = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  const nm = _n(itemName);
+  for (const p of ITENS_PRODUZIDOS) { if (_n(p) === nm) return 'produzido'; }
+  for (const c of ITENS_COMPRADOS)  { if (_n(c) === nm) return 'comprado'; }
+  return 'outro';
+}
+
 // ═══ MÍNIMOS POR DIA DE ENTREGA (das planilhas aprovadas) ═══════════════════
 // Formato: { 'Nome do Item': { SEG: qty, QUA: qty, SEX: qty } }
 // A Enviar = max(0, Mínimo do Dia - Estoque Atual)
@@ -5706,7 +5802,7 @@ function printBatchPdf(batch) {
   c(`BT /F2 8 Tf ${rgb(154,152,128)} rg ${W-mr-130} 28 Td ${pdfStr(genDate)} Tj ET`);
 
   // AssemblePDF
-  const streamContent = cmds.join('\n');
+  const streamContent = cmds.join(String.fromCharCode(10));
 
   // Convert stream to binary bytes correctly
   const bytes = [];
@@ -6049,7 +6145,8 @@ function printBatchPdf(batch) {
   const pageIds = [];
   const baseObj = 4;
   pages.forEach((pageOps, pi) => {
-    const stream = pageOps.join('\n');
+    const NL = String.fromCharCode(10);
+  const stream = pageOps.join(String.fromCharCode(10));
     const lenObj = baseObj + pi*2;
     const pageObj = baseObj + pi*2 + 1;
     addObj(lenObj, `<<\n/Length ${stream.length}\n>>\nstream\n${stream}\nendstream`);
@@ -6168,7 +6265,8 @@ function printLogPdf(entries) {
   const pageIds = [];
   const baseObj = 4;
   pages.forEach((pageOps, pi) => {
-    const stream = pageOps.join('\n');
+    const NL = String.fromCharCode(10);
+  const stream = pageOps.join(String.fromCharCode(10));
     const lenObj = baseObj + pi*2;
     const pageObj = baseObj + pi*2 + 1;
     addObj(lenObj, `<<\n/Length ${stream.length}\n>>\nstream\n${stream}\nendstream`);
@@ -6313,7 +6411,7 @@ function printOrderPdf(order) {
   const gen=`Gerado em ${new Date().toLocaleDateString('pt-BR')} as ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
   c(`BT /F2 8 Tf ${rgb(154,152,128)} rg ${W-mr-130} 28 Td ${pdfStr(gen)} Tj ET`);
 
-  const sc=cmds.join('\n');
+  const sc=cmds.join(String.fromCharCode(10));
   const objs=[];
   function addObj(content){const id=objs.length+1;objs.push({id,content});return id;}
   const f1=addObj(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`);
@@ -6948,6 +7046,175 @@ function openValidityModal(itemId, itemName) {
   document.body.appendChild(overlay);
 }
 
+// ═══ PDF DE ENVIOS (PRODUÇÃO / COMPRAS) ══════════════════════════════════════
+function gerarPdfEnvios(tipo) {
+  const day     = nextEnviarDay();
+  const dayFull = {SEG:'Segunda-feira', QUA:'Quarta-feira', SEX:'Sexta-feira'}[day] || day;
+  const titulo  = tipo === 'produzido' ? 'Lista de Producao' : 'Lista de Compras';
+  const _norm   = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+
+  // Coletar itens com falta no CPD filtrados por tipo
+  const linhas = [];
+  UNIT_NAMES.forEach(unitName => {
+    const ucat   = getUnitCatalog(unitName).catalog;
+    const ustock = unitStock[unitName] || {};
+    const minMap = getMinPerDay(unitName);
+    ucat.forEach(item => {
+      if (classificarItem(item.name) !== tipo) return;
+      const minDia  = (minMap[item.name] && minMap[item.name][day]) || 0;
+      if (minDia === 0) return;
+      const estUnit = ustock[item.id] || 0;
+      const aEnviar = Math.max(0, minDia - estUnit);
+      if (aEnviar === 0) return;
+      const cpdItem = (catalog || []).find(c => _norm(c.name) === _norm(item.name));
+      const estCPD  = cpdItem ? (cpd[cpdItem.id] || 0) : 0;
+      const falta   = Math.max(0, aEnviar - estCPD);
+      if (falta === 0) return;
+      const existing = linhas.find(l => _norm(l.name) === _norm(item.name));
+      if (existing) {
+        existing.falta += falta;
+        existing.detalhe += ', ' + unitName + ' (' + aEnviar + ')';
+      } else {
+        linhas.push({ name: item.name, unit: item.unit, falta,
+                      category: item.category, detalhe: unitName + ' (' + aEnviar + ')' });
+      }
+    });
+  });
+
+  if (linhas.length === 0) {
+    toast((tipo === 'produzido' ? 'Nenhum item de producao' : 'Nenhum item de compra') + ' faltando para ' + dayFull);
+    return;
+  }
+
+  // Ordenar por categoria depois posição
+  const refCats = getUnitCatalog('Asa Sul').categories;
+  linhas.sort((a, b) => {
+    const ia = refCats.indexOf(a.category), ib = refCats.indexOf(b.category);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+
+  // ── Estrutura PDF idêntica ao printStockPdf (método que funciona) ──────────
+  function rgb(r,g,b) { return (r/255).toFixed(3)+' '+(g/255).toFixed(3)+' '+(b/255).toFixed(3); }
+
+  const W = 595.28, H = 841.89;
+  const ml = 40, mr = 40;
+  const cmds = [];
+  const c = (...p) => cmds.push(p.join(' '));
+
+  // Header
+  c(rgb(12,26,15)+' rg', ml+' '+(H-50)+' '+(W-80)+' 40 re f');
+  c('BT /F1 13 Tf '+rgb(240,237,224)+' rg '+(ml+8)+' '+(H-34)+' Td '+pdfStr(titulo+' - '+dayFull)+' Tj ET');
+  const genDate = new Date().toLocaleDateString('pt-BR');
+  c('BT /F2 8 Tf '+rgb(168,196,174)+' rg '+(W-mr-80)+' '+(H-34)+' Td '+pdfStr(genDate)+' Tj ET');
+  c('BT /F2 9 Tf '+rgb(168,196,174)+' rg '+(ml+8)+' '+(H-48)+' Td '+pdfStr(linhas.length+' itens com falta no CPD')+' Tj ET');
+
+  // Separador
+  c(rgb(184,146,42)+' RG 0.8 w '+ml+' '+(H-58)+' m '+(W-mr)+' '+(H-58)+' l S');
+
+  // Cabeçalho da tabela
+  const thY = H - 78;
+  const col = [ml+2, ml+162, ml+212, ml+272]; // ITEM|UN|FALTA|PARA
+  c(rgb(38,116,62)+' rg '+ml+' '+thY+' '+(W-ml-mr)+' 18 re f');
+  c('BT /F1 8 Tf 1 1 1 rg '+col[0]+' '+(thY+5)+' Td (ITEM) Tj ET');
+  c('BT /F1 8 Tf 1 1 1 rg '+col[1]+' '+(thY+5)+' Td (UN) Tj ET');
+  c('BT /F1 8 Tf 1 1 1 rg '+col[2]+' '+(thY+5)+' Td (FALTA) Tj ET');
+  c('BT /F1 8 Tf 1 1 1 rg '+col[3]+' '+(thY+5)+' Td (PARA - UNIDADES) Tj ET');
+
+  let y = thY - 2;
+  const rowH = 15;
+  let lastCat = null;
+
+  // Quebrar texto longo em múltiplas linhas (baseado em largura estimada)
+  // Fonte 7pt: ~4.2px por char. Coluna PARA: W-mr - col[3] = ~250px → ~59 chars por linha
+  function wrapText(text, maxChars) {
+    const words = text.split(', ');
+    const lines = [];
+    let cur = '';
+    words.forEach(w => {
+      const test = cur ? cur + ', ' + w : w;
+      if (test.length > maxChars && cur) { lines.push(cur); cur = w; }
+      else cur = test;
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  linhas.forEach((row, i) => {
+    if (row.category !== lastCat) {
+      lastCat = row.category;
+      if (y < 70) return;
+      c(rgb(220,238,224)+' rg '+ml+' '+(y-13)+' '+(W-ml-mr)+' 14 re f');
+      c('BT /F1 8 Tf '+rgb(16,48,22)+' rg '+(ml+4)+' '+(y-9)+' Td '+pdfStr(row.category.toUpperCase())+' Tj ET');
+      y -= 15;
+    }
+    if (y < 50) return;
+
+    // Calcular altura dinâmica baseada nas linhas do detalhe
+    const detLines = wrapText(row.detalhe, 52);
+    const lineSpacing = 10;
+    const dynH = Math.max(rowH, 8 + detLines.length * lineSpacing);
+
+    if (i % 2 === 0) c(rgb(253,252,247)+' rg '+ml+' '+(y-dynH)+' '+(W-ml-mr)+' '+dynH+' re f');
+    else             c(rgb(245,242,232)+' rg '+ml+' '+(y-dynH)+' '+(W-ml-mr)+' '+dynH+' re f');
+
+    // Centralizar verticalmente item, UN e FALTA
+    const midY = y - dynH/2 - 3;
+    const nm = row.name.length > 36 ? row.name.substring(0,36)+'...' : row.name;
+    c('BT /F2 9 Tf '+rgb(26,26,18)+' rg '+col[0]+' '+midY+' Td '+pdfStr(nm)+' Tj ET');
+    c('BT /F2 9 Tf '+rgb(26,26,18)+' rg '+col[1]+' '+midY+' Td '+pdfStr(row.unit)+' Tj ET');
+    c('BT /F1 10 Tf '+rgb(180,40,40)+' rg '+col[2]+' '+midY+' Td ('+row.falta+') Tj ET');
+
+    // Renderizar linhas do detalhe
+    detLines.forEach((dl, di) => {
+      const lineY = (y - 6) - di * lineSpacing;
+      c('BT /F2 7.5 Tf '+rgb(60,60,60)+' rg '+col[3]+' '+lineY+' Td '+pdfStr(dl)+' Tj ET');
+    });
+
+    c(rgb(218,215,197)+' RG 0.3 w '+ml+' '+(y-dynH)+' m '+(W-mr)+' '+(y-dynH)+' l S');
+    y -= dynH;
+  });
+
+  // Footer
+  c(rgb(218,215,197)+' RG 0.5 w '+ml+' 36 m '+(W-mr)+' 36 l S');
+  c('BT /F2 8 Tf '+rgb(154,152,128)+' rg '+ml+' 24 Td '+pdfStr("Sesconetto's Pizzeria  -  Sistema de Estoque")+' Tj ET');
+
+  // Montar PDF usando mesmo método do printStockPdf
+  const streamContent = cmds.join(String.fromCharCode(10));
+  const objs = [];
+  function addObj(cnt) { const id=objs.length+1; objs.push({id,content:cnt}); return id; }
+
+  const f1id     = addObj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  const f2id     = addObj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  const streamId = addObj('<< /Length '+streamContent.length+' >>\nstream\n'+streamContent+'\nendstream');
+  const pageId   = addObj('<< /Type /Page /Parent 5 0 R /MediaBox [0 0 '+W+' '+H+'] /Contents '+streamId+' 0 R /Resources << /Font << /F1 '+f1id+' 0 R /F2 '+f2id+' 0 R >> >> >>');
+  const pagesId  = addObj('<< /Type /Pages /Kids ['+pageId+' 0 R] /Count 1 >>');
+  const catId    = addObj('<< /Type /Catalog /Pages '+pagesId+' 0 R >>');
+
+  let out = '%PDF-1.4\n%\xFF\xFF\xFF\xFF\n';
+  const offsets = [];
+  objs.forEach(obj => {
+    offsets.push(out.length);
+    out += obj.id+' 0 obj\n'+obj.content+'\nendobj\n';
+  });
+
+  const xrefOff = out.length;
+  out += 'xref\n0 '+(objs.length+1)+'\n';
+  out += '0000000000 65535 f \n';
+  offsets.forEach(o => { out += String(o).padStart(10,'0')+' 00000 n \n'; });
+  out += 'trailer\n<< /Size '+(objs.length+1)+' /Root '+catId+' 0 R >>\nstartxref\n'+xrefOff+'\n%%EOF';
+
+  const bArr = new Uint8Array(out.length);
+  for (let i = 0; i < out.length; i++) bArr[i] = out.charCodeAt(i) & 0xff;
+
+  const fname = (tipo === 'produzido' ? 'Lista_Producao_' : 'Lista_Compras_') + day + '.pdf';
+  const blob  = new Blob([bArr], {type:'application/pdf'});
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a');
+  a.href = url; a.download = fname; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  toast('PDF ' + (tipo === 'produzido' ? 'Producao' : 'Compras') + ' gerado!');
+}
+
 // ═══ ENVIOS DO DIA ═══════════════════════════════════════════════════════════
 function viewEnviosDia() {
   const frag = document.createDocumentFragment();
@@ -6956,10 +7223,23 @@ function viewEnviosDia() {
   const _norm   = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
   // ── Cabeçalho ──────────────────────────────────────────────────────────────
-  const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px'});
+  const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px'});
   hdrWrap.appendChild(el('h2', {cls:'table-title'}, 'Envios do Dia'));
   const dayBadge = el('span', {cls:'envios-dia-day-badge'}, '\uD83D\uDE9A ' + dayFull);
   hdrWrap.appendChild(dayBadge);
+  // Botões PDF
+  const pdfWrap = el('div', {style:'display:flex;gap:6px;margin-left:auto;flex-wrap:wrap'});
+  const btnProd = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:12px;display:flex;align-items:center;gap:5px'});
+  btnProd.innerHTML = '\uD83D\uDCC4 PDF Produ\u00E7\u00E3o';
+  btnProd.title = 'Lista de itens produzidos que faltam no CPD';
+  btnProd.addEventListener('click', () => gerarPdfEnvios('produzido'));
+  const btnComp = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:12px;display:flex;align-items:center;gap:5px'});
+  btnComp.innerHTML = '\uD83D\uDCC4 PDF Compras';
+  btnComp.title = 'Lista de itens comprados que faltam no CPD';
+  btnComp.addEventListener('click', () => gerarPdfEnvios('comprado'));
+  pdfWrap.appendChild(btnProd);
+  pdfWrap.appendChild(btnComp);
+  hdrWrap.appendChild(pdfWrap);
   frag.appendChild(hdrWrap);
 
   // ── Coletar todos os itens que precisam de envio ───────────────────────────
