@@ -518,6 +518,59 @@
   .envios-filter-tab.active { background: var(--accent, #2a6049); color: #fff; border-color: var(--accent, #2a6049); }
   .envios-dia-day-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; background: #EAF2EC; color: var(--accent-dark, #2a6049); border: 1px solid var(--accent, #2a6049); }
 
+  /* ── Validade dos itens ─────────────────────────────────────────────────── */
+  .val-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: var(--surface); cursor: pointer;
+    font-size: 11px; color: var(--text-3);
+    flex-shrink: 0; margin-left: 6px;
+    transition: border-color .12s, color .12s, background .12s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    vertical-align: middle;
+  }
+  .val-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light, #e6f4ec); }
+  .val-btn.has-val { border-color: #E8A020; color: #E8A020; background: rgba(232,160,32,.08); }
+  .val-btn.expired { border-color: var(--danger); color: var(--danger); background: var(--danger-bg, rgba(197,48,48,.08)); }
+  .val-modal-overlay {
+    position: fixed; inset: 0; z-index: 3000;
+    background: rgba(0,0,0,.45); display: flex;
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .val-modal-box {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 0; min-width: 300px; max-width: 360px; width: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,.25); overflow: hidden;
+  }
+  .val-modal-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  }
+  .val-modal-title { font-weight: 700; font-size: 14px; color: var(--text); }
+  .val-modal-subtitle { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .val-modal-close {
+    background: none; border: none; font-size: 18px; color: var(--text-3);
+    cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;
+  }
+  .val-modal-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .val-date-row { display: flex; align-items: center; gap: 8px; }
+  .val-date-label { font-size: 12px; color: var(--text-3); min-width: 48px; font-weight: 600; }
+  .val-date-input {
+    flex: 1; height: 34px; padding: 0 10px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text); background: var(--surface);
+    outline: none; transition: border-color .12s;
+  }
+  .val-date-input:focus { border-color: var(--accent); }
+  .val-date-input.expired-date { border-color: var(--danger); color: var(--danger); }
+  .val-date-input.near-date { border-color: #E8A020; color: #E8A020; }
+  .val-modal-footer {
+    padding: 12px 20px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px; justify-content: flex-end;
+  }
+
   /* Botão confirmar item */
   .confirm-btn {
     display: flex; align-items: center; justify-content: center;
@@ -3088,7 +3141,7 @@ const VICENTE_PIRES_CATALOG = [
   {id:'ul38',name:'Inseticida',category:'Limpeza',unit:'Un'},
 ];
 
-const DELIVERY_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Salão', 'Bebidas', 'Limpeza'];
+const DELIVERY_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Salão', 'Delivery', 'Limpeza'];
 const DELIVERY_CATALOG = [
   {id:'ur01',name:'Massa de pizza',category:'Refrigerados',unit:'Un'},
   {id:'ur02',name:'Muçarela 20kg',category:'Refrigerados',unit:'Caixa'},
@@ -3154,30 +3207,30 @@ const DELIVERY_CATALOG = [
   {id:'us18',name:'Marca texto',category:'Salão',unit:'Un'},
   {id:'us19',name:'Embalagens para molho',category:'Salão',unit:'Un'},
   {id:'us20',name:'Grampeador',category:'Salão',unit:'Un'},
-  {id:'ud01',name:'Coca-Cola zero 1,5L',category:'Bebidas',unit:'Un'},
-  {id:'ud02',name:'Coca-Cola 1,5L',category:'Bebidas',unit:'Un'},
-  {id:'ud03',name:'Guaraná 1,5L',category:'Bebidas',unit:'Un'},
-  {id:'ud04',name:'Guaraná zero 1,5L',category:'Bebidas',unit:'Un'},
-  {id:'ud05',name:'Coca Cola lata 330',category:'Bebidas',unit:'Un'},
-  {id:'ud06',name:'Coca Cola zero lata 330',category:'Bebidas',unit:'Un'},
-  {id:'ud07',name:'Guaraná lata',category:'Bebidas',unit:'Un'},
-  {id:'ud08',name:'Guaraná zero lata',category:'Bebidas',unit:'Un'},
-  {id:'ud09',name:'Caixa de pizza pequena',category:'Bebidas',unit:'PCT'},
-  {id:'ud10',name:'Caixa de pizza grande',category:'Bebidas',unit:'PCT'},
-  {id:'ud11',name:'Caixa fatia de pizza',category:'Bebidas',unit:'Cx'},
-  {id:'ud12',name:'Forro caixa pequena',category:'Bebidas',unit:'PCT'},
-  {id:'ud13',name:'Forro caixa grande',category:'Bebidas',unit:'PCT'},
-  {id:'ud14',name:'Bobina plástica 20x30',category:'Bebidas',unit:'Un'},
-  {id:'ud15',name:'Bobina plástica 30x40',category:'Bebidas',unit:'Un'},
-  {id:'ud16',name:'Lacre de caixa de pizza',category:'Bebidas',unit:'PCT'},
-  {id:'ud17',name:'Caneta',category:'Bebidas',unit:'Un'},
-  {id:'ud18',name:'Bloco de papel',category:'Bebidas',unit:'Un'},
-  {id:'ud19',name:'Fita adesiva durex',category:'Bebidas',unit:'Un'},
-  {id:'ud20',name:'Fita adesiva fina 12mmx50m',category:'Bebidas',unit:'Un'},
-  {id:'ud21',name:'Agenda',category:'Bebidas',unit:'Un'},
-  {id:'ud22',name:'Caderno',category:'Bebidas',unit:'Un'},
-  {id:'ud23',name:'Marca texto',category:'Bebidas',unit:'Un'},
-  {id:'ud24',name:'Forro caixa fatia',category:'Bebidas',unit:'PCT'},
+  {id:'ud01',name:'Coca-Cola zero 1,5L',category:'Delivery',unit:'Un'},
+  {id:'ud02',name:'Coca-Cola 1,5L',category:'Delivery',unit:'Un'},
+  {id:'ud03',name:'Guaraná 1,5L',category:'Delivery',unit:'Un'},
+  {id:'ud04',name:'Guaraná zero 1,5L',category:'Delivery',unit:'Un'},
+  {id:'ud05',name:'Coca Cola lata 330',category:'Delivery',unit:'Un'},
+  {id:'ud06',name:'Coca Cola zero lata 330',category:'Delivery',unit:'Un'},
+  {id:'ud07',name:'Guaraná lata',category:'Delivery',unit:'Un'},
+  {id:'ud08',name:'Guaraná zero lata',category:'Delivery',unit:'Un'},
+  {id:'ud09',name:'Caixa de pizza pequena',category:'Delivery',unit:'PCT'},
+  {id:'ud10',name:'Caixa de pizza grande',category:'Delivery',unit:'PCT'},
+  {id:'ud11',name:'Caixa fatia de pizza',category:'Delivery',unit:'Cx'},
+  {id:'ud12',name:'Forro caixa pequena',category:'Delivery',unit:'PCT'},
+  {id:'ud13',name:'Forro caixa grande',category:'Delivery',unit:'PCT'},
+  {id:'ud14',name:'Bobina plástica 20x30',category:'Delivery',unit:'Un'},
+  {id:'ud15',name:'Bobina plástica 30x40',category:'Delivery',unit:'Un'},
+  {id:'ud16',name:'Lacre de caixa de pizza',category:'Delivery',unit:'PCT'},
+  {id:'ud17',name:'Caneta',category:'Delivery',unit:'Un'},
+  {id:'ud18',name:'Bloco de papel',category:'Delivery',unit:'Un'},
+  {id:'ud19',name:'Fita adesiva durex',category:'Delivery',unit:'Un'},
+  {id:'ud20',name:'Fita adesiva fina 12mmx50m',category:'Delivery',unit:'Un'},
+  {id:'ud21',name:'Agenda',category:'Delivery',unit:'Un'},
+  {id:'ud22',name:'Caderno',category:'Delivery',unit:'Un'},
+  {id:'ud23',name:'Marca texto',category:'Delivery',unit:'Un'},
+  {id:'ud24',name:'Forro caixa fatia',category:'Delivery',unit:'PCT'},
   {id:'ul01',name:'Touca de cabelo',category:'Limpeza',unit:'Un'},
   {id:'ul02',name:'Luva nitrilo sem pó P',category:'Limpeza',unit:'Un'},
   {id:'ul03',name:'Luva nitrilo sem pó M',category:'Limpeza',unit:'Un'},
@@ -4364,7 +4417,7 @@ const FIREBASE_SYNC_KEYS = new Set([
   'pizza_cpd', 'pizza_orders',
   'pizza_catalog', 'pizza_minimums', 'pizza_prices', 'pizza_unit_minimums',
   'pizza_confirmados',
-  'pizza_counted'
+  'pizza_counted', 'pizza_validities'
   // pizza_unit_catalog é sincronizado por slug via listeners separados (não via FIREBASE_SYNC_KEYS)
   // Nota: pizza_units NÃO está aqui — salvo por unidade via saveUnit()
 ]);
@@ -4690,7 +4743,8 @@ let orders    = load('pizza_orders', []); // [{id, unit, userName, date, status,
 let minimums  = load('pizza_minimums', {}); // {itemId: minQty} \u2014 feature 1: stock minimums
 let templates = load('pizza_templates', {}); // {unitName: [{itemId,qty}]} \u2014 feature 2: recurring orders
 let shipments  = [];
-let countedMap = load('pizza_counted', {});  // {unit: {windowKey: {itemId: true}}}
+let countedMap = load('pizza_counted', {});
+let validities = load('pizza_validities', {}); // {itemId: ['YYYY-MM-DD', ...]} — datas de validade por item  // {unit: {windowKey: {itemId: true}}}
 
 // Chave única da janela de contagem atual (ex: "2026-06-15-0" = domingo 15/06)
 function windowKey() {
@@ -5339,6 +5393,24 @@ function el(tag, attrs={}, ...children) {
         const inlineText = item.unit + (min>0 ? ` \u00B7 m\u00EDn: ${min}` : '');
         const inlineUnit = el('span', {cls:'item-unit-inline', style: dotColor?`color:${dotColor};font-weight:600`:''}, inlineText);
         nameTd.appendChild(inlineUnit);
+
+        // Botão de validade — apenas no painel CPD (useMin = true)
+        if (useMin) {
+          const today = new Date(); today.setHours(0,0,0,0);
+          const itemDates = validities[item.id] || [];
+          const hasExp  = itemDates.some(d => { const dt=new Date(d); dt.setHours(0,0,0,0); return dt < today; });
+          const hasNear = itemDates.some(d => { const dt=new Date(d); dt.setHours(0,0,0,0); const diff=(dt-today)/(86400000); return diff>=0&&diff<=7; });
+          const valBtn  = el('button', {
+            cls: 'val-btn' + (hasExp ? ' expired' : (hasNear || itemDates.length>0) ? ' has-val' : ''),
+            title: itemDates.length > 0 ? 'Validades: ' + itemDates.join(', ') : 'Adicionar validade'
+          }, '\uD83D\uDDD3');
+          valBtn.setAttribute('data-val-id', item.id);
+          valBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            openValidityModal(item.id, item.name);
+          });
+          nameTd.appendChild(valBtn);
+        }
         tr.appendChild(nameTd);
 
         if (editable) {
@@ -6783,6 +6855,97 @@ function viewUnits() {
   frag.appendChild(tableBlock);
 
   return frag;
+}
+
+// ═══ VALIDADE DE ITENS ════════════════════════════════════════════════════════
+function openValidityModal(itemId, itemName) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const isExpired = d => { const dt = new Date(d); dt.setHours(0,0,0,0); return d && dt < today; };
+  const isNear    = d => {
+    const dt = new Date(d); dt.setHours(0,0,0,0);
+    const diff = (dt - today) / (1000*60*60*24);
+    return d && diff >= 0 && diff <= 7;
+  };
+
+  // Carregar datas atuais (até 5)
+  const dates = (validities[itemId] || ['','','','','']).slice(0, 5);
+  while (dates.length < 5) dates.push('');
+
+  const overlay = el('div', {cls:'val-modal-overlay'});
+
+  const box = el('div', {cls:'val-modal-box'});
+
+  // Header
+  const hdr = el('div', {cls:'val-modal-header'});
+  const hdrLeft = el('div', {});
+  hdrLeft.appendChild(el('div', {cls:'val-modal-title'}, '\uD83D\uDDD3\uFE0F Datas de Validade'));
+  hdrLeft.appendChild(el('div', {cls:'val-modal-subtitle'}, itemName));
+  hdr.appendChild(hdrLeft);
+  const closeBtn = el('button', {cls:'val-modal-close'}, '\u00D7');
+  closeBtn.addEventListener('click', () => overlay.remove());
+  hdr.appendChild(closeBtn);
+  box.appendChild(hdr);
+
+  // Body — 5 inputs de data
+  const body = el('div', {cls:'val-modal-body'});
+  const inputs = [];
+  for (let i = 0; i < 5; i++) {
+    const row = el('div', {cls:'val-date-row'});
+    row.appendChild(el('span', {cls:'val-date-label'}, 'Lote ' + (i+1)));
+    const inp = el('input', {type:'date', cls:'val-date-input'});
+    inp.value = dates[i] || '';
+    if (dates[i]) {
+      if (isExpired(dates[i]))   inp.classList.add('expired-date');
+      else if (isNear(dates[i])) inp.classList.add('near-date');
+    }
+    inp.addEventListener('change', () => {
+      inp.classList.remove('expired-date', 'near-date');
+      if (inp.value) {
+        if (isExpired(inp.value))   inp.classList.add('expired-date');
+        else if (isNear(inp.value)) inp.classList.add('near-date');
+      }
+    });
+    inputs.push(inp);
+    row.appendChild(inp);
+    body.appendChild(row);
+  }
+  box.appendChild(body);
+
+  // Footer
+  const footer = el('div', {cls:'val-modal-footer'});
+  const cancelBtn = el('button', {cls:'btn btn-outline btn-sm'}, 'Cancelar');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  const saveBtn = el('button', {cls:'btn btn-sm', style:'background:var(--accent);color:#fff'}, 'Salvar');
+  saveBtn.addEventListener('click', () => {
+    const newDates = inputs.map(i => i.value).filter(v => v);
+    if (newDates.length > 0) {
+      validities[itemId] = newDates;
+    } else {
+      delete validities[itemId];
+    }
+    save('pizza_validities', validities);
+    overlay.remove();
+    // Atualizar botão na tela
+    const btn = document.querySelector(`.val-btn[data-val-id="${CSS.escape(itemId)}"]`);
+    if (btn) {
+      const expired = newDates.some(d => isExpired(d));
+      const near    = newDates.some(d => isNear(d));
+      btn.className = 'val-btn' + (expired ? ' expired' : near ? ' has-val' : newDates.length > 0 ? ' has-val' : '');
+      btn.title = newDates.length > 0
+        ? 'Validades: ' + newDates.join(', ')
+        : 'Adicionar validade';
+    }
+    toast('Validades salvas');
+  });
+  footer.appendChild(cancelBtn);
+  footer.appendChild(saveBtn);
+  box.appendChild(footer);
+
+  overlay.appendChild(box);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 // ═══ ENVIOS DO DIA ═══════════════════════════════════════════════════════════
