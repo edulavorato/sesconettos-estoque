@@ -2058,7 +2058,7 @@ const SEED_CATALOG = [
   {id:'rf15',name:'Salaminho italiano',category:'Refrigerados',unit:'Peça'},
   {id:'rf16',name:'Peperoni',category:'Refrigerados',unit:'PCT'},
   {id:'rf17',name:'Bacon fatiado cru',category:'Refrigerados',unit:'Bandeja'},
-  {id:'rf18',name:'Presunto cozido',category:'Refrigerados',unit:'Peça'},
+  {id:'rf18',name:'Presunto 500g',category:'Refrigerados',unit:'Peça'},
   {id:'rf19',name:'Presunto parma',category:'Refrigerados',unit:'PCT'},
   {id:'rf20',name:'Sorvete de creme 10L',category:'Refrigerados',unit:'Caixa'},
   {id:'rf21',name:'Morango 400g',category:'Refrigerados',unit:'Bandeja'},
@@ -2303,8 +2303,8 @@ const ASA_SUL_CATALOG = [
   {id:'ur18',name:'Lombo canadense 500g',category:'Refrigerados',unit:'Peça'},
   {id:'ur19',name:'Salaminho italiano',category:'Refrigerados',unit:'Peça'},
   {id:'ur20',name:'Tomate seco 500g',category:'Refrigerados',unit:'PCT'},
-  {id:'ur21',name:'Presunto cozido',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ur22',name:'Peperoni 1kg',category:'Refrigerados',unit:'PCT'},
+  {id:'ur21',name:'Presunto 500g',category:'Refrigerados',unit:'Bandeja'},
+  {id:'ur22',name:'Peperoni',category:'Refrigerados',unit:'PCT'},
   {id:'ur23',name:'Bacon fatiado cru',category:'Refrigerados',unit:'Bandeja'},
   {id:'ur24',name:'Presunto parma 500g',category:'Refrigerados',unit:'PCT'},
   {id:'ur25',name:'Lascas de coco 200g',category:'Refrigerados',unit:'PCT'},
@@ -2612,8 +2612,8 @@ const SIG_CATALOG = [
   {id:'ur18',name:'Lombo canadense 500g',category:'Refrigerados',unit:'Peça'},
   {id:'ur19',name:'Salaminho italiano',category:'Refrigerados',unit:'Peça'},
   {id:'ur20',name:'Tomate seco 500g',category:'Refrigerados',unit:'PCT'},
-  {id:'ur21',name:'Presunto cozido',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ur22',name:'Peperoni 1kg',category:'Refrigerados',unit:'PCT'},
+  {id:'ur21',name:'Presunto 500g',category:'Refrigerados',unit:'Bandeja'},
+  {id:'ur22',name:'Peperoni',category:'Refrigerados',unit:'PCT'},
   {id:'ur23',name:'Bacon fatiado cru',category:'Refrigerados',unit:'Bandeja'},
   {id:'ur24',name:'Presunto parma 500g',category:'Refrigerados',unit:'PCT'},
   {id:'ur25',name:'Lascas de coco 200g',category:'Refrigerados',unit:'PCT'},
@@ -2857,8 +2857,8 @@ const VICENTE_PIRES_CATALOG = [
   {id:'ur18',name:'Lombo canadense 500g',category:'Refrigerados',unit:'Peça'},
   {id:'ur19',name:'Salaminho italiano',category:'Refrigerados',unit:'Peça'},
   {id:'ur20',name:'Tomate seco 500g',category:'Refrigerados',unit:'PCT'},
-  {id:'ur21',name:'Presunto cozido',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ur22',name:'Peperoni 1kg',category:'Refrigerados',unit:'PCT'},
+  {id:'ur21',name:'Presunto 500g',category:'Refrigerados',unit:'Bandeja'},
+  {id:'ur22',name:'Peperoni',category:'Refrigerados',unit:'PCT'},
   {id:'ur23',name:'Bacon fatiado cru',category:'Refrigerados',unit:'Bandeja'},
   {id:'ur24',name:'Presunto parma 500g',category:'Refrigerados',unit:'PCT'},
   {id:'ur25',name:'Lascas de coco 200g',category:'Refrigerados',unit:'PCT'},
@@ -3160,8 +3160,8 @@ const DELIVERY_CATALOG = [
   {id:'ur15',name:'Lombo canadense 500g',category:'Refrigerados',unit:'Peça'},
   {id:'ur16',name:'Salaminho italiano',category:'Refrigerados',unit:'Peça'},
   {id:'ur17',name:'Tomate seco 500g',category:'Refrigerados',unit:'PCT'},
-  {id:'ur18',name:'Presunto cozido',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ur19',name:'Peperoni 1kg',category:'Refrigerados',unit:'PCT'},
+  {id:'ur18',name:'Presunto 500g',category:'Refrigerados',unit:'Bandeja'},
+  {id:'ur19',name:'Peperoni',category:'Refrigerados',unit:'PCT'},
   {id:'ur20',name:'Presunto parma 500g',category:'Refrigerados',unit:'PCT'},
   {id:'ur21',name:'Purê de abóbora 500g',category:'Refrigerados',unit:'Un'},
   {id:'ur22',name:'Molho pesto bisnaga',category:'Refrigerados',unit:'Galão'},
@@ -3304,7 +3304,6 @@ const ITENS_PRODUZIDOS = new Set([
   'Massa de pizza',
   'Muçarela 20kg',
   'Molho de tomate 5L',
-  'Muçarela lacfree',
   'Parmesão grana padano 300g',
   'Parmesão ralado 2kg',
   'Provolone 300g',
@@ -3315,7 +3314,7 @@ const ITENS_PRODUZIDOS = new Set([
   'Lombo canadense 500g',
   'Salaminho italiano',
   'Tomate seco 500g',
-  'Presunto cozido',
+  'Presunto 500g',
   'Lascas de coco 200g',
   'Nutella 400g',
   'Guianduela branca',
@@ -3338,13 +3337,14 @@ const ITENS_PRODUZIDOS = new Set([
 ]);
 
 const ITENS_COMPRADOS = new Set([
-  'Muçarela de búfala 2kg',
+  'Muçarela lacfree',
+  'Muçarela de búfala',
   'Burrata de búfala 200g',
   'Queijo brie',
   'Requeijão bisnaga 1,5kg',
   'Cream cheese',
   'Anchovas 50g',
-  'Peperoni 1kg',
+  'Peperoni',
   'Bacon fatiado cru',
   'Presunto parma 500g',
   'Semolina 10kg',
@@ -3372,8 +3372,12 @@ const ITENS_COMPRADOS = new Set([
 function classificarItem(itemName) {
   const _n = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const nm = _n(itemName);
+  // Match exato primeiro
   for (const p of ITENS_PRODUZIDOS) { if (_n(p) === nm) return 'produzido'; }
   for (const c of ITENS_COMPRADOS)  { if (_n(c) === nm) return 'comprado'; }
+  // Match por prefixo (ex: 'Peperoni' bate 'Peperoni 1kg' e vice-versa)
+  for (const p of ITENS_PRODUZIDOS) { if (nm.startsWith(_n(p)) || _n(p).startsWith(nm)) return 'produzido'; }
+  for (const c of ITENS_COMPRADOS)  { if (nm.startsWith(_n(c)) || _n(c).startsWith(nm)) return 'comprado'; }
   return 'outro';
 }
 
@@ -3402,8 +3406,8 @@ const MIN_PER_DAY_ASA_SUL = {
   'Lombo canadense 500g':{'SEG':3,'QUA':3,'SEX':6},
   'Salaminho italiano':{'SEG':2,'QUA':2,'SEX':4},
   'Tomate seco 500g':{'SEG':5,'QUA':5,'SEX':10},
-  'Presunto cozido':{'SEG':4,'QUA':4,'SEX':8},
-  'Peperoni 1kg':{'SEG':2,'QUA':2,'SEX':4},
+  'Presunto 500g':{'SEG':4,'QUA':4,'SEX':8},
+  'Peperoni':{'SEG':2,'QUA':2,'SEX':4},
   'Bacon fatiado cru':{'SEG':3,'QUA':3,'SEX':4},
   'Presunto parma 500g':{'SEG':4,'QUA':4,'SEX':6},
   'Lascas de coco 200g':{'SEG':4,'QUA':4,'SEX':6},
@@ -3711,8 +3715,8 @@ const MIN_PER_DAY_SIG = {
   'Lombo canadense 500g':{'SEG':2,'QUA':2,'SEX':4},
   'Salaminho italiano':{'SEG':2,'QUA':2,'SEX':3},
   'Tomate seco 500g':{'SEG':3,'QUA':3,'SEX':5},
-  'Presunto cozido':{'SEG':2,'QUA':2,'SEX':6},
-  'Peperoni 1kg':{'SEG':1,'QUA':1,'SEX':2},
+  'Presunto 500g':{'SEG':2,'QUA':2,'SEX':6},
+  'Peperoni':{'SEG':1,'QUA':1,'SEX':2},
   'Bacon fatiado cru':{'SEG':2,'QUA':2,'SEX':3},
   'Presunto parma 500g':{'SEG':2,'QUA':2,'SEX':3},
   'Lascas de coco 200g':{'SEG':3,'QUA':3,'SEX':4},
@@ -3956,8 +3960,8 @@ const MIN_PER_DAY_VICENTE_PIRES = {
   'Lombo canadense 500g':{'SEG':3,'QUA':3,'SEX':5},
   'Salaminho italiano':{'SEG':3,'QUA':3,'SEX':5},
   'Tomate seco 500g':{'SEG':5,'QUA':5,'SEX':10},
-  'Presunto cozido':{'SEG':5,'QUA':5,'SEX':8},
-  'Peperoni 1kg':{'SEG':3,'QUA':3,'SEX':4},
+  'Presunto 500g':{'SEG':5,'QUA':5,'SEX':8},
+  'Peperoni':{'SEG':3,'QUA':3,'SEX':4},
   'Bacon fatiado cru':{'SEG':3,'QUA':3,'SEX':4},
   'Presunto parma 500g':{'SEG':4,'QUA':4,'SEX':6},
   'Lascas de coco 200g':{'SEG':3,'QUA':3,'SEX':6},
@@ -4258,8 +4262,8 @@ const MIN_PER_DAY_DELIVERY = {
   'Lombo canadense 500g':{'SEG':2,'QUA':2,'SEX':3},
   'Salaminho italiano':{'SEG':1,'QUA':1,'SEX':2},
   'Tomate seco 500g':{'SEG':3,'QUA':3,'SEX':6},
-  'Presunto cozido':{'SEG':2,'QUA':2,'SEX':4},
-  'Peperoni 1kg':{'SEG':1,'QUA':1,'SEX':2},
+  'Presunto 500g':{'SEG':2,'QUA':2,'SEX':4},
+  'Peperoni':{'SEG':1,'QUA':1,'SEX':2},
   'Presunto parma 500g':{'SEG':2,'QUA':2,'SEX':3},
   'Purê de abóbora 500g':{'SEG':2,'QUA':2,'SEX':4},
   'Molho pesto bisnaga':{'SEG':1,'SEX':1},
@@ -4304,7 +4308,7 @@ const MIN_PER_DAY_DELIVERY = {
   'Caderno':{'QUA':1},
   'Marca texto':{'QUA':2},
   'Embalagens para molho':{'QUA':1},
-  'grampeador':{'QUA':1},
+  'Grampeador':{'QUA':1},
   'Coca-Cola zero 1,5L':{'QUA':54},
   'Coca-Cola 1,5L':{'QUA':54},
   'Guaraná 1,5L':{'QUA':54},
@@ -7061,10 +7065,9 @@ function gerarPdfEnvios(tipo) {
     const minMap = getMinPerDay(unitName);
     ucat.forEach(item => {
       if (classificarItem(item.name) !== tipo) return;
-      const minDia  = (minMap[item.name] && minMap[item.name][day]) || 0;
-      if (minDia === 0) return;
       const estUnit = ustock[item.id] || 0;
-      const aEnviar = Math.max(0, minDia - estUnit);
+      const aEnviar = calcAEnviar(unitName, item.name, estUnit, day);
+      if (aEnviar === 0) return; // sem mínimo ou unidade já tem
       if (aEnviar === 0) return;
       const cpdItem = (catalog || []).find(c => _norm(c.name) === _norm(item.name));
       const estCPD  = cpdItem ? (cpd[cpdItem.id] || 0) : 0;
@@ -7093,115 +7096,111 @@ function gerarPdfEnvios(tipo) {
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
   });
 
-  // ── Estrutura PDF idêntica ao printStockPdf (método que funciona) ──────────
+  // ── PDF Multipágina ──────────────────────────────────────────────────────
   function rgb(r,g,b) { return (r/255).toFixed(3)+' '+(g/255).toFixed(3)+' '+(b/255).toFixed(3); }
-
-  const W = 595.28, H = 841.89;
-  const ml = 40, mr = 40;
-  const cmds = [];
-  const c = (...p) => cmds.push(p.join(' '));
-
-  // Header
-  c(rgb(12,26,15)+' rg', ml+' '+(H-50)+' '+(W-80)+' 40 re f');
-  c('BT /F1 13 Tf '+rgb(240,237,224)+' rg '+(ml+8)+' '+(H-34)+' Td '+pdfStr(titulo+' - '+dayFull)+' Tj ET');
+  const W = 595.28, H = 841.89, ml = 40, mr = 40;
+  const col = [ml+2, ml+162, ml+212, ml+272];
+  const rowH = 15, MARGIN_BOT = 50;
   const genDate = new Date().toLocaleDateString('pt-BR');
-  c('BT /F2 8 Tf '+rgb(168,196,174)+' rg '+(W-mr-80)+' '+(H-34)+' Td '+pdfStr(genDate)+' Tj ET');
-  c('BT /F2 9 Tf '+rgb(168,196,174)+' rg '+(ml+8)+' '+(H-48)+' Td '+pdfStr(linhas.length+' itens com falta no CPD')+' Tj ET');
 
-  // Separador
-  c(rgb(184,146,42)+' RG 0.8 w '+ml+' '+(H-58)+' m '+(W-mr)+' '+(H-58)+' l S');
-
-  // Cabeçalho da tabela
-  const thY = H - 78;
-  const col = [ml+2, ml+162, ml+212, ml+272]; // ITEM|UN|FALTA|PARA
-  c(rgb(38,116,62)+' rg '+ml+' '+thY+' '+(W-ml-mr)+' 18 re f');
-  c('BT /F1 8 Tf 1 1 1 rg '+col[0]+' '+(thY+5)+' Td (ITEM) Tj ET');
-  c('BT /F1 8 Tf 1 1 1 rg '+col[1]+' '+(thY+5)+' Td (UN) Tj ET');
-  c('BT /F1 8 Tf 1 1 1 rg '+col[2]+' '+(thY+5)+' Td (FALTA) Tj ET');
-  c('BT /F1 8 Tf 1 1 1 rg '+col[3]+' '+(thY+5)+' Td (PARA - UNIDADES) Tj ET');
-
-  let y = thY - 2;
-  const rowH = 15;
-  let lastCat = null;
-
-  // Quebrar texto longo em múltiplas linhas (baseado em largura estimada)
-  // Fonte 7pt: ~4.2px por char. Coluna PARA: W-mr - col[3] = ~250px → ~59 chars por linha
   function wrapText(text, maxChars) {
-    const words = text.split(', ');
-    const lines = [];
-    let cur = '';
+    const words = text.split(', '); const lines = []; let cur = '';
     words.forEach(w => {
-      const test = cur ? cur + ', ' + w : w;
-      if (test.length > maxChars && cur) { lines.push(cur); cur = w; }
-      else cur = test;
+      const test = cur ? cur+', '+w : w;
+      if (test.length > maxChars && cur) { lines.push(cur); cur = w; } else cur = test;
     });
     if (cur) lines.push(cur);
     return lines;
   }
 
-  linhas.forEach((row, i) => {
+  const pages = [];
+  let cmds = [];
+  const c = (...p) => cmds.push(p.join(' '));
+
+  function newPage() {
+    cmds = [];
+    c(rgb(12,26,15)+' rg', ml+' '+(H-50)+' '+(W-80)+' 40 re f');
+    c('BT /F1 13 Tf '+rgb(240,237,224)+' rg '+(ml+8)+' '+(H-34)+' Td '+pdfStr(titulo+' - '+dayFull)+' Tj ET');
+    c('BT /F2 8 Tf '+rgb(168,196,174)+' rg '+(W-mr-80)+' '+(H-34)+' Td '+pdfStr(genDate)+' Tj ET');
+    c('BT /F2 9 Tf '+rgb(168,196,174)+' rg '+(ml+8)+' '+(H-48)+' Td '+pdfStr(linhas.length+' itens com falta no CPD')+' Tj ET');
+    c(rgb(184,146,42)+' RG 0.8 w '+ml+' '+(H-58)+' m '+(W-mr)+' '+(H-58)+' l S');
+    const thY = H-78;
+    c(rgb(38,116,62)+' rg '+ml+' '+thY+' '+(W-ml-mr)+' 18 re f');
+    ['ITEM','UN','FALTA','PARA - UNIDADES'].forEach((h,i) => {
+      c('BT /F1 8 Tf 1 1 1 rg '+col[i]+' '+(thY+5)+' Td '+pdfStr(h)+' Tj ET');
+    });
+    return thY - 2;
+  }
+
+  function closePage() {
+    c(rgb(218,215,197)+' RG 0.5 w '+ml+' 36 m '+(W-mr)+' 36 l S');
+    c('BT /F2 8 Tf '+rgb(154,152,128)+' rg '+ml+' 24 Td '+pdfStr("Sesconetto's Pizzeria  -  Sistema de Estoque")+' Tj ET');
+    pages.push(cmds.slice());
+  }
+
+  let y = newPage();
+  let lastCat = null;
+  let rowIdx = 0;
+
+  linhas.forEach(row => {
+    const detLines = wrapText(row.detalhe, 52);
+    const dynH = Math.max(rowH, 8 + detLines.length * 10);
+    const catH = (row.category !== lastCat) ? 15 : 0;
+
+    if (y - catH - dynH < MARGIN_BOT) {
+      closePage();
+      y = newPage();
+      lastCat = null;
+    }
+
     if (row.category !== lastCat) {
       lastCat = row.category;
-      if (y < 70) return;
       c(rgb(220,238,224)+' rg '+ml+' '+(y-13)+' '+(W-ml-mr)+' 14 re f');
       c('BT /F1 8 Tf '+rgb(16,48,22)+' rg '+(ml+4)+' '+(y-9)+' Td '+pdfStr(row.category.toUpperCase())+' Tj ET');
       y -= 15;
     }
-    if (y < 50) return;
 
-    // Calcular altura dinâmica baseada nas linhas do detalhe
-    const detLines = wrapText(row.detalhe, 52);
-    const lineSpacing = 10;
-    const dynH = Math.max(rowH, 8 + detLines.length * lineSpacing);
+    if (rowIdx%2===0) c(rgb(253,252,247)+' rg '+ml+' '+(y-dynH)+' '+(W-ml-mr)+' '+dynH+' re f');
+    else              c(rgb(245,242,232)+' rg '+ml+' '+(y-dynH)+' '+(W-ml-mr)+' '+dynH+' re f');
 
-    if (i % 2 === 0) c(rgb(253,252,247)+' rg '+ml+' '+(y-dynH)+' '+(W-ml-mr)+' '+dynH+' re f');
-    else             c(rgb(245,242,232)+' rg '+ml+' '+(y-dynH)+' '+(W-ml-mr)+' '+dynH+' re f');
-
-    // Centralizar verticalmente item, UN e FALTA
     const midY = y - dynH/2 - 3;
     const nm = row.name.length > 36 ? row.name.substring(0,36)+'...' : row.name;
     c('BT /F2 9 Tf '+rgb(26,26,18)+' rg '+col[0]+' '+midY+' Td '+pdfStr(nm)+' Tj ET');
     c('BT /F2 9 Tf '+rgb(26,26,18)+' rg '+col[1]+' '+midY+' Td '+pdfStr(row.unit)+' Tj ET');
     c('BT /F1 10 Tf '+rgb(180,40,40)+' rg '+col[2]+' '+midY+' Td ('+row.falta+') Tj ET');
-
-    // Renderizar linhas do detalhe
-    detLines.forEach((dl, di) => {
-      const lineY = (y - 6) - di * lineSpacing;
-      c('BT /F2 7.5 Tf '+rgb(60,60,60)+' rg '+col[3]+' '+lineY+' Td '+pdfStr(dl)+' Tj ET');
+    detLines.forEach((dl,di) => {
+      c('BT /F2 7.5 Tf '+rgb(60,60,60)+' rg '+col[3]+' '+((y-6)-di*10)+' Td '+pdfStr(dl)+' Tj ET');
     });
-
     c(rgb(218,215,197)+' RG 0.3 w '+ml+' '+(y-dynH)+' m '+(W-mr)+' '+(y-dynH)+' l S');
     y -= dynH;
+    rowIdx++;
   });
+  closePage();
 
-  // Footer
-  c(rgb(218,215,197)+' RG 0.5 w '+ml+' 36 m '+(W-mr)+' 36 l S');
-  c('BT /F2 8 Tf '+rgb(154,152,128)+' rg '+ml+' 24 Td '+pdfStr("Sesconetto's Pizzeria  -  Sistema de Estoque")+' Tj ET');
-
-  // Montar PDF usando mesmo método do printStockPdf
-  const streamContent = cmds.join(String.fromCharCode(10));
+  // Montar PDF multipágina
   const objs = [];
   function addObj(cnt) { const id=objs.length+1; objs.push({id,content:cnt}); return id; }
-
-  const f1id     = addObj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
-  const f2id     = addObj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
-  const streamId = addObj('<< /Length '+streamContent.length+' >>\nstream\n'+streamContent+'\nendstream');
-  const pageId   = addObj('<< /Type /Page /Parent 5 0 R /MediaBox [0 0 '+W+' '+H+'] /Contents '+streamId+' 0 R /Resources << /Font << /F1 '+f1id+' 0 R /F2 '+f2id+' 0 R >> >> >>');
-  const pagesId  = addObj('<< /Type /Pages /Kids ['+pageId+' 0 R] /Count 1 >>');
-  const catId    = addObj('<< /Type /Catalog /Pages '+pagesId+' 0 R >>');
-
-  let out = '%PDF-1.4\n%\xFF\xFF\xFF\xFF\n';
-  const offsets = [];
-  objs.forEach(obj => {
-    offsets.push(out.length);
-    out += obj.id+' 0 obj\n'+obj.content+'\nendobj\n';
+  const f1id = addObj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  const f2id = addObj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  const pageObjIds = [];
+  pages.forEach(pageCmds => {
+    const sc = pageCmds.join(String.fromCharCode(10));
+    const NL2=String.fromCharCode(10); const sid = addObj('<< /Length '+sc.length+' >>'+NL2+'stream'+NL2+sc+NL2+'endstream');
+    const pid = addObj('<< /Type /Page /Parent 999 0 R /MediaBox [0 0 '+W+' '+H+'] /Contents '+sid+' 0 R /Resources << /Font << /F1 '+f1id+' 0 R /F2 '+f2id+' 0 R >> >> >>');
+    pageObjIds.push(pid);
   });
+  const pagesId = objs.length + 1;
+  const catId   = addObj('<< /Type /Catalog /Pages '+(pagesId+1)+' 0 R >>');
+  addObj('<< /Type /Pages /Kids ['+pageObjIds.map(id=>id+' 0 R').join(' ')+'] /Count '+pages.length+' >>');
+  objs.forEach(obj => { obj.content = obj.content.replace('/Parent 999 0 R','/Parent '+pagesId+' 0 R'); });
 
+  let out = '%PDF-1.4'+String.fromCharCode(10)+'%'+String.fromCharCode(255,255,255,255)+String.fromCharCode(10);
+  const offsets = [];
+  objs.forEach(obj => { offsets.push(out.length); out += obj.id+' 0 obj'+String.fromCharCode(10)+obj.content+String.fromCharCode(10)+'endobj'+String.fromCharCode(10); });
   const xrefOff = out.length;
-  out += 'xref\n0 '+(objs.length+1)+'\n';
-  out += '0000000000 65535 f \n';
-  offsets.forEach(o => { out += String(o).padStart(10,'0')+' 00000 n \n'; });
-  out += 'trailer\n<< /Size '+(objs.length+1)+' /Root '+catId+' 0 R >>\nstartxref\n'+xrefOff+'\n%%EOF';
+  out += 'xref'+String.fromCharCode(10)+'0 '+(objs.length+1)+String.fromCharCode(10)+'0000000000 65535 f '+String.fromCharCode(10);
+  offsets.forEach(o => { out += String(o).padStart(10,'0')+' 00000 n '+String.fromCharCode(10); });
+  out += 'trailer'+String.fromCharCode(10)+'<< /Size '+(objs.length+1)+' /Root '+catId+' 0 R >>'+String.fromCharCode(10)+'startxref'+String.fromCharCode(10)+xrefOff+String.fromCharCode(10)+'%%EOF';
 
   const bArr = new Uint8Array(out.length);
   for (let i = 0; i < out.length; i++) bArr[i] = out.charCodeAt(i) & 0xff;
@@ -7253,11 +7252,10 @@ function viewEnviosDia() {
     const minMap = getMinPerDay(unitName);
 
     ucat.forEach(item => {
-      const minDia = (minMap[item.name] && minMap[item.name][day]) || 0;
-      if (minDia === 0) return;
+      // Usar calcAEnviar() que normaliza o nome — evita falhas por acento/capitalização
       const est     = ustock[item.id] || 0;
-      const aEnviar = Math.max(0, minDia - est);
-      if (aEnviar === 0) return; // unidade já tem — não incluir
+      const aEnviar = calcAEnviar(unitName, item.name, est, day);
+      if (aEnviar === 0) return; // sem mínimo para este dia ou unidade já tem
 
       if (!itemMap.has(item.name)) {
         // Localizar item no catálogo CPD pelo nome (para pegar estoque CPD)
