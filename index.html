@@ -487,6 +487,68 @@
   .loading-step.active  { background: #68D391; transform: scale(1.3); }
   .loading-step.error   { background: #FC8181; }
 
+  /* ── Confirmação de Contagem ───────────────────────────────────────────── */
+  .cat-confirm-btn {
+    flex: 0 0 auto; align-self: center;
+    padding: 4px 10px; font-size: 11px; font-weight: 700;
+    border-radius: 20px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text-3);
+    cursor: pointer; white-space: nowrap;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    transition: all .15s;
+  }
+  .cat-confirm-btn:hover { border-color: #2a9148; color: #2a9148; }
+  .cat-confirm-btn.confirmed {
+    background: rgba(42,145,72,.12); color: #2a9148;
+    border-color: #2a9148;
+  }
+  .cat-confirm-btn.needs-reconfirm {
+    background: rgba(200,150,0,.12); color: #975A16;
+    border-color: #C89600;
+    animation: pulse-warn 2s infinite;
+  }
+  @keyframes pulse-warn {
+    0%,100% { opacity:1; } 50% { opacity:.65; }
+  }
+  .cat-pdf-btn-blocked { opacity:.35; pointer-events:none; cursor:not-allowed; }
+  .confirm-modal-overlay {
+    position:fixed;inset:0;z-index:3500;
+    background:rgba(0,0,0,.5);display:flex;
+    align-items:center;justify-content:center;padding:16px;
+  }
+  .confirm-modal-box {
+    background:var(--surface);border-radius:var(--radius);
+    padding:0;min-width:290px;max-width:340px;width:100%;
+    box-shadow:0 8px 32px rgba(0,0,0,.3);overflow:hidden;
+  }
+  .confirm-modal-hdr {
+    padding:14px 18px;border-bottom:1px solid var(--border);
+    background:#EAF2EC;
+  }
+  .confirm-modal-title { font-weight:700;font-size:14px;color:var(--accent-dark,#2a6049); }
+  .confirm-modal-sub   { font-size:11px;color:var(--text-3);margin-top:2px; }
+  .confirm-modal-body  { padding:16px 18px; }
+  .confirm-modal-label { font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px; }
+  .confirm-name-input  {
+    width:100%;height:38px;padding:0 12px;
+    border:1.5px solid var(--border);border-radius:var(--radius-sm);
+    font-size:14px;color:var(--text);background:var(--surface);
+    outline:none;transition:border-color .12s;
+  }
+  .confirm-name-input:focus { border-color:var(--accent,#2a6049); }
+  .confirm-modal-ftr {
+    padding:12px 18px;border-top:1px solid var(--border);
+    display:flex;gap:8px;justify-content:flex-end;
+  }
+  .general-confirm-wrap {
+    display:flex;gap:8px;align-items:center;
+    margin-bottom:14px;padding:12px 16px;
+    background:#EAF2EC;border-radius:var(--radius);
+    border:1.5px solid rgba(42,145,72,.3);
+  }
+  .general-confirm-info { flex:1;font-size:12px;color:var(--text-2); }
+  .general-confirm-info strong { display:block;font-size:13px;color:var(--accent-dark,#2a6049); }
+
   /* ── Painel Envios do Dia ───────────────────────────────────────────────── */
   .envios-wrap { border: 1.5px solid var(--border); border-radius: var(--radius); overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .envios-matrix { width: 100%; border-collapse: collapse; min-width: 680px; }
@@ -4488,6 +4550,186 @@ setTimeout(() => {
 
 // Salvar catálogo de uma unidade: atualiza cache em memória + Firebase
 // Garante que viewUnits e contagem refletem a mudança imediatamente
+// ═══ CONFIRMAÇÃO DE CONTAGEM POR CATEGORIA ═══════════════════════════════════
+// Estrutura: { unitSlug: { 'Categoria': { name, ts, qtys: {itemId: qty} } } }
+// qtys = snapshot das quantidades no momento da confirmação
+let catConfirmations = load('pizza_cat_confirms', {});
+
+// Reset diário às 6h (horário de Brasília = UTC-3)
+function _checkDailyReset() {
+  const now = new Date();
+  const brt = new Date(now.getTime() - 3*60*60*1000); // UTC-3
+  const resetKey = brt.toISOString().slice(0,10) + '-reset';
+  if (catConfirmations._resetKey === resetKey) return; // já resetou hoje
+  // Resetar apenas as confirmações, manter o resto
+  const newConf = { _resetKey: resetKey };
+  catConfirmations = newConf;
+  save('pizza_cat_confirms', catConfirmations);
+  console.log('[Confirmação] Reset diário às 6h executado');
+}
+
+// Verificar se a hora atual é após 6h BRT (para decidir se deve resetar)
+function _isAfter6hBRT() {
+  const now = new Date();
+  const brt = new Date(now.getTime() - 3*60*60*1000);
+  return brt.getHours() >= 6;
+}
+
+// Salvar confirmação de categoria
+function confirmCategory(unitName, cat, respName, stockObj) {
+  const slug = unitSlug(unitName);
+  if (!catConfirmations[slug]) catConfirmations[slug] = {};
+  const qtys = {};
+  const ucat = getUnitCatalog(unitName).catalog.filter(i => i.category === cat);
+  ucat.forEach(i => { qtys[i.id] = stockObj[i.id] || 0; });
+  catConfirmations[slug][cat] = {
+    name: respName,
+    ts: Date.now(),
+    qtys
+  };
+  save('pizza_cat_confirms', catConfirmations);
+}
+
+// Verificar estado da confirmação de uma categoria
+// Retorna: 'none' | 'confirmed' | 'needs-reconfirm'
+function getCatConfirmState(unitName, cat, stockObj) {
+  _checkDailyReset();
+  const slug = unitSlug(unitName);
+  const conf = catConfirmations[slug] && catConfirmations[slug][cat];
+  if (!conf) return 'none';
+  // Verificar se alguma quantidade mudou desde a confirmação
+  const ucat = getUnitCatalog(unitName).catalog.filter(i => i.category === cat);
+  const changed = ucat.some(i => (stockObj[i.id] || 0) !== (conf.qtys[i.id] || 0));
+  return changed ? 'needs-reconfirm' : 'confirmed';
+}
+
+// Verificar se TODAS as categorias da unidade estão confirmadas
+function allCatsConfirmed(unitName, stockObj) {
+  const cats = getUnitCatalog(unitName).categories;
+  return cats.every(cat => getCatConfirmState(unitName, cat, stockObj) === 'confirmed');
+}
+
+// Confirmação geral (gerente)
+function confirmGeneral(unitName, respName) {
+  const slug = unitSlug(unitName);
+  if (!catConfirmations[slug]) catConfirmations[slug] = {};
+  catConfirmations[slug]._general = { name: respName, ts: Date.now() };
+  save('pizza_cat_confirms', catConfirmations);
+}
+
+function getGeneralConfirmState(unitName) {
+  _checkDailyReset();
+  const slug = unitSlug(unitName);
+  return catConfirmations[slug] && catConfirmations[slug]._general
+    ? catConfirmations[slug]._general : null;
+}
+
+// Modal de confirmação genérico (categoria ou geral)
+function openConfirmModal(title, subtitle, onConfirm) {
+  const overlay = el('div', {cls:'confirm-modal-overlay'});
+  const box = el('div', {cls:'confirm-modal-box'});
+  const hdr = el('div', {cls:'confirm-modal-hdr'});
+  hdr.appendChild(el('div', {cls:'confirm-modal-title'}, title));
+  hdr.appendChild(el('div', {cls:'confirm-modal-sub'}, subtitle));
+  box.appendChild(hdr);
+  const body = el('div', {cls:'confirm-modal-body'});
+  body.appendChild(el('div', {cls:'confirm-modal-label'}, 'Seu nome:'));
+  const inp = el('input', {type:'text', cls:'confirm-name-input', placeholder:'Digite seu nome completo'});
+  body.appendChild(inp);
+  box.appendChild(body);
+  const ftr = el('div', {cls:'confirm-modal-ftr'});
+  const cancelBtn = el('button', {cls:'btn btn-outline btn-sm'}, 'Cancelar');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  const okBtn = el('button', {cls:'btn btn-sm', style:'background:var(--accent,#2a6049);color:#fff'}, 'Confirmar');
+  okBtn.addEventListener('click', () => {
+    const name = inp.value.trim();
+    if (!name) { inp.style.borderColor = 'var(--danger)'; inp.focus(); return; }
+    overlay.remove();
+    onConfirm(name);
+  });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') okBtn.click(); });
+  ftr.appendChild(cancelBtn);
+  ftr.appendChild(okBtn);
+  box.appendChild(ftr);
+  overlay.appendChild(box);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  setTimeout(() => inp.focus(), 100);
+}
+
+// Zeragem automática: categorias não confirmadas modificadas há mais de 1h
+let _zeroCheckTimer = null;
+function _startZeroCheck() {
+  if (_zeroCheckTimer) return;
+  _zeroCheckTimer = setInterval(() => {
+    if (!session || isCPD()) return;
+    const unitName = session.unit;
+    const ustock   = unitStock[unitName] || {};
+    const ucat     = getUnitCatalog(unitName);
+    const slug     = unitSlug(unitName);
+    const now      = Date.now();
+    const ONE_HOUR = 60 * 60 * 1000;
+    let changed = false;
+
+    ucat.categories.forEach(cat => {
+      const state = getCatConfirmState(unitName, cat, ustock);
+      if (state === 'confirmed') return; // confirmada — nunca zera
+      // Verificar se algum item desta categoria tem lastModified > 1h atrás
+      const catItems = ucat.catalog.filter(i => i.category === cat);
+      const hasAnyQty = catItems.some(i => (ustock[i.id] || 0) > 0);
+      if (!hasAnyQty) return; // categoria sem dados — nada a zerar
+      // Verificar o timestamp da última modificação desta categoria
+      const lastMod = catConfirmations[slug] && catConfirmations[slug]['_lastmod_' + cat];
+      if (!lastMod) return; // nunca foi modificada — não zera
+      if (now - lastMod > ONE_HOUR) {
+        // Zerar todos os itens desta categoria
+        console.log('[Zeragem] Zerando categoria', cat, 'por inatividade > 1h');
+        catItems.forEach(i => {
+          if ((ustock[i.id] || 0) > 0) {
+            unitStock[unitName][i.id] = 0;
+            db.ref('dados/pizza_units/' + slug + '/' + i.id).set(0)
+              .catch(e => console.warn('[Zeragem]', e));
+            changed = true;
+          }
+        });
+        // Limpar o timestamp para não zerar repetidamente
+        delete catConfirmations[slug]['_lastmod_' + cat];
+      }
+    });
+
+    if (changed) {
+      save('pizza_cat_confirms', catConfirmations);
+      render();
+      toast('\u26A0\uFE0F Categorias não confirmadas zeradas por inatividade (>1h)', 4000);
+    }
+  }, 60 * 1000); // verificar a cada minuto
+}
+
+// Registrar modificação de quantidade em uma categoria
+function markCatModified(unitName, cat) {
+  const slug = unitSlug(unitName);
+  if (!catConfirmations[slug]) catConfirmations[slug] = {};
+  catConfirmations[slug]['_lastmod_' + cat] = Date.now();
+  // Se havia confirmação, invalidar
+  if (catConfirmations[slug][cat]) {
+    delete catConfirmations[slug][cat];
+    // Invalidar também a confirmação geral
+    delete catConfirmations[slug]._general;
+    save('pizza_cat_confirms', catConfirmations);
+  }
+}
+
+// Remover confirmação de uma categoria
+function deconfirmCategory(unitName, cat) {
+  const slug = unitSlug(unitName);
+  if (catConfirmations[slug] && catConfirmations[slug][cat]) {
+    delete catConfirmations[slug][cat];
+    // Invalidar confirmação geral também
+    if (catConfirmations[slug]._general) delete catConfirmations[slug]._general;
+    save('pizza_cat_confirms', catConfirmations);
+  }
+}
+
 function saveUnitCatalog(unitName, catalogData) {
   const slug = unitSlug(unitName);
   // 1. Atualizar cache em memória
@@ -4517,7 +4759,7 @@ const FIREBASE_SYNC_KEYS = new Set([
   'pizza_cpd', 'pizza_orders',
   'pizza_catalog', 'pizza_minimums', 'pizza_prices', 'pizza_unit_minimums',
   'pizza_confirmados',
-  'pizza_counted', 'pizza_validities'
+  'pizza_counted', 'pizza_validities', 'pizza_cat_confirms'
   // pizza_unit_catalog é sincronizado por slug via listeners separados (não via FIREBASE_SYNC_KEYS)
   // Nota: pizza_units NÃO está aqui — salvo por unidade via saveUnit()
 ]);
@@ -5078,6 +5320,11 @@ function applySession() {
   // Navigate to default view
   currentView = defaultView();
   if (session.unit !== 'cpd') activeUnit = session.unit;
+  // Iniciar zeragem automática para unidades
+  if (session.unit !== 'cpd') {
+    _checkDailyReset();
+    _startZeroCheck();
+  }
   // Após resolver unitCatalog, garantir re-render se já tinha renderizado
   if (session.unit !== 'cpd') {
     // Aguardar Firebase sincronizar o catálogo da unidade antes de renderizar
@@ -5451,6 +5698,95 @@ function el(tag, attrs={}, ...children) {
           printStockPdf(pdfLabel, stockObj, cat);
         });
         catWrap.appendChild(togBtn);
+
+        // ── Botão confirmar categoria (apenas unidades, não CPD) ────────────
+        if (!isCPD() && unitName) {
+          const confState = getCatConfirmState(unitName, cat, stockObj);
+          const confBtn = el('button', {
+            cls: 'cat-confirm-btn' + (confState === 'confirmed' ? ' confirmed' : confState === 'needs-reconfirm' ? ' needs-reconfirm' : ''),
+            title: confState === 'confirmed' ? 'Categoria confirmada' : confState === 'needs-reconfirm' ? 'Reconfirmação necessária' : 'Confirmar contagem desta categoria'
+          });
+          const confInfo = catConfirmations[unitSlug(unitName)] && catConfirmations[unitSlug(unitName)][cat];
+          confBtn.textContent = confState === 'confirmed'
+            ? '\u2713 ' + confInfo.name
+            : confState === 'needs-reconfirm'
+              ? '\u26A0\uFE0F Reconfirmar'
+              : 'Confirmar';
+          confBtn.setAttribute('data-conf-cat', cat);
+          confBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confState === 'confirmed') {
+              // Já confirmada: mostrar menu com opções
+              const existing = document.getElementById('conf-menu-' + CSS.escape(cat));
+              if (existing) { existing.remove(); return; }
+              const menu = el('div', {
+                style: 'position:absolute;z-index:2000;background:var(--surface);' +
+                       'border:1.5px solid var(--border);border-radius:var(--radius);' +
+                       'box-shadow:0 4px 16px rgba(0,0,0,.2);min-width:180px;overflow:hidden'
+              });
+              menu.id = 'conf-menu-' + CSS.escape(cat);
+              const rect = confBtn.getBoundingClientRect();
+              menu.style.cssText += ';position:fixed;top:'+(rect.bottom+4)+'px;left:'+rect.left+'px';
+              const reconfOpt = el('button', {
+                style:'display:block;width:100%;text-align:left;padding:10px 14px;font-size:13px;' +
+                      'border:none;background:none;cursor:pointer;color:var(--text)'
+              }, '✏️ Reconfirmar');
+              reconfOpt.addEventListener('click', () => {
+                menu.remove();
+                openConfirmModal(
+                  'Reconfirmar: ' + cat,
+                  'Atualize a confirmação desta categoria.',
+                  (name) => {
+                    confirmCategory(unitName, cat, name, stockObj);
+                    toast('\u2713 ' + cat + ' reconfirmada por ' + name);
+                    render();
+                  }
+                );
+              });
+              const deconfOpt = el('button', {
+                style:'display:block;width:100%;text-align:left;padding:10px 14px;font-size:13px;' +
+                      'border:none;background:none;cursor:pointer;color:var(--danger,#C53030);' +
+                      'border-top:1px solid var(--border)'
+              }, '✕ Desconfirmar');
+              deconfOpt.addEventListener('click', () => {
+                menu.remove();
+                if (confirm('Desconfirmar "' + cat + '"? A categoria deixará de aparecer no PDF geral.')) {
+                  deconfirmCategory(unitName, cat);
+                  toast(cat + ' desconfirmada');
+                  render();
+                }
+              });
+              menu.appendChild(reconfOpt);
+              menu.appendChild(deconfOpt);
+              document.body.appendChild(menu);
+              // Fechar ao clicar fora
+              setTimeout(() => {
+                document.addEventListener('click', function _close(ev) {
+                  if (!menu.contains(ev.target)) { menu.remove(); document.removeEventListener('click', _close); }
+                });
+              }, 50);
+            } else {
+              // Não confirmada: abrir modal de confirmação diretamente
+              openConfirmModal(
+                'Confirmar: ' + cat,
+                'Confirme a contagem desta categoria digitando seu nome.',
+                (name) => {
+                  confirmCategory(unitName, cat, name, stockObj);
+                  toast('\u2713 ' + cat + ' confirmada por ' + name);
+                  render();
+                }
+              );
+            }
+          });
+          catWrap.appendChild(confBtn);
+
+          // PDF da categoria: só libera se confirmada
+          if (confState !== 'confirmed') {
+            catPdfBtn.classList.add('cat-pdf-btn-blocked');
+            catPdfBtn.title = 'Confirme a categoria para gerar o PDF';
+          }
+        }
+
         catWrap.appendChild(catPdfBtn);
         catTd.appendChild(catWrap);
       } else {
@@ -6060,12 +6396,38 @@ function printBatchPdf(batch) {
     return o + ')';
   }
 
+  // Para unidades: filtrar apenas categorias confirmadas
+  const _printSlug = (unitLabel !== 'CPD') ? unitSlug(unitLabel) : null;
+  const _printConfs = _printSlug ? (catConfirmations[_printSlug] || {}) : null;
+  const _confirmedCats = _printConfs
+    ? Object.keys(byCategory).filter(cat => {
+        const c = _printConfs[cat];
+        if (!c) return false;
+        // Verificar se ainda está válida (quantidades não mudaram)
+        const items = Object.keys(byCategory[cat] ? byCategory[cat].reduce((acc,i) => { acc[i.id]=i; return acc; }, {}) : {});
+        return true; // se existe a confirmação, imprimir
+      })
+    : Object.keys(byCategory);
+
+  const _catsToPrint = unitLabel !== 'CPD' ? _confirmedCats : Object.keys(byCategory);
+
   newPage();
-  Object.keys(byCategory).forEach(cat => {
+  _catsToPrint.forEach(cat => {
+    if (!byCategory[cat] || byCategory[cat].length === 0) return;
     if (y < 80) newPage();
     // Category header
     ops.push(`0.85 0.93 0.87 rg ${ML} ${y-2} ${TW} 14 re f 0 0 0 rg`);
     ops.push(`BT /F1 9 Tf ${ML+3} ${y+2} Td ${pdfStr(cat.toUpperCase())} Tj ET`);
+    // Nome do confirmador da categoria (apenas unidades)
+    if (unitLabel !== 'CPD') {
+      const _pSlug = typeof unitSlug === 'function' ? unitSlug(unitLabel) : '';
+      const _pConf = catConfirmations[_pSlug] && catConfirmations[_pSlug][cat];
+      if (_pConf) {
+        const _pTs = new Date(_pConf.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        const _pStr = '\u2713 ' + _pConf.name + '  ' + _pTs;
+        ops.push(`BT /F2 7 Tf 0.2 0.5 0.3 rg ${ML+TW-100} ${y+3} Td ${pdfStr(_pStr)} Tj ET 0 0 0 rg`);
+      }
+    }
     y -= 16;
     byCategory[cat].forEach(item => {
       if (y < 60) newPage();
@@ -6909,9 +7271,50 @@ function viewUnits() {
   const tableBlock = el('div', {cls:'table-wrap'});
   const th = el('div', {cls:'table-header'});
   th.appendChild(el('span', {cls:'table-title'}, 'Estoque \u2014 '+activeUnit));
-  const pdfUnitBtn = el('button', {cls:'btn btn-outline btn-sm', style:'margin-left:auto', onclick:()=>printStockPdf(activeUnit, ustock)});
+  // ── Confirmação geral (gerente) ──────────────────────────────────────────
+  const generalState  = getGeneralConfirmState(activeUnit);
+  const _slug_u       = unitSlug(activeUnit);
+  const _confData_u   = catConfirmations[_slug_u] || {};
+  const anyCatConfirmed = !isCPD() && Object.keys(_confData_u)
+    .filter(k => !k.startsWith('_'))
+    .some(cat => getCatConfirmState(activeUnit, cat, ustock) === 'confirmed');
+  const pdfWrapUnit   = el('div', {style:'display:flex;gap:8px;align-items:center;margin-left:auto'});
+
+  if (!isCPD()) {
+    if (anyCatConfirmed && !generalState) {
+      // Todas categorias confirmadas — mostrar botão de confirmação geral
+      const genBtn = el('button', {cls:'btn btn-sm', style:'background:var(--accent,#2a6049);color:#fff;font-size:12px'});
+      genBtn.textContent = '\u2713 Confirmar Contagem Geral';
+      genBtn.addEventListener('click', () => {
+        openConfirmModal(
+          'Confirmar Contagem Geral',
+          'Confirme a contagem completa de ' + activeUnit + ' digitando seu nome (gerente).',
+          (name) => {
+            confirmGeneral(activeUnit, name);
+            toast('\u2713 Contagem geral confirmada por ' + name);
+            render();
+          }
+        );
+      });
+      pdfWrapUnit.appendChild(genBtn);
+    } else if (generalState) {
+      const genInfo = el('span', {style:'font-size:11px;color:var(--accent-dark,#2a6049);font-weight:600'});
+      genInfo.textContent = '\u2713 Geral: ' + generalState.name + ' ' + new Date(generalState.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      pdfWrapUnit.appendChild(genInfo);
+    }
+  }
+
+  const pdfUnitBtn = el('button', {cls:'btn btn-outline btn-sm'});
   pdfUnitBtn.innerHTML = '\uD83D\uDCC4 PDF Contagem';
-  th.appendChild(pdfUnitBtn);
+  // PDF geral bloqueado até confirmação do gerente (para unidades)
+  if (!isCPD() && !generalState) {
+    pdfUnitBtn.classList.add('cat-pdf-btn-blocked');
+    pdfUnitBtn.title = 'Confirme todas as categorias e a contagem geral para gerar o PDF';
+  } else {
+    pdfUnitBtn.addEventListener('click', () => printStockPdf(activeUnit, ustock));
+  }
+  pdfWrapUnit.appendChild(pdfUnitBtn);
+  th.appendChild(pdfWrapUnit);
   tableBlock.appendChild(th);
   const inner = el('div', {style:'padding:14px 18px 18px'});
   // Only the unit's own logged-in user can edit their stock panel
@@ -6920,6 +7323,11 @@ function viewUnits() {
     if (!unitStock[activeUnit]) unitStock[activeUnit] = {};
     if (!unitStock[activeUnit]) unitStock[activeUnit] = {};
     unitStock[activeUnit][itemId] = qty;
+    // Registrar modificação da categoria para zeragem automática
+    if (!isCPD() && session) {
+      const _modItem = (getUnitCatalog(activeUnit).catalog || []).find(i => i.id === itemId);
+      if (_modItem) markCatModified(activeUnit, _modItem.category);
+    }
     // Salvar APENAS este item no Firebase (atômico) — evita zerar outros itens
     // que ainda não carregaram na memória local
     const _slug = unitSlug(activeUnit);
