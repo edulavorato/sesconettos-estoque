@@ -487,6 +487,53 @@
   .loading-step.active  { background: #68D391; transform: scale(1.3); }
   .loading-step.error   { background: #FC8181; }
 
+  /* ── Modal genérico (Dashboard e outros) ───────────────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 3000;
+    background: rgba(0,0,0,.48);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-box {
+    background: var(--surface); border-radius: var(--radius);
+    box-shadow: 0 8px 40px rgba(0,0,0,.28); overflow: hidden;
+    width: 100%; max-height: 90vh; display: flex; flex-direction: column;
+  }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    background: var(--surface-2); flex-shrink: 0;
+  }
+  .modal-title { font-weight: 700; font-size: 15px; color: var(--text); }
+  .modal-close {
+    background: none; border: none; font-size: 20px; line-height: 1;
+    color: var(--text-3); cursor: pointer; padding: 0 4px;
+    transition: color .12s;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-body {
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    flex: 1; padding: 4px 0;
+  }
+  .modal-footer {
+    padding: 12px 18px; border-top: 1px solid var(--border);
+    display: flex; justify-content: flex-end; gap: 8px;
+    background: var(--surface-2); flex-shrink: 0;
+  }
+  .dash-section-head {
+    padding: 8px 18px 4px; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .4px;
+  }
+  .dash-detail-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 18px; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .dash-detail-row:last-child { border-bottom: none; }
+  .dash-detail-name { flex: 1; color: var(--text); }
+  .dash-detail-qty  { font-weight: 700; min-width: 28px; text-align: right; }
+  .dash-detail-min  { font-size: 11px; color: var(--text-3); }
+  .dash-detail-unit { font-size: 11px; color: var(--text-3); min-width: 40px; }
+
   /* ── Confirmação de Contagem ───────────────────────────────────────────── */
   .cat-confirm-btn {
     flex: 0 0 auto; align-self: center;
@@ -7079,6 +7126,8 @@ function viewDashboard() {
       return qty === 0 || (min > 0 && qty < min);
     });
 
+    // Fechar qualquer modal do dashboard aberto antes de abrir novo
+    document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
     const overlay = el('div', {cls:'modal-overlay'});
     const box = el('div', {cls:'modal-box', style:'max-width:540px'});
 
@@ -7659,38 +7708,37 @@ function viewEnviosDia() {
     const ustock = unitStock[unitName] || {};
     const minMap = getMinPerDay(unitName);
 
-    // Processar cada item do catálogo — acumular se mesmo item aparece em múltiplas categorias
-    const _seenInUnit = {}; // para somar aEnviar de categorias diferentes do mesmo item
+    // Processar cada item do catálogo
+    // Itens com mesmo nome em categorias diferentes (ex: Morango em Refrig + Bar):
+    // → SOMAR estoques de todos os IDs
+    // → calcAEnviar já usa MIN_PER_DAY consolidado (soma de todas as categorias)
+    const _seenInUnit = {}; // key normalizado → { name, estSoma, item }
+
     ucat.forEach(item => {
-      const est = ustock[item.id] || 0;
-      const aEnviar = calcAEnviar(unitName, item.name, est, day);
-      if (aEnviar === 0) return; // sem mínimo para este dia ou unidade já tem
-
       const key = _norm(item.name);
-
-      // Registrar para acumulação dentro da unidade
+      const est = ustock[item.id] || 0;
       if (!_seenInUnit[key]) {
-        _seenInUnit[key] = { name: item.name, est, aEnviar };
+        _seenInUnit[key] = { name: item.name, estSoma: est, item };
       } else {
-        // Mesmo item em outra categoria — NÃO somar aEnviar
-        // calcAEnviar já usa o MIN_PER_DAY que soma todas as categorias
-        // Apenas garantir que usamos o menor estoque (mais conservador)
-        // Na prática o estoque é o mesmo pois item.id pode diferir mas é o mesmo produto
-        _seenInUnit[key].est = Math.min(_seenInUnit[key].est, est);
+        // Mesmo item em outra categoria: SOMAR estoques
+        _seenInUnit[key].estSoma += est;
       }
     });
 
-    Object.values(_seenInUnit).forEach(({ name, est, aEnviar }) => {
+    Object.values(_seenInUnit).forEach(({ name, estSoma, item }) => {
+      // Calcular aEnviar com estoque SOMADO de todos os IDs
+      const aEnviar = calcAEnviar(unitName, name, estSoma, day);
+      if (aEnviar === 0) return; // sem mínimo para este dia ou unidade já tem
+
       if (!itemMap.has(name)) {
         const cpdItem = catalog.find(c => _norm(c.name) === _norm(name));
         itemMap.set(name, {
-          name, unit: ucat.find(i => _norm(i.name) === _norm(name))?.unit || '',
-          category: ucat.find(i => _norm(i.name) === _norm(name))?.category || '',
+          name, unit: item.unit, category: item.category,
           estCPD: cpdItem ? (cpd[cpdItem.id] || 0) : 0,
           perUnit: {}
         });
       }
-      itemMap.get(name).perUnit[unitName] = { est, aEnviar };
+      itemMap.get(name).perUnit[unitName] = { est: estSoma, aEnviar };
     });
   });
 
