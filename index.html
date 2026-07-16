@@ -487,6 +487,52 @@
   .loading-step.active  { background: #68D391; transform: scale(1.3); }
   .loading-step.error   { background: #FC8181; }
 
+  /* ── Histórico de Contagens ─────────────────────────────────────────────── */
+  .hist-unit-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .hist-unit-tab {
+    padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600;
+    cursor:pointer; border:1.5px solid var(--border);
+    background:var(--surface); color:var(--text-2); transition:all .15s;
+    touch-action:manipulation;
+  }
+  .hist-unit-tab.active { background:var(--accent,#2a6049); color:#fff; border-color:var(--accent,#2a6049); }
+  .hist-list { display:flex; flex-direction:column; gap:6px; margin-bottom:20px; }
+  .hist-entry {
+    display:flex; align-items:center; gap:12px; padding:12px 16px;
+    background:var(--surface); border:1.5px solid var(--border);
+    border-radius:var(--radius); cursor:pointer; transition:border-color .12s;
+  }
+  .hist-entry:hover { border-color:var(--accent,#2a6049); }
+  .hist-entry.selected { border-color:var(--accent,#2a6049); background:#EAF2EC; }
+  .hist-entry-check {
+    width:18px; height:18px; border-radius:4px; border:1.5px solid var(--border);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    background:var(--surface); transition:all .12s;
+  }
+  .hist-entry.selected .hist-entry-check {
+    background:var(--accent,#2a6049); border-color:var(--accent,#2a6049); color:#fff;
+  }
+  .hist-entry-date { font-weight:700; font-size:13px; color:var(--text); min-width:90px; }
+  .hist-entry-time { font-size:12px; color:var(--text-3); min-width:50px; }
+  .hist-entry-who  { font-size:12px; color:var(--text-2); flex:1; }
+  .hist-entry-count { font-size:11px; color:var(--text-3); }
+  .hist-compare-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; border:1.5px solid var(--border); border-radius:var(--radius); }
+  .hist-compare-table { width:100%; border-collapse:collapse; min-width:500px; font-size:12px; }
+  .hist-compare-table th {
+    background:var(--surface-2); color:var(--text-3); font-size:10px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.4px; padding:8px 10px;
+    text-align:left; border-bottom:1.5px solid var(--border); white-space:nowrap;
+  }
+  .hist-compare-table th.num { text-align:center; }
+  .hist-compare-table td { padding:7px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  .hist-compare-table tr:last-child td { border-bottom:none; }
+  .hist-compare-table tr:nth-child(even) td { background:var(--surface-2); }
+  .hist-compare-table td.num { text-align:center; font-weight:600; }
+  .hist-compare-table td.zero { color:var(--danger,#C53030); }
+  .hist-cat-row td { background:#EAF2EC !important; color:var(--accent-dark,#2a6049); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:.5px; }
+  .hist-actions { display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+  .hist-empty { padding:32px; text-align:center; color:var(--text-3); font-size:13px; }
+
   /* ── Modal genérico (Dashboard e outros) ───────────────────────────────── */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 3000;
@@ -2022,6 +2068,10 @@ auth.onAuthStateChanged(user => {
     <button class="nav-item" data-view="envios-dia" onclick="setView('envios-dia')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       Envios do Dia
+    </button>
+    <button class="nav-item" data-view="historico-contagens" onclick="setView('historico-contagens')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Histórico
     </button>
     <button class="nav-item" data-view="catalogo" onclick="setView('catalogo')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
@@ -4640,6 +4690,38 @@ function confirmGeneral(unitName, respName) {
   if (!catConfirmations[slug]) catConfirmations[slug] = {};
   catConfirmations[slug]._general = { name: respName, ts: Date.now() };
   save('pizza_cat_confirms', catConfirmations);
+  // Salvar snapshot de histórico
+  saveHistoricoSnapshot(unitName, respName);
+}
+
+function saveHistoricoSnapshot(unitName, respName) {
+  if (!window._fb || !window._fb.ready || typeof db === 'undefined') return;
+  const slug    = unitSlug(unitName);
+  const ustock  = unitStock[unitName] || {};
+  const ucat    = getUnitCatalog(unitName).catalog;
+  const ts      = Date.now();
+  // Snapshot: { ts, name, items: {itemId: qty} }
+  const snapshot = {
+    ts, name: respName, unit: unitName,
+    items: {}
+  };
+  ucat.forEach(i => { snapshot.items[i.id] = ustock[i.id] || 0; });
+
+  const ref = db.ref('dados/pizza_history/' + slug);
+  ref.once('value').then(snap => {
+    const existing = snap.val() || {};
+    const entries = Object.entries(existing).sort((a,b) => Number(a[0]) - Number(b[0]));
+    // Manter máximo 30 entradas — remover as mais antigas
+    const writes = {};
+    if (entries.length >= 30) {
+      const toDelete = entries.slice(0, entries.length - 29);
+      toDelete.forEach(([k]) => { writes[k] = null; });
+    }
+    writes[String(ts)] = snapshot;
+    ref.update(writes)
+      .then(() => console.log('[Histórico] Snapshot salvo para', unitName))
+      .catch(e => console.warn('[Histórico] Erro ao salvar snapshot:', e));
+  });
 }
 
 function getGeneralConfirmState(unitName) {
@@ -5187,7 +5269,7 @@ function unitKey(){ return session ? session.unit : 'cpd'; }
 // Views available per role
 function allowedViews() {
   if (!session) return [];
-  if (isCPD()) return ['cpd','units','dashboard','envios-dia','catalogo'];
+  if (isCPD()) return ['cpd','units','dashboard','envios-dia','historico-contagens','catalogo'];
   return ['units']; // Unidades: apenas o Painel de Contagem
 }
 
@@ -5418,6 +5500,7 @@ function buildSidebarNav() {
       label: 'Configura\u00E7\u00E3o',
       items: [
         { view:'envios-dia', label:'Envios do Dia', icon:'<rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>' },
+        { view:'historico-contagens', label:'Hist\u00F3rico', icon:'<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>' },
         { view:'catalogo',  label:'Cat\u00E1logo de Itens',  icon:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>' },
       ]
     },
@@ -5471,6 +5554,7 @@ const VIEW_TITLES = {
   cpd: 'Contagem CPD', get units() { return isCPD() ? 'Contagem das Unidades' : 'Painel de Contagem'; },
   entrada: 'Registrar Entrada', saida: 'Registrar Sa\u00EDda',
   catalogo: 'Cat\u00E1logo de Itens',
+  'historico-contagens': 'Hist\u00F3rico de Contagens',
   pedido: 'Fazer Pedido ao CPD',
   separacao: 'Separa\u00E7\u00E3o de Pedidos',
   dashboard: 'Dashboard Consolidado',
@@ -7936,6 +8020,215 @@ function viewEnviosDia() {
   return frag;
 }
 
+// ═══ HISTÓRICO DE CONTAGENS ═══════════════════════════════════════════════════
+function viewHistoricoContagens() {
+  const frag = document.createDocumentFragment();
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px'});
+  hdrWrap.appendChild(el('h2', {cls:'table-title'}, 'Histórico de Contagens'));
+  frag.appendChild(hdrWrap);
+
+  // ── Tabs de unidade ────────────────────────────────────────────────────────
+  let activeUnit2 = UNIT_NAMES[0];
+  const tabsEl = el('div', {cls:'hist-unit-tabs'});
+  const mainEl = el('div', {});
+  frag.appendChild(tabsEl);
+  frag.appendChild(mainEl);
+
+  function renderHistUnit(unitName) {
+    activeUnit2 = unitName;
+    tabsEl.querySelectorAll('.hist-unit-tab').forEach(b =>
+      b.classList.toggle('active', b.dataset.unit === unitName));
+    mainEl.innerHTML = '';
+
+    // Carregar snapshots do Firebase
+    const slug = unitSlug(unitName);
+    const loadingEl = el('div', {cls:'hist-empty'}, '⏳ Carregando...');
+    mainEl.appendChild(loadingEl);
+
+    db.ref('dados/pizza_history/' + slug).once('value').then(snap => {
+      mainEl.innerHTML = '';
+      const val = snap.val() || {};
+      const entries = Object.entries(val)
+        .map(([ts, data]) => ({ ts: Number(ts), ...data }))
+        .sort((a, b) => b.ts - a.ts); // mais recente primeiro
+
+      if (entries.length === 0) {
+        mainEl.appendChild(el('div', {cls:'hist-empty'}, '📭 Nenhuma contagem salva ainda para ' + unitName + '.'));
+        return;
+      }
+
+      // ── Lista de contagens com checkbox ────────────────────────────────────
+      const selected = new Set();
+      const infoEl = el('div', {style:'font-size:12px;color:var(--text-3);margin-bottom:10px'});
+      infoEl.textContent = entries.length + ' contagem(s) salva(s) — selecione para comparar';
+      mainEl.appendChild(infoEl);
+
+      const actionsEl = el('div', {cls:'hist-actions'});
+      const compareBtn = el('button', {cls:'btn btn-sm', style:'background:var(--accent,#2a6049);color:#fff;opacity:.5;pointer-events:none'});
+      compareBtn.textContent = '📊 Comparar selecionadas';
+      const clearBtn = el('button', {cls:'btn btn-outline btn-sm'}, 'Limpar seleção');
+      clearBtn.style.display = 'none';
+      actionsEl.appendChild(compareBtn);
+      actionsEl.appendChild(clearBtn);
+      mainEl.appendChild(actionsEl);
+
+      const compareWrap = el('div', {});
+      mainEl.appendChild(compareWrap);
+
+      const listEl = el('div', {cls:'hist-list'});
+
+      function updateActions() {
+        const n = selected.size;
+        if (n >= 2) {
+          compareBtn.style.opacity = '1';
+          compareBtn.style.pointerEvents = 'auto';
+          compareBtn.textContent = '📊 Comparar ' + n + ' contagens';
+        } else {
+          compareBtn.style.opacity = '.5';
+          compareBtn.style.pointerEvents = 'none';
+          compareBtn.textContent = '📊 Comparar selecionadas';
+        }
+        clearBtn.style.display = n > 0 ? '' : 'none';
+        if (n === 0) compareWrap.innerHTML = '';
+      }
+
+      entries.forEach(entry => {
+        const dt  = new Date(entry.ts);
+        const dateStr = dt.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'});
+        const timeStr = dt.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+        const totalItems = Object.keys(entry.items || {}).length;
+        const zeroItems  = Object.values(entry.items || {}).filter(v => v === 0).length;
+
+        const entryEl = el('div', {cls:'hist-entry'});
+        const checkEl = el('div', {cls:'hist-entry-check'}, '');
+        const dateEl  = el('div', {cls:'hist-entry-date'}, dateStr);
+        const timeEl  = el('div', {cls:'hist-entry-time'}, timeStr);
+        const whoEl   = el('div', {cls:'hist-entry-who'}, '👤 ' + (entry.name || '—'));
+        const cntEl   = el('div', {cls:'hist-entry-count'}, totalItems + ' itens · ' + zeroItems + ' zerados');
+
+        entryEl.append(checkEl, dateEl, timeEl, whoEl, cntEl);
+        entryEl.addEventListener('click', () => {
+          const key = String(entry.ts);
+          if (selected.has(key)) {
+            selected.delete(key);
+            entryEl.classList.remove('selected');
+            checkEl.textContent = '';
+          } else {
+            selected.add(key);
+            entryEl.classList.add('selected');
+            checkEl.textContent = '✓';
+          }
+          updateActions();
+        });
+        listEl.appendChild(entryEl);
+      });
+
+      mainEl.appendChild(listEl);
+
+      clearBtn.addEventListener('click', () => {
+        selected.clear();
+        listEl.querySelectorAll('.hist-entry').forEach(e => {
+          e.classList.remove('selected');
+          e.querySelector('.hist-entry-check').textContent = '';
+        });
+        updateActions();
+        compareWrap.innerHTML = '';
+      });
+
+      compareBtn.addEventListener('click', () => {
+        const selEntries = entries.filter(e => selected.has(String(e.ts)))
+          .sort((a,b) => a.ts - b.ts); // cronológica
+        renderCompare(unitName, selEntries, compareWrap);
+      });
+
+    }).catch(e => {
+      mainEl.innerHTML = '';
+      mainEl.appendChild(el('div', {cls:'hist-empty'}, '❌ Erro ao carregar: ' + e.message));
+    });
+  }
+
+  function renderCompare(unitName, selEntries, container) {
+    container.innerHTML = '';
+    container.appendChild(el('h3', {style:'font-size:13px;font-weight:700;margin:16px 0 10px;color:var(--text)'}, '📊 Comparativo — ' + unitName));
+
+    const ucat = getUnitCatalog(unitName).catalog;
+    const cats = getUnitCatalog(unitName).categories;
+
+    // Cabeçalhos das colunas: Item | Cat | data1 | data2 | ...
+    const wrap  = el('div', {cls:'hist-compare-wrap'});
+    const table = el('table', {cls:'hist-compare-table'});
+    const thead = el('thead');
+    const hrHead = el('tr');
+    ['Item', 'Cat.'].forEach(h => hrHead.appendChild(el('th', {}, h)));
+    selEntries.forEach(e => {
+      const dt = new Date(e.ts);
+      const label = dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' +
+                    dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      const th = el('th', {cls:'num'}, label);
+      th.title = '👤 ' + (e.name || '—');
+      hrHead.appendChild(th);
+    });
+    thead.appendChild(hrHead);
+    table.appendChild(thead);
+
+    const tbody = el('tbody');
+    let lastCat = null;
+
+    cats.forEach(cat => {
+      const catItems = ucat.filter(i => i.category === cat);
+      // Verificar se algum item desta categoria tem algum valor != null em qualquer contagem
+      const hasData = catItems.some(item =>
+        selEntries.some(e => e.items && item.id in e.items)
+      );
+      if (!hasData) return;
+
+      // Linha de categoria
+      const catTr = el('tr');
+      const catTd = el('td', {cls:''});
+      catTd.setAttribute('colspan', String(2 + selEntries.length));
+      catTd.className = '';
+      catTr.appendChild(catTd);
+      catTr.className = 'hist-cat-row';
+      catTd.textContent = cat;
+      tbody.appendChild(catTr);
+
+      catItems.forEach(item => {
+        const tr = el('tr');
+        tr.appendChild(el('td', {}, item.name));
+        tr.appendChild(el('td', {style:'color:var(--text-3);font-size:11px'}, item.unit));
+        selEntries.forEach(e => {
+          const qty = e.items ? (e.items[item.id] !== undefined ? e.items[item.id] : '—') : '—';
+          const td  = el('td', {cls:'num' + (qty === 0 ? ' zero' : '')});
+          td.textContent = qty === '—' ? '—' : String(qty);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    });
+
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    container.appendChild(wrap);
+
+    // Scroll para o comparativo
+    setTimeout(() => container.scrollIntoView({behavior:'smooth', block:'nearest'}), 100);
+  }
+
+  // Montar tabs
+  UNIT_NAMES.forEach(u => {
+    const tab = el('button', {cls:'hist-unit-tab' + (u === activeUnit2 ? ' active' : '')});
+    tab.dataset.unit = u;
+    tab.textContent = u;
+    tab.addEventListener('click', () => renderHistUnit(u));
+    tabsEl.appendChild(tab);
+  });
+
+  renderHistUnit(activeUnit2);
+  return frag;
+}
+
 function viewCatalogo() {
   const frag = document.createDocumentFragment();
 
@@ -8438,6 +8731,7 @@ function render() {
   else if (currentView === 'units')      node = viewUnits();
   else if (currentView === 'catalogo')   node = viewCatalogo();
   else if (currentView === 'envios-dia') node = viewEnviosDia();
+  else if (currentView === 'historico-contagens') node = viewHistoricoContagens();
   else if (currentView === 'dashboard')  node = viewDashboard();
   if (node) contentEl.appendChild(node);
 
