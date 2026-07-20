@@ -487,6 +487,57 @@
   .loading-step.active  { background: #68D391; transform: scale(1.3); }
   .loading-step.error   { background: #FC8181; }
 
+  /* ── Controle de Validades ─────────────────────────────────────────────── */
+  .valid-unit-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .valid-unit-tab {
+    padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600;
+    cursor:pointer; border:1.5px solid var(--border);
+    background:var(--surface); color:var(--text-2); transition:all .15s;
+    touch-action:manipulation;
+  }
+  .valid-unit-tab.active { background:var(--accent,#2a6049); color:#fff; border-color:var(--accent,#2a6049); }
+  .valid-empty { padding:28px; text-align:center; color:var(--text-3); font-size:13px; }
+  .valid-register-btn { margin-bottom:16px; }
+  /* Tabela de validade estilo contagem */
+  .valid-table { width:100%; border-collapse:collapse; }
+  .valid-table {width:100%;border-collapse:collapse;table-layout:fixed;}
+  .valid-table thead th {
+    font-family:'Lato',sans-serif; font-size:10px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.5px; color:var(--text-3);
+    padding:8px 10px; background:var(--surface-2);
+    border-bottom:1.5px solid var(--border);
+  }
+  .valid-table tbody td {
+    padding:7px 10px; font-size:13px; color:var(--text);
+    border-bottom:1px solid var(--border); vertical-align:middle;
+    overflow:hidden; text-overflow:ellipsis;
+  }
+  .valid-table tbody tr:last-child td { border-bottom:none; }
+  .valid-table tbody tr:nth-child(even) td { background:var(--surface-2); }
+  /* Cat header dentro da tabela */
+  .valid-cat-row td {
+    padding:7px 10px; font-family:'Lato',sans-serif; font-size:10px;
+    font-weight:700; text-transform:uppercase; letter-spacing:.7px;
+    background:#EAF2EC; color:var(--accent-dark,#2a6049);
+    border-bottom:1px solid var(--border); border-top:1.5px solid var(--border);
+  }
+  /* Status dot na coluna de dias */
+  .valid-days-cell { display:flex; align-items:center; gap:5px; justify-content:flex-end; }
+  .valid-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .valid-dot.expired { background:#C53030; }
+  .valid-dot.alert   { background:#C07A00; }
+  .valid-dot.ok      { background:#276749; }
+  .valid-date-text.expired { color:#C53030; font-weight:700; }
+  .valid-date-text.alert   { color:#C07A00; font-weight:700; }
+  .valid-date-text.ok      { color:#276749; }
+  .valid-lote-consume {
+    width:28px; height:28px; border-radius:50%; border:1.5px solid var(--border);
+    background:var(--surface); cursor:pointer; display:flex; align-items:center;
+    justify-content:center; font-size:13px; flex-shrink:0;
+    transition:all .15s; touch-action:manipulation;
+  }
+  .valid-lote-consume:hover { background:#EAF2EC; border-color:#2a9148; }
+
   /* ── Histórico de Contagens ─────────────────────────────────────────────── */
   .hist-unit-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
   .hist-unit-tab {
@@ -673,58 +724,6 @@
   .envios-filter-tab.active { background: var(--accent, #2a6049); color: #fff; border-color: var(--accent, #2a6049); }
   .envios-dia-day-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; background: #EAF2EC; color: var(--accent-dark, #2a6049); border: 1px solid var(--accent, #2a6049); }
 
-  /* ── Validade dos itens ─────────────────────────────────────────────────── */
-  .val-btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 20px; height: 20px; border-radius: 50%;
-    border: 1.5px solid var(--border);
-    background: var(--surface); cursor: pointer;
-    font-size: 11px; color: var(--text-3);
-    flex-shrink: 0; margin-left: 6px;
-    transition: border-color .12s, color .12s, background .12s;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    vertical-align: middle;
-  }
-  .val-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light, #e6f4ec); }
-  .val-btn.has-val { border-color: #E8A020; color: #E8A020; background: rgba(232,160,32,.08); }
-  .val-btn.expired { border-color: var(--danger); color: var(--danger); background: var(--danger-bg, rgba(197,48,48,.08)); }
-  .val-modal-overlay {
-    position: fixed; inset: 0; z-index: 3000;
-    background: rgba(0,0,0,.45); display: flex;
-    align-items: center; justify-content: center; padding: 16px;
-  }
-  .val-modal-box {
-    background: var(--surface); border-radius: var(--radius);
-    padding: 0; min-width: 300px; max-width: 360px; width: 100%;
-    box-shadow: 0 8px 32px rgba(0,0,0,.25); overflow: hidden;
-  }
-  .val-modal-header {
-    padding: 16px 20px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
-  }
-  .val-modal-title { font-weight: 700; font-size: 14px; color: var(--text); }
-  .val-modal-subtitle { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-  .val-modal-close {
-    background: none; border: none; font-size: 18px; color: var(--text-3);
-    cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0;
-  }
-  .val-modal-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
-  .val-date-row { display: flex; align-items: center; gap: 8px; }
-  .val-date-label { font-size: 12px; color: var(--text-3); min-width: 48px; font-weight: 600; }
-  .val-date-input {
-    flex: 1; height: 34px; padding: 0 10px;
-    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-    font-size: 13px; color: var(--text); background: var(--surface);
-    outline: none; transition: border-color .12s;
-  }
-  .val-date-input:focus { border-color: var(--accent); }
-  .val-date-input.expired-date { border-color: var(--danger); color: var(--danger); }
-  .val-date-input.near-date { border-color: #E8A020; color: #E8A020; }
-  .val-modal-footer {
-    padding: 12px 20px; border-top: 1px solid var(--border);
-    display: flex; gap: 8px; justify-content: flex-end;
-  }
 
   /* Botão confirmar item */
   .confirm-btn {
@@ -2072,6 +2071,10 @@ auth.onAuthStateChanged(user => {
     <button class="nav-item" data-view="historico-contagens" onclick="setView('historico-contagens')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       Histórico
+    </button>
+    <button class="nav-item" data-view="validade" onclick="setView('validade')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+      Validades
     </button>
     <button class="nav-item" data-view="catalogo" onclick="setView('catalogo')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
@@ -4866,7 +4869,7 @@ const FIREBASE_SYNC_KEYS = new Set([
   'pizza_cpd', 'pizza_orders',
   'pizza_catalog', 'pizza_minimums', 'pizza_prices', 'pizza_unit_minimums',
   'pizza_confirmados',
-  'pizza_counted', 'pizza_validities', 'pizza_cat_confirms'
+  'pizza_counted', 'pizza_cat_confirms'
   // pizza_unit_catalog é sincronizado por slug via listeners separados (não via FIREBASE_SYNC_KEYS)
   // Nota: pizza_units NÃO está aqui — salvo por unidade via saveUnit()
 ]);
@@ -5269,7 +5272,8 @@ function unitKey(){ return session ? session.unit : 'cpd'; }
 // Views available per role
 function allowedViews() {
   if (!session) return [];
-  if (isCPD()) return ['cpd','units','dashboard','envios-dia','historico-contagens','catalogo'];
+  if (isCPD()) return ['cpd','units','dashboard','envios-dia','historico-contagens','validade','catalogo'];
+  return ['units','validade'];
   return ['units']; // Unidades: apenas o Painel de Contagem
 }
 
@@ -5501,6 +5505,7 @@ function buildSidebarNav() {
       items: [
         { view:'envios-dia', label:'Envios do Dia', icon:'<rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>' },
         { view:'historico-contagens', label:'Hist\u00F3rico', icon:'<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>' },
+        { view:'validade', label:'Validades', icon:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>' },
         { view:'catalogo',  label:'Cat\u00E1logo de Itens',  icon:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>' },
       ]
     },
@@ -5555,6 +5560,7 @@ const VIEW_TITLES = {
   entrada: 'Registrar Entrada', saida: 'Registrar Sa\u00EDda',
   catalogo: 'Cat\u00E1logo de Itens',
   'historico-contagens': 'Hist\u00F3rico de Contagens',
+  'validade': 'Controle de Validades',
   pedido: 'Fazer Pedido ao CPD',
   separacao: 'Separa\u00E7\u00E3o de Pedidos',
   dashboard: 'Dashboard Consolidado',
@@ -5954,23 +5960,6 @@ function el(tag, attrs={}, ...children) {
         const inlineUnit = el('span', {cls:'item-unit-inline', style: dotColor?`color:${dotColor};font-weight:600`:''}, inlineText);
         nameTd.appendChild(inlineUnit);
 
-        // Botão de validade — apenas no painel CPD (useMin = true)
-        if (useMin) {
-          const today = new Date(); today.setHours(0,0,0,0);
-          const itemDates = validities[item.id] || [];
-          const hasExp  = itemDates.some(d => { const dt=new Date(d); dt.setHours(0,0,0,0); return dt < today; });
-          const hasNear = itemDates.some(d => { const dt=new Date(d); dt.setHours(0,0,0,0); const diff=(dt-today)/(86400000); return diff>=0&&diff<=7; });
-          const valBtn  = el('button', {
-            cls: 'val-btn' + (hasExp ? ' expired' : (hasNear || itemDates.length>0) ? ' has-val' : ''),
-            title: itemDates.length > 0 ? 'Validades: ' + itemDates.join(', ') : 'Adicionar validade'
-          }, '\uD83D\uDDD3');
-          valBtn.setAttribute('data-val-id', item.id);
-          valBtn.addEventListener('click', e => {
-            e.stopPropagation();
-            openValidityModal(item.id, item.name);
-          });
-          nameTd.appendChild(valBtn);
-        }
         tr.appendChild(nameTd);
 
         if (editable) {
@@ -7498,100 +7487,7 @@ function viewUnits() {
   frag.appendChild(tableBlock);
 
   return frag;
-}
-
-// ═══ VALIDADE DE ITENS ════════════════════════════════════════════════════════
-function openValidityModal(itemId, itemName) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const isExpired = d => { const dt = new Date(d); dt.setHours(0,0,0,0); return d && dt < today; };
-  const isNear    = d => {
-    const dt = new Date(d); dt.setHours(0,0,0,0);
-    const diff = (dt - today) / (1000*60*60*24);
-    return d && diff >= 0 && diff <= 7;
-  };
-
-  // Carregar datas atuais (até 5)
-  const dates = (validities[itemId] || ['','','','','']).slice(0, 5);
-  while (dates.length < 5) dates.push('');
-
-  const overlay = el('div', {cls:'val-modal-overlay'});
-
-  const box = el('div', {cls:'val-modal-box'});
-
-  // Header
-  const hdr = el('div', {cls:'val-modal-header'});
-  const hdrLeft = el('div', {});
-  hdrLeft.appendChild(el('div', {cls:'val-modal-title'}, '\uD83D\uDDD3\uFE0F Datas de Validade'));
-  hdrLeft.appendChild(el('div', {cls:'val-modal-subtitle'}, itemName));
-  hdr.appendChild(hdrLeft);
-  const closeBtn = el('button', {cls:'val-modal-close'}, '\u00D7');
-  closeBtn.addEventListener('click', () => overlay.remove());
-  hdr.appendChild(closeBtn);
-  box.appendChild(hdr);
-
-  // Body — 5 inputs de data
-  const body = el('div', {cls:'val-modal-body'});
-  const inputs = [];
-  for (let i = 0; i < 5; i++) {
-    const row = el('div', {cls:'val-date-row'});
-    row.appendChild(el('span', {cls:'val-date-label'}, 'Lote ' + (i+1)));
-    const inp = el('input', {type:'date', cls:'val-date-input'});
-    inp.value = dates[i] || '';
-    if (dates[i]) {
-      if (isExpired(dates[i]))   inp.classList.add('expired-date');
-      else if (isNear(dates[i])) inp.classList.add('near-date');
-    }
-    inp.addEventListener('change', () => {
-      inp.classList.remove('expired-date', 'near-date');
-      if (inp.value) {
-        if (isExpired(inp.value))   inp.classList.add('expired-date');
-        else if (isNear(inp.value)) inp.classList.add('near-date');
-      }
-    });
-    inputs.push(inp);
-    row.appendChild(inp);
-    body.appendChild(row);
-  }
-  box.appendChild(body);
-
-  // Footer
-  const footer = el('div', {cls:'val-modal-footer'});
-  const cancelBtn = el('button', {cls:'btn btn-outline btn-sm'}, 'Cancelar');
-  cancelBtn.addEventListener('click', () => overlay.remove());
-  const saveBtn = el('button', {cls:'btn btn-sm', style:'background:var(--accent);color:#fff'}, 'Salvar');
-  saveBtn.addEventListener('click', () => {
-    const newDates = inputs.map(i => i.value).filter(v => v);
-    if (newDates.length > 0) {
-      validities[itemId] = newDates;
-    } else {
-      delete validities[itemId];
-    }
-    save('pizza_validities', validities);
-    overlay.remove();
-    // Atualizar botão na tela
-    const btn = document.querySelector(`.val-btn[data-val-id="${CSS.escape(itemId)}"]`);
-    if (btn) {
-      const expired = newDates.some(d => isExpired(d));
-      const near    = newDates.some(d => isNear(d));
-      btn.className = 'val-btn' + (expired ? ' expired' : near ? ' has-val' : newDates.length > 0 ? ' has-val' : '');
-      btn.title = newDates.length > 0
-        ? 'Validades: ' + newDates.join(', ')
-        : 'Adicionar validade';
-    }
-    toast('Validades salvas');
-  });
-  footer.appendChild(cancelBtn);
-  footer.appendChild(saveBtn);
-  box.appendChild(footer);
-
-  overlay.appendChild(box);
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
-}
-
-// ═══ PDF DE ENVIOS (PRODUÇÃO / COMPRAS) ══════════════════════════════════════
+}// ═══ PDF DE ENVIOS (PRODUÇÃO / COMPRAS) ══════════════════════════════════════
 function gerarPdfEnvios(tipo) {
   const day     = nextEnviarDay();
   const dayFull = {SEG:'Segunda-feira', QUA:'Quarta-feira', SEX:'Sexta-feira'}[day] || day;
@@ -7810,9 +7706,16 @@ function viewEnviosDia() {
     });
 
     Object.values(_seenInUnit).forEach(({ name, estSoma, item }) => {
-      // Calcular aEnviar com estoque SOMADO de todos os IDs
+      // Incluir item se tem mínimo para este dia (independente de aEnviar)
+      // Isso garante que todos os itens relevantes aparecem na tabela
+      const minDia = (() => {
+        const minMap = getMinPerDay(unitName);
+        const key2 = Object.keys(minMap).find(k => _norm(k) === _norm(name));
+        return key2 ? (minMap[key2][day] || 0) : 0;
+      })();
+      if (minDia === 0) return; // sem mínimo para este dia — não é relevante
+
       const aEnviar = calcAEnviar(unitName, name, estSoma, day);
-      if (aEnviar === 0) return; // sem mínimo para este dia ou unidade já tem
 
       if (!itemMap.has(name)) {
         const cpdItem = catalog.find(c => _norm(c.name) === _norm(name));
@@ -7822,6 +7725,7 @@ function viewEnviosDia() {
           perUnit: {}
         });
       }
+      // Sempre registrar: estoque e aEnviar (pode ser 0 se unidade já tem suficiente)
       itemMap.get(name).perUnit[unitName] = { est: estSoma, aEnviar };
     });
   });
@@ -7976,10 +7880,17 @@ function viewEnviosDia() {
         const tdEst = el('td', {cls:'u-sep'});
         const tdEnv = el('td');
         if (pu) {
+          // Mostrar estoque sempre; A Enviar: valor se > 0, '—' se 0 (unidade já tem suficiente)
           tdEst.textContent = String(pu.est);
-          tdEnv.textContent = String(pu.aEnviar);
-          tdEnv.className = 'val-env';
+          if (pu.aEnviar > 0) {
+            tdEnv.textContent = String(pu.aEnviar);
+            tdEnv.className = 'val-env';
+          } else {
+            tdEnv.textContent = '\u2014';
+            tdEnv.className = 'val-dash';
+          }
         } else {
+          // Unidade não tem este item no catálogo ou sem mínimo para o dia
           tdEst.textContent = '\u2014';
           tdEst.className = 'val-dash u-sep';
           tdEnv.textContent = '\u2014';
@@ -8017,6 +7928,410 @@ function viewEnviosDia() {
   });
 
   buildMatrix();
+  return frag;
+}
+
+// ═══ CONTROLE DE VALIDADES ════════════════════════════════════════════════════
+function viewValidadeControl() {
+  const frag = document.createDocumentFragment();
+  const isCP = isCPD();
+
+  // Unidade ativa: CPD usa selector, unidades usam a própria
+  let activeValidUnit = isCP ? UNIT_NAMES[0] : (session ? session.unit : UNIT_NAMES[0]);
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px'});
+  hdrWrap.appendChild(el('h2', {cls:'table-title'}, 'Controle de Validades'));
+  const regBtn = el('button', {cls:'btn btn-sm valid-register-btn', style:'background:var(--accent,#2a6049);color:#fff;margin-left:auto'});
+  regBtn.textContent = '+ Registrar Lote';
+  hdrWrap.appendChild(regBtn);
+  frag.appendChild(hdrWrap);
+
+  // ── Tabs (CPD vê todas as unidades) ───────────────────────────────────────
+  const tabsEl = el('div', {cls:'valid-unit-tabs', style: isCP ? '' : 'display:none'});
+  const bodyEl = el('div', {});
+  frag.appendChild(tabsEl);
+  frag.appendChild(bodyEl);
+
+  if (isCP) {
+    UNIT_NAMES.forEach(u => {
+      const tab = el('button', {cls:'valid-unit-tab' + (u === activeValidUnit ? ' active' : '')});
+      tab.textContent = u;
+      tab.addEventListener('click', () => {
+        activeValidUnit = u;
+        tabsEl.querySelectorAll('.valid-unit-tab').forEach(b => b.classList.toggle('active', b.textContent === u));
+        renderValidBody();
+      });
+      tabsEl.appendChild(tab);
+    });
+  }
+
+  // ── Modal Registrar Lote ──────────────────────────────────────────────────
+  regBtn.addEventListener('click', () => {
+    const unitForReg = activeValidUnit;
+    const ucat = getUnitCatalog(unitForReg).catalog;
+
+    document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+    const overlay = el('div', {cls:'modal-overlay'});
+    const box = el('div', {cls:'modal-box', style:'max-width:420px'});
+
+    const hdr = el('div', {cls:'modal-header'});
+    hdr.appendChild(el('div', {cls:'modal-title'}, '+ Registrar Lote — ' + unitForReg));
+    const closeX = el('button', {cls:'modal-close'}, '\u00D7');
+    closeX.addEventListener('click', () => overlay.remove());
+    hdr.appendChild(closeX);
+    box.appendChild(hdr);
+
+    const body2 = el('div', {cls:'modal-body', style:'padding:16px 18px;display:flex;flex-direction:column;gap:12px'});
+
+    // Item (autocomplete)
+    const itemLabel = el('div', {style:'font-size:12px;font-weight:600;color:var(--text-2)'}, 'Item');
+    const itemWrap  = el('div', {style:'position:relative'});
+    const itemInp   = el('input', {type:'text', cls:'confirm-name-input', placeholder:'Buscar item...'});
+    const itemDrop  = el('div', {style:'position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius-sm);max-height:180px;overflow-y:auto;display:none;box-shadow:0 4px 16px rgba(0,0,0,.15)'});
+    let selectedItem = null;
+
+    itemInp.addEventListener('input', () => {
+      const q = itemInp.value.toLowerCase();
+      itemDrop.innerHTML = '';
+      if (q.length < 1) { itemDrop.style.display = 'none'; return; }
+      const matches = ucat.filter(i => i.name.toLowerCase().includes(q)).slice(0, 20);
+      if (!matches.length) { itemDrop.style.display = 'none'; return; }
+      matches.forEach(i => {
+        const opt = el('div', {style:'padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)'}, i.name);
+        opt.addEventListener('mousedown', () => {
+          selectedItem = i;
+          itemInp.value = i.name;
+          unitInp.value = i.unit;
+          itemDrop.style.display = 'none';
+        });
+        opt.addEventListener('mouseover', () => opt.style.background = 'var(--surface-2)');
+        opt.addEventListener('mouseout', () => opt.style.background = '');
+        itemDrop.appendChild(opt);
+      });
+      itemDrop.style.display = 'block';
+    });
+    itemInp.addEventListener('blur', () => setTimeout(() => { itemDrop.style.display = 'none'; }, 150));
+    itemWrap.appendChild(itemInp);
+    itemWrap.appendChild(itemDrop);
+    body2.appendChild(itemLabel);
+    body2.appendChild(itemWrap);
+
+    // Quantidade + Unidade
+    const qtyRow = el('div', {style:'display:flex;gap:8px'});
+    const qtyWrap = el('div', {style:'flex:1'});
+    qtyWrap.appendChild(el('div', {style:'font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px'}, 'Quantidade'));
+    const qtyInp = el('input', {type:'number', cls:'confirm-name-input', placeholder:'0', min:'0.01', step:'0.01', style:'width:100%'});
+    qtyWrap.appendChild(qtyInp);
+    const unitWrap = el('div', {style:'flex:1'});
+    unitWrap.appendChild(el('div', {style:'font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px'}, 'Unidade'));
+    const unitInp = el('input', {type:'text', cls:'confirm-name-input', placeholder:'Un', style:'width:100%'});
+    unitWrap.appendChild(unitInp);
+    qtyRow.appendChild(qtyWrap);
+    qtyRow.appendChild(unitWrap);
+    body2.appendChild(qtyRow);
+
+    // Data de validade (sem retroativo)
+    const dateWrap = el('div');
+    dateWrap.appendChild(el('div', {style:'font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px'}, 'Data de Validade'));
+    const dateInp = el('input', {type:'date', cls:'confirm-name-input', style:'width:100%'});
+    const today = new Date().toISOString().slice(0,10);
+    dateInp.min = today; // trava: não permite data retroativa
+    dateWrap.appendChild(dateInp);
+    body2.appendChild(dateWrap);
+
+    box.appendChild(body2);
+
+    const errEl = el('div', {style:'padding:0 18px 8px;font-size:12px;color:var(--danger,#C53030);display:none'});
+    box.appendChild(errEl);
+
+    const ftr = el('div', {cls:'modal-footer'});
+    const cancelBtn2 = el('button', {cls:'btn btn-outline btn-sm'}, 'Cancelar');
+    cancelBtn2.addEventListener('click', () => overlay.remove());
+    const saveBtn2 = el('button', {cls:'btn btn-sm', style:'background:var(--accent,#2a6049);color:#fff'}, 'Salvar Lote');
+    saveBtn2.addEventListener('click', () => {
+      errEl.style.display = 'none';
+      if (!selectedItem) { errEl.textContent = 'Selecione um item do catálogo.'; errEl.style.display = 'block'; return; }
+      const qty = parseFloat(qtyInp.value);
+      if (!qty || qty <= 0) { errEl.textContent = 'Informe uma quantidade válida.'; errEl.style.display = 'block'; return; }
+      if (!dateInp.value) { errEl.textContent = 'Informe a data de validade.'; errEl.style.display = 'block'; return; }
+      const slug2 = unitSlug(unitForReg);
+      const ts = Date.now();
+      const lote = {
+        item_id: selectedItem.id,
+        item_name: selectedItem.name,
+        quantidade: qty,
+        unidade_medida: unitInp.value || selectedItem.unit,
+        data_validade: dateInp.value,
+        data_cadastro: today,
+        status_alerta: 'pendente'
+      };
+      db.ref('dados/validity_control/' + slug2 + '/' + ts).set(lote)
+        .then(() => {
+          overlay.remove();
+          toast('\u2705 Lote registrado!');
+          renderValidBody();
+        })
+        .catch(e => { errEl.textContent = 'Erro: ' + e.message; errEl.style.display = 'block'; });
+    });
+    ftr.appendChild(cancelBtn2);
+    ftr.appendChild(saveBtn2);
+    box.appendChild(ftr);
+    overlay.appendChild(box);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+    setTimeout(() => itemInp.focus(), 100);
+  });
+
+  // ── Renderizar lotes ───────────────────────────────────────────────────────
+  function renderValidBody() {
+    bodyEl.innerHTML = '';
+    const slug3 = unitSlug(activeValidUnit);
+    bodyEl.appendChild(el('div', {cls:'valid-empty'}, '\u23F3 Carregando...'));
+
+    db.ref('dados/validity_control/' + slug3).once('value').then(snap => {
+      bodyEl.innerHTML = '';
+      const val    = snap.val() || {};
+      const lotes  = Object.entries(val).map(([id, d]) => ({ _id: id, ...d }));
+      const today2 = new Date(); today2.setHours(0,0,0,0);
+
+      lotes.forEach(l => {
+        const dt = new Date(l.data_validade + 'T00:00:00');
+        l._diffDays = Math.round((dt - today2) / 86400000);
+        l._status   = l._diffDays <= 0 ? 'expired' : l._diffDays <= 7 ? 'alert' : 'ok';
+      });
+
+      const _norm2 = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+      const lotesByItem = {};
+      lotes.forEach(l => {
+        const k = _norm2(l.item_name);
+        if (!lotesByItem[k]) lotesByItem[k] = [];
+        lotesByItem[k].push(l);
+      });
+
+      const ucat  = getUnitCatalog(activeValidUnit).catalog;
+      const ucats = getUnitCatalog(activeValidUnit).categories;
+
+      // Resumo de alertas
+      const nExp   = lotes.filter(l => l._status === 'expired').length;
+      const nAlert = lotes.filter(l => l._status === 'alert').length;
+      if (nExp > 0 || nAlert > 0) {
+        const resumo = el('div', {style:'display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px'});
+        if (nExp > 0) {
+          const c = el('div', {style:'padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;background:rgba(197,48,48,.1);border:1.5px solid rgba(197,48,48,.3);color:#C53030'});
+          c.textContent = '\uD83D\uDD34 ' + nExp + ' vencido' + (nExp > 1 ? 's' : '');
+          resumo.appendChild(c);
+        }
+        if (nAlert > 0) {
+          const c = el('div', {style:'padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;background:rgba(214,158,46,.1);border:1.5px solid rgba(214,158,46,.3);color:#C07A00'});
+          c.textContent = '\uD83D\uDFE1 ' + nAlert + ' alerta' + (nAlert > 1 ? 's' : '');
+          resumo.appendChild(c);
+        }
+        bodyEl.appendChild(resumo);
+      }
+
+      // Tabela com TODOS os itens do catálogo
+      const tableWrap = el('div', {cls:'table-wrap', style:'padding:0'});
+      const table = el('table', {cls:'valid-table', style:'table-layout:fixed'});
+
+      // Larguras das colunas
+      const colgroup = document.createElement('colgroup');
+      [null, '60px', null, '36px'].forEach((w, i) => {
+        const col = document.createElement('col');
+        if (w) col.style.width = w;
+        colgroup.appendChild(col);
+      });
+      table.appendChild(colgroup);
+
+      const thead = el('thead');
+      const thrHead = el('tr');
+      [['Item','left'],['UN','left'],['Lotes cadastrados','right'],['+','center']].forEach(([h, align]) => {
+        const th = el('th', {style:'text-align:'+align});
+        th.textContent = h;
+        thrHead.appendChild(th);
+      });
+      thead.appendChild(thrHead);
+      table.appendChild(thead);
+
+      const tbody = el('tbody');
+
+      // Estado de abertura por categoria — começa fechado
+      const openCatsValid = {};
+
+      function toggleValidCat(cat, catTr) {
+        openCatsValid[cat] = !openCatsValid[cat];
+        const chevron = catTr.querySelector('.vcat-chevron');
+        if (chevron) chevron.style.transform = openCatsValid[cat] ? 'rotate(180deg)' : '';
+        tbody.querySelectorAll('tr[data-vcat="' + CSS.escape(cat) + '"]').forEach(tr => {
+          tr.style.display = openCatsValid[cat] ? '' : 'none';
+        });
+      }
+
+      ucats.forEach(cat => {
+        const catItems = ucat.filter(i => i.category === cat);
+        if (!catItems.length) return;
+
+        // Contar alertas nesta categoria
+        const catLotesAll = catItems.flatMap(i => lotesByItem[_norm2(i.name)] || []);
+        const nExpCat   = catLotesAll.filter(l => l._status === 'expired').length;
+        const nAlertCat = catLotesAll.filter(l => l._status === 'alert').length;
+        const nLotesCat = catLotesAll.length;
+
+        const catTr = el('tr', {cls:'valid-cat-row', style:'cursor:pointer;user-select:none'});
+        const catTd = el('td');
+        catTd.setAttribute('colspan', '4');
+        catTd.style.cssText = 'padding:7px 10px';
+
+        const catLeft = el('span', {style:'display:inline-flex;align-items:center;gap:8px'});
+        const chevron = el('span', {cls:'vcat-chevron', style:'font-size:10px;transition:transform .2s;display:inline-block'}, '▼');
+        catLeft.appendChild(chevron);
+        catLeft.appendChild(el('span', {}, cat));
+
+        // Badges de alerta inline no cabeçalho
+        const catRight = el('span', {style:'display:inline-flex;align-items:center;gap:6px;float:right'});
+        if (nExpCat > 0) {
+          const b = el('span', {style:'font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:rgba(197,48,48,.18);color:#C53030'});
+          b.textContent = nExpCat + ' vencido' + (nExpCat > 1 ? 's' : '');
+          catRight.appendChild(b);
+        } else if (nAlertCat > 0) {
+          const b = el('span', {style:'font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:rgba(214,158,46,.18);color:#C07A00'});
+          b.textContent = nAlertCat + ' alerta' + (nAlertCat > 1 ? 's' : '');
+          catRight.appendChild(b);
+        }
+        const countBadge = el('span', {style:'font-size:10px;color:var(--text-3)'});
+        countBadge.textContent = catItems.length + ' itens' + (nLotesCat > 0 ? ' · ' + nLotesCat + ' lote' + (nLotesCat > 1 ? 's' : '') : '');
+        catRight.appendChild(countBadge);
+
+        catTd.appendChild(catLeft);
+        catTd.appendChild(catRight);
+        catTr.appendChild(catTd);
+        catTr.addEventListener('click', () => toggleValidCat(cat, catTr));
+        tbody.appendChild(catTr);
+
+        catItems.forEach(item => {
+          const itemLotes = (lotesByItem[_norm2(item.name)] || [])
+            .slice().sort((a,b) => a.data_validade.localeCompare(b.data_validade));
+          const worstStatus = itemLotes.some(l => l._status === 'expired') ? 'expired'
+            : itemLotes.some(l => l._status === 'alert') ? 'alert' : '';
+
+          const tr = el('tr');
+          tr.setAttribute('data-vcat', cat);
+          tr.style.display = 'none'; // começa fechado
+
+          // Nome
+          const tdName = el('td');
+          const nameSpan = el('span', {
+            style: worstStatus === 'expired' ? 'color:#C53030;font-weight:500'
+                 : worstStatus === 'alert'   ? 'color:#C07A00;font-weight:500' : ''
+          }, item.name);
+          tdName.appendChild(nameSpan);
+          tr.appendChild(tdName);
+
+          // Unidade
+          tr.appendChild(el('td', {style:'color:var(--text-3);font-size:12px'}, item.unit));
+
+          // Lotes inline
+          const tdLotes = el('td', {cls:'right'});
+          if (!itemLotes.length) {
+            tdLotes.appendChild(el('span', {style:'color:var(--text-3);font-size:12px'}, '\u2014'));
+          } else {
+            const lotesWrap = el('div', {style:'display:flex;flex-direction:column;gap:4px;align-items:flex-end'});
+            itemLotes.forEach(l => {
+              const loteRow = el('div', {style:'display:flex;align-items:center;gap:6px'});
+              const dot = el('span', {cls:'valid-dot ' + l._status});
+              const dateStr = new Date(l.data_validade + 'T00:00:00').toLocaleDateString('pt-BR');
+              const daysStr = l._diffDays <= 0 ? 'Vencido' : l._diffDays === 1 ? '1 dia' : l._diffDays + 'd';
+              const info = el('span', {cls:'valid-date-text ' + l._status, style:'font-size:12px;white-space:nowrap'});
+              info.textContent = String(l.quantidade) + ' ' + l.unidade_medida + ' \u00B7 ' + dateStr + ' (' + daysStr + ')';
+              const cBtn = el('button', {cls:'valid-lote-consume', style:'width:22px;height:22px;font-size:11px', title:'Marcar consumido'}, '\u2714');
+              cBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                if (!confirm('Remover lote de "' + item.name + '"?')) return;
+                db.ref('dados/validity_control/' + slug3 + '/' + l._id).remove()
+                  .then(() => { toast('\u2705 Lote removido'); renderValidBody(); })
+                  .catch(err => toast('Erro: ' + err.message));
+              });
+              loteRow.append(dot, info, cBtn);
+              lotesWrap.appendChild(loteRow);
+            });
+            tdLotes.appendChild(lotesWrap);
+          }
+          tr.appendChild(tdLotes);
+
+          // Botão +
+          const tdAdd = el('td', {style:'text-align:center;width:36px;padding:4px 6px'});
+          const addBtn = el('button', {cls:'valid-lote-consume', style:'font-size:16px;font-weight:700', title:'Adicionar lote'}, '+');
+          addBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            openAddLoteModal(item, slug3, renderValidBody);
+          });
+          tdAdd.appendChild(addBtn);
+          tr.appendChild(tdAdd);
+          tbody.appendChild(tr);
+        });
+      });
+
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      bodyEl.appendChild(tableWrap);
+
+    }).catch(e => {
+      bodyEl.innerHTML = '';
+      bodyEl.appendChild(el('div', {cls:'valid-empty'}, '\u274C Erro: ' + e.message));
+    });
+  }
+
+  function openAddLoteModal(item, slug3, onSave) {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+    const today = new Date().toISOString().slice(0,10);
+    const overlay = el('div', {cls:'modal-overlay'});
+    const box = el('div', {cls:'modal-box', style:'max-width:360px'});
+    const hdr = el('div', {cls:'modal-header'});
+    hdr.appendChild(el('div', {cls:'modal-title'}, '+ Lote: ' + item.name));
+    const closeX = el('button', {cls:'modal-close'}, '\u00D7');
+    closeX.addEventListener('click', () => overlay.remove());
+    hdr.appendChild(closeX);
+    box.appendChild(hdr);
+    const body2 = el('div', {cls:'modal-body', style:'padding:16px 18px;display:flex;flex-direction:column;gap:12px'});
+    const qtyWrap = el('div');
+    qtyWrap.appendChild(el('div', {style:'font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px'}, 'Quantidade (' + item.unit + ')'));
+    const qtyInp = el('input', {type:'number', cls:'confirm-name-input', placeholder:'0', min:'0.01', step:'0.01', style:'width:100%'});
+    qtyWrap.appendChild(qtyInp);
+    body2.appendChild(qtyWrap);
+    const dateWrap = el('div');
+    dateWrap.appendChild(el('div', {style:'font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px'}, 'Data de Validade'));
+    const dateInp = el('input', {type:'date', cls:'confirm-name-input', style:'width:100%'});
+    dateInp.min = today;
+    dateWrap.appendChild(dateInp);
+    body2.appendChild(dateWrap);
+    box.appendChild(body2);
+    const errEl = el('div', {style:'padding:0 18px 8px;font-size:12px;color:var(--danger,#C53030);display:none'});
+    box.appendChild(errEl);
+    const ftr = el('div', {cls:'modal-footer'});
+    const cancelBtn2 = el('button', {cls:'btn btn-outline btn-sm'}, 'Cancelar');
+    cancelBtn2.addEventListener('click', () => overlay.remove());
+    const saveBtn2 = el('button', {cls:'btn btn-sm', style:'background:var(--accent,#2a6049);color:#fff'}, 'Salvar');
+    saveBtn2.addEventListener('click', () => {
+      errEl.style.display = 'none';
+      const qty = parseFloat(qtyInp.value);
+      if (!qty || qty <= 0) { errEl.textContent = 'Quantidade inválida.'; errEl.style.display = 'block'; return; }
+      if (!dateInp.value) { errEl.textContent = 'Informe a data de validade.'; errEl.style.display = 'block'; return; }
+      const lote = { item_id: item.id, item_name: item.name, quantidade: qty,
+        unidade_medida: item.unit, data_validade: dateInp.value, data_cadastro: today, status_alerta: 'pendente' };
+      db.ref('dados/validity_control/' + slug3 + '/' + Date.now()).set(lote)
+        .then(() => { overlay.remove(); toast('\u2705 Lote registrado!'); onSave(); })
+        .catch(e => { errEl.textContent = 'Erro: ' + e.message; errEl.style.display = 'block'; });
+    });
+    qtyInp.addEventListener('keydown', e => { if (e.key === 'Enter') dateInp.focus(); });
+    dateInp.addEventListener('keydown', e => { if (e.key === 'Enter') saveBtn2.click(); });
+    ftr.appendChild(cancelBtn2); ftr.appendChild(saveBtn2);
+    box.appendChild(ftr);
+    overlay.appendChild(box);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+    setTimeout(() => qtyInp.focus(), 100);
+  }
+  renderValidBody();
   return frag;
 }
 
@@ -8732,6 +9047,7 @@ function render() {
   else if (currentView === 'catalogo')   node = viewCatalogo();
   else if (currentView === 'envios-dia') node = viewEnviosDia();
   else if (currentView === 'historico-contagens') node = viewHistoricoContagens();
+  else if (currentView === 'validade') node = viewValidadeControl();
   else if (currentView === 'dashboard')  node = viewDashboard();
   if (node) contentEl.appendChild(node);
 
