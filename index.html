@@ -487,6 +487,141 @@
   .loading-step.active  { background: #68D391; transform: scale(1.3); }
   .loading-step.error   { background: #FC8181; }
 
+  /* ── Quadro de Produção ─────────────────────────────────────────────────── */
+  .qp-day-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+  .qp-day-tab {
+    padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600;
+    cursor:pointer; border:1.5px solid var(--border);
+    background:var(--surface); color:var(--text-2); transition:all .15s;
+    touch-action:manipulation;
+  }
+  .qp-day-tab.active { background:var(--accent,#2a6049); color:#fff !important; border-color:var(--accent,#2a6049); }
+  .qp-day-tab.today { border-color:var(--accent,#2a6049); color:var(--accent,#2a6049); font-weight:700; }
+  .qp-day-tab.active.today { background:var(--accent,#2a6049); color:#fff !important; }
+  .qp-area-hdr {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; background:#EAF2EC;
+    border:1.5px solid rgba(42,145,72,.3);
+    border-radius:var(--radius) var(--radius) 0 0;
+    font-weight:700; font-size:13px; color:var(--accent-dark,#2a6049);
+    flex-wrap:wrap; gap:8px;
+  }
+  .qp-area-hdr .qp-area-name { display:flex; align-items:center; gap:8px; }
+  .qp-area-badge {
+    font-size:11px; padding:2px 8px; border-radius:10px;
+    background:rgba(42,145,72,.15); color:var(--accent-dark,#2a6049);
+    font-weight:600;
+  }
+  .qp-table { width:100%; border-collapse:collapse; }
+  .qp-table th {
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+    color:var(--text-3); padding:8px 12px; text-align:left;
+    background:var(--surface-2); border-bottom:1.5px solid var(--border);
+  }
+  .qp-table th.center { text-align:center; }
+  .qp-table td {
+    padding:10px 12px; border-bottom:1px solid var(--border);
+    vertical-align:middle; font-size:13px; color:var(--text);
+  }
+  .qp-table tr:last-child td { border-bottom:none; }
+  .qp-table tr:nth-child(even) td { background:var(--surface-2); }
+  .qp-item-name { font-weight:500; }
+  .qp-rendimento { font-size:11px; color:var(--text-3); margin-top:2px; }
+  .qp-lotes-cell { display:flex; align-items:center; gap:6px; justify-content:center; }
+  .qp-qty-btn {
+    width:26px; height:26px; border-radius:6px;
+    border:1.5px solid var(--border); background:var(--surface);
+    color:var(--text); font-size:14px; font-weight:700;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:all .1s; touch-action:manipulation;
+  }
+  .qp-qty-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .qp-qty-input {
+    width:48px; text-align:center;
+    background:var(--surface-2); border:1.5px solid var(--border);
+    color:var(--text); font-size:14px; font-weight:700;
+    padding:4px; border-radius:6px;
+  }
+  .qp-qty-input:focus { outline:none; border-color:var(--accent); }
+  .qp-sugestao {
+    font-size:11px; color:var(--accent-dark,#2a6049); font-weight:600;
+    white-space:nowrap; cursor:pointer;
+  }
+  .qp-sugestao:hover { text-decoration:underline; }
+  .qp-sugestao.zero { color:var(--text-3); font-weight:400; cursor:default; }
+  .qp-cobertura-sel {
+    font-size:11px; padding:3px 6px; border-radius:4px;
+    border:1px solid var(--border); background:var(--surface);
+    color:var(--text-2); cursor:pointer;
+  }
+  .qp-status-btn {
+    padding:5px 12px; border-radius:6px; font-size:12px; font-weight:700;
+    border:1.5px solid var(--border); background:var(--surface); color:var(--text-3);
+    cursor:pointer; white-space:nowrap; transition:all .15s; touch-action:manipulation;
+  }
+  .qp-status-btn.liberado { background:#EAF2EC; color:var(--accent-dark,#2a6049); border-color:var(--accent,#2a6049); }
+  .qp-status-btn.disabled { opacity:.4; cursor:not-allowed; pointer-events:none; }
+  .qp-liberar-all {
+    padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700;
+    background:var(--accent,#2a6049); color:#fff; border:none; cursor:pointer;
+    touch-action:manipulation; transition:opacity .15s;
+  }
+  .qp-liberar-all:hover { opacity:.88; }
+  .qp-insumos { font-size:11px; color:var(--text-3); line-height:1.7; }
+  .qp-insumos b { color:var(--text-2); }
+  .qp-insumos .emb { color:var(--accent-dark,#2a6049); }
+  .qp-empty { padding:40px; text-align:center; color:var(--text-3); font-size:13px; }
+  .qp-empty-icon { font-size:36px; margin-bottom:10px; }
+  .qp-obs-input {
+    width:100%; font-size:12px; padding:5px 8px;
+    border:1.5px solid var(--border); border-radius:6px;
+    background:var(--surface); color:var(--text); resize:none;
+  }
+  .qp-obs-input:focus { outline:none; border-color:var(--accent); }
+  .qp-alerta-val {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;
+    background:rgba(192,122,0,.15); color:#C07A00; margin-left:6px;
+  }
+  .qp-sem-necessidade {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:10px; padding:2px 6px; border-radius:4px;
+    background:rgba(42,145,72,.1); color:var(--accent-dark,#2a6049);
+  }
+  .qp-section-footer {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; background:var(--surface-2);
+    border:1.5px solid rgba(42,145,72,.2);
+    border-top:none; border-radius:0 0 var(--radius) var(--radius);
+    gap:8px; flex-wrap:wrap;
+  }
+  .qp-footer-info { font-size:11px; color:var(--text-3); }
+  .qp-masseiro-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:14px;
+    background:var(--surface); border:1.5px solid rgba(42,145,72,.2);
+    border-top:none;
+  }
+  @media(max-width:600px) { .qp-masseiro-grid { grid-template-columns:1fr; } }
+  .qp-masseiro-card {
+    background:var(--surface-2); border-radius:var(--radius);
+    border:1px solid var(--border); padding:12px;
+  }
+  .qp-masseiro-title {
+    font-size:11px; font-weight:700; text-transform:uppercase;
+    color:var(--accent-dark,#2a6049); letter-spacing:.5px; margin-bottom:10px;
+  }
+  .qp-masseiro-row {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:8px; margin-bottom:8px; font-size:13px;
+  }
+  .qp-masseiro-input {
+    width:72px; text-align:center; padding:5px;
+    border:1.5px solid var(--border); border-radius:6px;
+    background:var(--surface); color:var(--text); font-size:14px; font-weight:700;
+  }
+  .qp-masseiro-input:focus { outline:none; border-color:var(--accent); }
+  .qp-masseiro-calc { font-size:11px; color:var(--text-3); margin-top:8px; }
+
   /* ── Controle de Validades ─────────────────────────────────────────────── */
   .valid-unit-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
   .valid-unit-tab {
@@ -2075,6 +2210,10 @@ auth.onAuthStateChanged(user => {
     <button class="nav-item" data-view="validade" onclick="setView('validade')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
       Validades
+    </button>
+    <button class="nav-item" data-view="producao" onclick="setView('producao')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+      Quadro Produção
     </button>
     <button class="nav-item" data-view="catalogo" onclick="setView('catalogo')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
@@ -4751,6 +4890,190 @@ setTimeout(() => {
 
 // Salvar catálogo de uma unidade: atualiza cache em memória + Firebase
 // Garante que viewUnits e contagem refletem a mudança imediatamente
+// ═══ QUADRO DE PRODUÇÃO — FICHAS TÉCNICAS ════════════════════════════════════
+// Cada ficha vincula um item do catálogo CPD (cpdId) a uma área de produção,
+// rendimento por lote, matéria-prima e embalagens.
+// cpdId: ID do item em pizza_catalog do CPD
+// coberturaDefault: número de próximas entregas para cobrir por padrão
+const FT_LIBRARY = [
+  // ── MADALENA ───────────────────────────────────────────────────────────────
+  { id:'molho_tomate',      area:'Madalena', cpdId:'pp03', nome:'Molho de Tomate 5L',
+    rendimento:'1 balde = 5L', rendFichas:1, coberturaDefault:1,
+    mp:[{n:'Tomate Pelati lata 2,5kg',q:3,u:'latas'},{n:'Cebola roxa',q:700,u:'g'},
+        {n:'Manjericão',q:80,u:'g'},{n:'Azeite de oliva',q:350,u:'g'},{n:'Sal',q:60,u:'g'}],
+    emb:[{n:'Balde Branco',q:1,u:'un'}] },
+
+  { id:'parmesao_grana',    area:'Madalena', cpdId:'pp04', nome:'Parmesão Grana Padano 300g',
+    rendimento:'Peça ~6kg → 20 porções 300g', rendFichas:20, coberturaDefault:2,
+    mp:[{n:'Grana Padano peça',q:6,u:'kg'}],
+    emb:[{n:'Vácuo 10/20',q:20,u:'un'}] },
+
+  { id:'parmesao_ralado',   area:'Madalena', cpdId:'pp05', nome:'Parmesão Ralado 2kg',
+    rendimento:'Peça ~6kg → 3 porções 2kg', rendFichas:3, coberturaDefault:2,
+    mp:[{n:'Parmesão bloco',q:6,u:'kg'}],
+    emb:[{n:'Vácuo 40/60',q:3,u:'un'}] },
+
+  { id:'provolone',         area:'Madalena', cpdId:'pp06', nome:'Provolone 300g',
+    rendimento:'Meia peça 2,25kg → 12 porções 200g', rendFichas:12, coberturaDefault:2,
+    mp:[{n:'Provolone meia peça',q:1,u:'peça 2,25kg'}],
+    emb:[{n:'Vácuo 20/30',q:12,u:'un'}] },
+
+  { id:'gorgonzola',        area:'Madalena', cpdId:'pp07', nome:'Gorgonzola 300g',
+    rendimento:'Porção 300g', rendFichas:1, coberturaDefault:2,
+    mp:[{n:'Gorgonzola',q:300,u:'g'}],
+    emb:[{n:'Vácuo 20/30',q:1,u:'un'}] },
+
+  { id:'linguica_calabresa', area:'Madalena', cpdId:'pp09', nome:'Linguiça Calabresa 2,5kg',
+    rendimento:'Saco 2,5kg = 1 porção', rendFichas:1, coberturaDefault:1,
+    mp:[{n:'Linguiça Calabresa',q:2.5,u:'kg'}],
+    emb:[{n:'Vácuo 40/60',q:1,u:'un'}] },
+
+  { id:'lombo_canadense',   area:'Madalena', cpdId:'pp08', nome:'Lombo Canadense 500g',
+    rendimento:'1kg → 2 porções 500g', rendFichas:2, coberturaDefault:2,
+    mp:[{n:'Lombo Canadense peça',q:1,u:'kg'}],
+    emb:[{n:'Vácuo 20/30',q:2,u:'un'}] },
+
+  { id:'salaminho',         area:'Madalena', cpdId:'pp10', nome:'Salaminho 500g',
+    rendimento:'600g → 2 porções 300g', rendFichas:2, coberturaDefault:2,
+    mp:[{n:'Saláminho peça',q:1,u:'kg'}],
+    emb:[{n:'Vácuo 20/30',q:2,u:'un'}] },
+
+  { id:'presunto',          area:'Madalena', cpdId:'pp11', nome:'Presunto 500g',
+    rendimento:'Peça 3,5kg → 7 porções 500g', rendFichas:7, coberturaDefault:2,
+    mp:[{n:'Presunto cozido peça 3,5kg',q:1,u:'peça'}],
+    emb:[{n:'Vácuo 20/30',q:7,u:'un'}] },
+
+  { id:'carne_sol',         area:'Madalena', cpdId:'pp12', nome:'Carne de Sol Desfiada 1kg',
+    rendimento:'15kg crua → 13 porções 600g', rendFichas:13, coberturaDefault:1,
+    mp:[{n:'Carne de Sol crua',q:15,u:'kg'}],
+    emb:[{n:'Vácuo 20/30',q:13,u:'un'}] },
+
+  { id:'frango_desfiado',   area:'Madalena', cpdId:'pp13', nome:'Frango Desfiado 1kg',
+    rendimento:'20kg filé → 15 porções 600g', rendFichas:15, coberturaDefault:1,
+    mp:[{n:'Filé de peito de frango',q:20,u:'kg'},{n:'Cebola branca',q:500,u:'g'},
+        {n:'Pasta de Alho',q:100,u:'g'},{n:'Cúrcuma',q:100,u:'g'},{n:'Sal',q:100,u:'g'}],
+    emb:[{n:'Vácuo 20/30',q:15,u:'un'}] },
+
+  { id:'tomate_seco',       area:'Madalena', cpdId:'pp14', nome:'Tomate Seco 500g',
+    rendimento:'Balde 2L drenado 1,4kg → 2 porções 700g', rendFichas:2, coberturaDefault:2,
+    mp:[{n:'Tomate seco drenado balde 2L',q:1.4,u:'kg'}],
+    emb:[{n:'Vácuo 20/30',q:2,u:'un'}] },
+
+  { id:'pure_abobora',      area:'Larissa', cpdId:'pp16', nome:'Purê de Abóbora 500g',
+    rendimento:'8 abóboras → 30 porções 500g', rendFichas:30, coberturaDefault:1,
+    mp:[{n:'Abóbora',q:8,u:'un (2-2,5kg)'}],
+    emb:[{n:'Pote plástico 500g',q:30,u:'un'}] },
+
+  { id:'acucar_canela',     area:'Madalena', cpdId:'pp29', nome:'Canela c/Açúcar Mix 500g',
+    rendimento:'2,5kg açúcar + 500g canela → 6 porções 500g', rendFichas:6, coberturaDefault:3,
+    mp:[{n:'Açúcar orgânico',q:2.5,u:'kg'},{n:'Canela',q:500,u:'g'}],
+    emb:[{n:'Vácuo 20/30',q:6,u:'un'}] },
+
+  // ── LARISSA ────────────────────────────────────────────────────────────────
+  { id:'chocolate_leite',   area:'Larissa', cpdId:'pp26', nome:'Chocolate ao Leite Ralado',
+    rendimento:'Barra 2,1kg → 2 porções 1,1kg', rendFichas:2, coberturaDefault:2,
+    mp:[{n:'Chocolate ao leite barra',q:2.1,u:'kg'}],
+    emb:[{n:'Bobina 30/40',q:2,u:'un'}] },
+
+  { id:'chocolate_branco',  area:'Larissa', cpdId:'pp27', nome:'Chocolate Branco Ralado',
+    rendimento:'Barra 2,1kg → 2 porções 1,1kg', rendFichas:2, coberturaDefault:2,
+    mp:[{n:'Chocolate branco barra',q:2.1,u:'kg'}],
+    emb:[{n:'Bobina 30/40',q:2,u:'un'}] },
+
+  { id:'creme_pistache',    area:'Larissa', cpdId:'pp23', nome:'Creme de Pistache 400g',
+    rendimento:'Balde 3,5kg → 10 porções 350g', rendFichas:10, coberturaDefault:2,
+    mp:[{n:'Creme de Pistache balde',q:3.5,u:'kg'}],
+    emb:[{n:'Manga confeiteira',q:10,u:'un'}] },
+
+  { id:'nutella',           area:'Larissa', cpdId:'pp25', nome:'Nutella 400g',
+    rendimento:'Balde 3kg → 10 porções 300g', rendFichas:10, coberturaDefault:2,
+    mp:[{n:'Nutella balde',q:3,u:'kg'}],
+    emb:[{n:'Manga confeiteira',q:10,u:'un'}] },
+
+  { id:'guianduela',        area:'Larissa', cpdId:'pp24', nome:'Guianduela Branca',
+    rendimento:'Balde 3,5kg → 10 porções 350g', rendFichas:10, coberturaDefault:2,
+    mp:[{n:'Guianduela Branca balde',q:3.5,u:'kg'}],
+    emb:[{n:'Saco 20/30',q:10,u:'un'}] },
+
+  { id:'pistache_grao',     area:'Larissa', cpdId:'pp33', nome:'Pistache 250g',
+    rendimento:'Saco 1kg → 4 porções 250g', rendFichas:4, coberturaDefault:3,
+    mp:[{n:'Pistache saco',q:1,u:'kg'}],
+    emb:[{n:'Vácuo',q:4,u:'un'}] },
+
+  { id:'oregano',           area:'Larissa', cpdId:'pp31', nome:'Orégano 250g',
+    rendimento:'Saco 1kg → 4 porções 250g', rendFichas:4, coberturaDefault:3,
+    mp:[{n:'Orégano saco',q:1,u:'kg'}],
+    emb:[{n:'Bobina saco 20/30',q:4,u:'un'}] },
+
+  { id:'nozes',             area:'Larissa', cpdId:'pp32', nome:'Nozes 100g',
+    rendimento:'Porção 100g', rendFichas:1, coberturaDefault:3,
+    mp:[{n:'Nozes',q:100,u:'g'}],
+    emb:[{n:'Vácuo saco 10/20',q:1,u:'un'}] },
+
+  // ── MARIA LAURA ────────────────────────────────────────────────────────────
+  { id:'geleia_amora',      area:'Maria Laura', cpdId:'pp19', nome:'Geleia Amora Framboesa Pizza',
+    rendimento:'6 potes 500g', rendFichas:6, coberturaDefault:1,
+    mp:[{n:'Framboesas congeladas',q:3000,u:'g'},{n:'Amoras congeladas',q:3000,u:'g'},
+        {n:'Açúcar cristal',q:300,u:'g'}],
+    emb:[{n:'Pote 500g',q:6,u:'un'}] },
+
+  { id:'geleia_abacaxi',    area:'Maria Laura', cpdId:'pp22', nome:'Geleia Abacaxi c/Pimenta 500g',
+    rendimento:'1kg abacaxi → 2 potes 500g', rendFichas:2, coberturaDefault:1,
+    mp:[{n:'Abacaxi sem casca',q:1,u:'kg'},{n:'Açúcar',q:400,u:'g'},
+        {n:'Pimenta',q:30,u:'g'},{n:'Açafrão',q:1,u:'colher'}],
+    emb:[{n:'Pote plástico 500g',q:1,u:'un por 500g'}] },
+
+  { id:'creme_gorgonzola',  area:'Maria Laura', cpdId:'pp15', nome:'Creme de Gorgonzola',
+    rendimento:'3 potes 500g', rendFichas:3, coberturaDefault:1,
+    mp:[{n:'Gorgonzola',q:1000,u:'g'},{n:'Creme de leite caixinha',q:600,u:'ml'},
+        {n:'Alho',q:3,u:'dentes'},{n:'Manteiga',q:2,u:'colheres'},{n:'Azeite',q:1,u:'colher'}],
+    emb:[{n:'Pote 500g',q:3,u:'un'}] },
+
+  { id:'pesto_bisnaga',     area:'Maria Laura', cpdId:'pp17', nome:'Molho Pesto Bisnaga 5L',
+    rendimento:'5 litros de pesto', rendFichas:1, coberturaDefault:1,
+    mp:[{n:'Manjericão desfolhado',q:600,u:'g'},{n:'Parmesão ralado',q:400,u:'g'},
+        {n:'Castanha de caju',q:100,u:'g'},{n:'Alho',q:20,u:'g'},
+        {n:'Sal',q:20,u:'g'},{n:'Azeite de oliva',q:4,u:'litros'}],
+    emb:[] },
+
+  { id:'pesto_azeitona',    area:'Maria Laura', cpdId:'pp18', nome:'Molho Pesto de Azeitona 500ml',
+    rendimento:'1,8 litros de pesto', rendFichas:3, coberturaDefault:1,
+    mp:[{n:'Azeitonas pretas',q:500,u:'g'},{n:'Castanha',q:250,u:'g'},
+        {n:'Folhas de hortelã',q:10,u:'folhas'},{n:'Folhas de manjericão',q:40,u:'folhas'},
+        {n:'Sal',q:5,u:'g'},{n:'Pimentas malaguetas',q:4,u:'un'},
+        {n:'Azeite de oliva',q:1.25,u:'litros'}],
+    emb:[] },
+
+  // ── MASSEIRO ───────────────────────────────────────────────────────────────
+  { id:'massa_pizza',       area:'Masseiro', cpdId:'pp01', nome:'Massa de Pizza',
+    rendimento:'1 ficha = 10kg farinha → ~50 bolas', rendFichas:50, coberturaDefault:1,
+    mp:[{n:'Farinha p pizza',q:10,u:'kg'},{n:'Fermento',q:40,u:'g'}],
+    emb:[] },
+
+  { id:'mucarela_20kg',     area:'Masseiro', cpdId:'pp02', nome:'Muçarela 20kg',
+    rendimento:'1 ficha = 1 peça 20kg', rendFichas:1, coberturaDefault:1,
+    mp:[{n:'Muçarela peça',q:20,u:'kg'}],
+    emb:[] },
+];
+
+// Mapa por ID para lookup rápido
+const FT_BY_ID = {};
+FT_LIBRARY.forEach(f => FT_BY_ID[f.id] = f);
+
+// Estado do Quadro — persistido em localStorage
+const _QP_KEY = 'sesco_qp_v1';
+function qpLoad() {
+  try { return JSON.parse(localStorage.getItem(_QP_KEY) || '{}'); } catch(e) { return {}; }
+}
+function qpSave(s) {
+  try { localStorage.setItem(_QP_KEY, JSON.stringify(s)); } catch(e) {}
+}
+let _qpState = qpLoad();
+
+function qpGet(key, def) { return _qpState[key] !== undefined ? _qpState[key] : def; }
+function qpSet(key, val) { _qpState[key] = val; qpSave(_qpState); }
+
+
 // ═══ CONFIRMAÇÃO DE CONTAGEM POR CATEGORIA ═══════════════════════════════════
 // Estrutura: { unitSlug: { 'Categoria': { name, ts, qtys: {itemId: qty} } } }
 // qtys = snapshot das quantidades no momento da confirmação
@@ -5394,7 +5717,7 @@ function unitKey(){ return session ? session.unit : 'cpd'; }
 // Views available per role
 function allowedViews() {
   if (!session) return [];
-  if (isCPD()) return ['cpd','units','dashboard','envios-dia','historico-contagens','validade','catalogo'];
+  if (isCPD()) return ['cpd','units','dashboard','envios-dia','historico-contagens','validade','producao','catalogo'];
   return ['units','validade'];
   return ['units']; // Unidades: apenas o Painel de Contagem
 }
@@ -8451,6 +8774,590 @@ function viewValidadeControl() {
   return frag;
 }
 
+// ═══ QUADRO DE PRODUÇÃO ════════════════════════════════════════════════════════
+const QP_DIAS  = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+const QP_AREAS = ['Madalena','Larissa','Maria Laura','Masseiro'];
+
+function viewQuadroProducao() {
+  const frag = document.createDocumentFragment();
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px'});
+  hdrWrap.appendChild(el('h2', {cls:'table-title'}, 'Quadro de Produção'));
+  const pdfBtn = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:12px;margin-left:auto'});
+  pdfBtn.textContent = '🖨️ Ordem de Produção';
+  pdfBtn.addEventListener('click', () => qpGerarPDF());
+  hdrWrap.appendChild(pdfBtn);
+  frag.appendChild(hdrWrap);
+
+  // ── Tabs de dia da semana ─────────────────────────────────────────────────
+  const todayDow = new Date().getDay(); // 0=Dom
+  const todayIdx = (todayDow + 6) % 7; // 0=Seg
+  let activeDay = qpGet('activeDay', todayIdx);
+
+  const tabsEl = el('div', {cls:'qp-day-tabs'});
+  const bodyEl = el('div', {});
+  frag.appendChild(tabsEl);
+  frag.appendChild(bodyEl);
+
+  QP_DIAS.forEach((dia, dIdx) => {
+    const tab = document.createElement('button');
+    tab.className = 'qp-day-tab' + (dIdx === activeDay ? ' active' : '') + (dIdx === todayIdx ? ' today' : '');
+    tab.textContent = dia;
+    tab.addEventListener('click', () => {
+      activeDay = dIdx;
+      qpSet('activeDay', dIdx);
+      tabsEl.querySelectorAll('.qp-day-tab').forEach((b, i) => {
+        b.classList.toggle('active', i === dIdx);
+        b.classList.toggle('today', i === todayIdx);
+      });
+      // Fechar todas as áreas ao trocar de dia
+      Object.keys(openAreas).forEach(k => delete openAreas[k]);
+      renderQPBody(dIdx);
+    });
+    tabsEl.appendChild(tab);
+  });
+
+  // ── Calcular necessidade de produção ──────────────────────────────────────
+  // Para cada ficha técnica, calcula quantos lotes são necessários:
+  // 1. Pega o total a enviar para todas as unidades no próximo dia de entrega
+  //    que corresponda ao dia selecionado
+  // 2. Subtrai o estoque atual do CPD
+  // 3. Divide pelo rendimentoFichas (arredondando pra cima)
+  // Se resultado <= 0 → item não precisa ser produzido
+  function calcLotesSugeridos(ft, cobertura) {
+    const _norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    // Buscar item no catálogo CPD pelo cpdId
+    const cpdItem = (catalog || []).find(c => c.id === ft.cpdId);
+    if (!cpdItem) return { lotes:0, aEnviarTotal:0, estCPD:0 };
+    const estCPD = cpd[cpdItem.id] || 0;
+    // Somar A Enviar de todas as unidades
+    let aEnviarTotal = 0;
+    const dayCode = qpDayCode(activeDay);
+    if (!dayCode) return { lotes:0, aEnviarTotal:0, estCPD };
+    UNIT_NAMES.forEach(unitName => {
+      const ucat   = getUnitCatalog(unitName).catalog;
+      const ustock = unitStock[unitName] || {};
+      // Somar estoques de todos os IDs do mesmo item nessa unidade
+      const matchItems = ucat.filter(i => _norm(i.name) === _norm(cpdItem.name));
+      const estUnit = matchItems.reduce((s,i) => s + (ustock[i.id] || 0), 0);
+      const aEnv = calcAEnviar(unitName, cpdItem.name, estUnit, dayCode);
+      aEnviarTotal += aEnv;
+    });
+    // Multiplicar pela cobertura (número de entregas a cobrir)
+    const necessidade = aEnviarTotal * cobertura;
+    const deficit = Math.max(0, necessidade - estCPD);
+    const lotes = deficit > 0 ? Math.ceil(deficit / ft.rendFichas) : 0;
+    return { lotes, aEnviarTotal, estCPD };
+  }
+
+  // Dia de entrega correspondente ao dia selecionado
+  function qpDayCode(dayIdx) {
+    // 0=Seg→SEG, 2=Qua→QUA, 4=Sex→SEX; outros dias pegam o próximo dia de entrega
+    const MAP = {0:'SEG', 2:'QUA', 4:'SEX'};
+    return MAP[dayIdx] || null;
+  }
+
+  // ── Verificar alertas de validade para insumos de uma ficha ───────────────
+  function getValidadeAlerta(ft) {
+    const _norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    const today = new Date(); today.setHours(0,0,0,0);
+    const in7   = new Date(today); in7.setDate(in7.getDate() + 7);
+    // Verificar se alguma unidade tem lote vencendo de algum insumo desta ficha
+    // (simplificado: verificar no validity_control carregado em memória se disponível)
+    return false; // placeholder — requer leitura async do Firebase
+  }
+
+  // ── Render do body ─────────────────────────────────────────────────────────
+  // Estado de abertura por área — persiste entre re-renders do mesmo dia
+  const openAreas = {};
+
+  function renderQPBody(dayIdx) {
+    bodyEl.innerHTML = '';
+
+    const dayCode = qpDayCode(dayIdx);
+
+    if (!dayCode) {
+      const _ew = el('div', {style:'padding:10px 14px;background:var(--surface-2);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:14px;display:flex;gap:10px;align-items:center'});
+      const _etxt = el('div');
+      _etxt.appendChild(el('div', {style:'font-size:13px;font-weight:600;color:var(--text-2)'}, 'Dia sem entrega às unidades'));
+      _etxt.appendChild(el('div', {style:'font-size:11px;color:var(--text-3);margin-top:2px'}, 'Sem cálculo automático — defina as quantidades manualmente se houver produção avulsa.'));
+      _ew.appendChild(_etxt);
+      bodyEl.appendChild(_ew);
+    }
+
+    // Agrupar fichas por área e calcular necessidade
+    const ftPorArea = {};
+    QP_AREAS.forEach(a => { ftPorArea[a] = []; });
+    let totalLotes = 0, totalLiberados = 0;
+
+    FT_LIBRARY.forEach(ft => {
+      const cobertura = parseInt(qpGet(`cob_${ft.id}`, ft.coberturaDefault)) || 1;
+      const { lotes, aEnviarTotal, estCPD } = calcLotesSugeridos(ft, cobertura);
+      // Quantidade SEMPRE zero — responsavel decide aceitar a sugestao
+      const lotesManuais = qpGet(`qty_${dayIdx}_${ft.id}`, 0);
+      const lotesEfetivos = lotesManuais;
+      const liberado = qpGet(`lib_${dayIdx}_${ft.id}`, false);
+      ftPorArea[ft.area].push({ ft, lotes, aEnviarTotal, estCPD, cobertura, lotesEfetivos, liberado });
+      if (lotesEfetivos > 0) totalLotes++;
+      if (liberado) totalLiberados++;
+    });
+
+    // Renderizar por área
+    QP_AREAS.forEach(area => {
+      const items = ftPorArea[area] || [];
+      const comNecessidade = items.filter(i => i.lotes > 0);
+      const liberadosArea  = items.filter(i => i.liberado && i.lotesEfetivos > 0).length;
+      const totalArea      = items.filter(i => i.lotesEfetivos > 0).length;
+
+      const areaWrap = el('div', {style:'margin-bottom:20px'});
+
+      const areaHdr = el('div', {cls:'qp-area-hdr', style:'cursor:pointer;user-select:none'});
+      const areaLeft = el('div', {cls:'qp-area-name'});
+      const chevron = document.createElement('span');
+      chevron.className = 'qp-chevron';
+      chevron.style.cssText = 'font-size:10px;transition:transform .2s;display:inline-block;margin-right:6px';
+      chevron.textContent = '▼';
+      areaLeft.appendChild(chevron);
+      const _areaLabel = document.createElement('span');
+      _areaLabel.textContent = area;
+      areaLeft.appendChild(_areaLabel);
+      if (dayCode && comNecessidade.length > 0)
+        areaLeft.appendChild(el('span', {cls:'qp-area-badge'}, comNecessidade.length + ' a produzir'));
+      else if (dayCode)
+        areaLeft.appendChild(el('span', {cls:'qp-area-badge',
+          style:'background:rgba(42,145,72,.08);color:var(--text-3)'}, 'tudo OK'));
+      areaHdr.appendChild(areaLeft);
+
+      const areaRight = el('div', {style:'display:flex;gap:8px;align-items:center'});
+      if (totalArea > 0) {
+        areaRight.appendChild(el('span', {cls:'qp-footer-info'},
+          liberadosArea + '/' + totalArea + ' liberados'));
+        if (liberadosArea < totalArea) {
+          const libAllBtn = el('button', {cls:'qp-liberar-all'}, '✓ Liberar tudo');
+          libAllBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            items.forEach(i => {
+              if (i.lotesEfetivos > 0 && !i.liberado) qpSet('lib_' + dayIdx + '_' + i.ft.id, true);
+            });
+            qpSalvarHistorico(dayIdx);
+            renderQPBody(dayIdx);
+          });
+          areaRight.appendChild(libAllBtn);
+        }
+      }
+      areaHdr.appendChild(areaRight);
+      areaWrap.appendChild(areaHdr);
+
+      // Tabela de itens
+      const tableWrap = el('div', {cls:'table-wrap', style:'padding:0;border-top:none;border-radius:0'});
+      const table = el('table', {cls:'qp-table'});
+
+      const thead = el('thead');
+      const hrHead = el('tr');
+      ['Item / Rendimento','Cobertura','Sugestão','Lotes','Insumos','Obs','Status'].forEach((h,i) => {
+        const th = el('th', {cls: i >= 2 && i <= 4 ? 'center' : ''});
+        th.textContent = h;
+        hrHead.appendChild(th);
+      });
+      thead.appendChild(hrHead);
+      table.appendChild(thead);
+
+      const tbody = el('tbody');
+
+      // Área Masseiro — layout especial
+      if (area === 'Masseiro') {
+        const massGrid = el('div', {cls:'qp-masseiro-grid'});
+
+        // Card Previsão
+        const cardPrev = el('div', {cls:'qp-masseiro-card'});
+        cardPrev.appendChild(el('div', {cls:'qp-masseiro-title'}, '📋 Produção prevista'));
+
+        items.forEach(({ft, lotes, lotesEfetivos}) => {
+          const row = el('div', {cls:'qp-masseiro-row'});
+          row.appendChild(el('span', {style:'color:var(--text-2)'}, ft.nome));
+          const inp = el('input', {cls:'qp-masseiro-input', type:'number', min:'0'});
+          inp.value = String(lotesEfetivos);
+          inp.placeholder = String(lotes);
+          inp.title = lotes > 0 ? `Sugestão: ${lotes} lotes` : 'Sem necessidade calculada';
+          inp.setAttribute('data-ft-id', ft.id);
+          inp.addEventListener('change', () => {
+            const v = Math.max(0, parseInt(inp.value) || 0);
+            qpSet('qty_' + dayIdx + '_' + ft.id, v);
+            // Atualizar cálculo de farinha/fermento inline (sem re-render)
+            if (ft.id === 'massa_pizza') {
+              const cd = cardPrev.querySelector('.qp-masseiro-calc');
+              if (cd) cd.innerHTML = 'Farinha total: <b>' + (v * 10) + 'kg</b> · Fermento: <b>' + (v * 40) + 'g</b>';
+            }
+          });
+          row.appendChild(inp);
+          cardPrev.appendChild(row);
+        });
+
+        // Cálculo farinha/fermento
+        const massaFt = FT_BY_ID['massa_pizza'];
+        const massaLotes = parseInt(qpGet(`qty_${dayIdx}_massa_pizza`, calcLotesSugeridos(massaFt, 1).lotes)) || 0;
+        const farinhaTotal = massaLotes * 10;
+        const fermentoTotal = massaLotes * 40;
+        const calcDiv = el('div', {cls:'qp-masseiro-calc'});
+        calcDiv.innerHTML = `Farinha total: <b>${farinhaTotal}kg</b> · Fermento: <b>${fermentoTotal}g</b>`;
+        cardPrev.appendChild(calcDiv);
+        massGrid.appendChild(cardPrev);
+
+        // Card Produzido
+        const cardProd = el('div', {cls:'qp-masseiro-card'});
+        cardProd.appendChild(el('div', {cls:'qp-masseiro-title'}, '✅ Produzido (preencher ao final)'));
+        ['Muçarela','Biga','Massa'].forEach(tipo => {
+          const row = el('div', {cls:'qp-masseiro-row'});
+          row.appendChild(el('span', {style:'color:var(--text-2)'}, tipo));
+          const inp = el('input', {cls:'qp-masseiro-input', type:'number', min:'0',
+            style:'border-color:var(--accent)'});
+          inp.value = String(qpGet(`prod_${dayIdx}_${tipo}`, ''));
+          inp.placeholder = '0';
+          inp.addEventListener('change', () => {
+            qpSet('prod_' + dayIdx + '_' + tipo, parseInt(inp.value) || 0);
+            qpSalvarHistorico(dayIdx);
+            // Sem re-render — só salva
+          });
+          row.appendChild(inp);
+          cardProd.appendChild(row);
+        });
+        massGrid.appendChild(cardProd);
+        massGrid.style.display = 'none';
+        areaWrap.appendChild(massGrid);
+
+        const massFooter = el('div', {cls:'qp-section-footer'});
+        massFooter.style.display = 'none';
+        massFooter.appendChild(el('span', {cls:'qp-footer-info'}, 'Ficha: 10kg farinha + 40g fermento por lote de Biga · 10kg farinha por lote de Massa'));
+        areaWrap.appendChild(massFooter);
+
+        areaHdr.addEventListener('click', e => {
+          if (e.target.closest('button,input,select,textarea')) return;
+          openAreas[area] = !openAreas[area];
+          const chev = areaHdr.querySelector('.qp-chevron');
+          if (chev) chev.style.transform = openAreas[area] ? 'rotate(180deg)' : '';
+          massGrid.style.display   = openAreas[area] ? '' : 'none';
+          massFooter.style.display = openAreas[area] ? '' : 'none';
+        });
+
+        bodyEl.appendChild(areaWrap);
+        return;
+      }
+
+      items.forEach(({ ft, lotes, aEnviarTotal, estCPD, cobertura, lotesEfetivos, liberado }) => {
+        const tr = el('tr');
+
+        // Nome + rendimento
+        const tdNome = el('td');
+        const nameSpan = el('div', {cls:'qp-item-name'});
+        nameSpan.textContent = ft.nome;
+        if (lotes === 0 && dayCode) {
+          nameSpan.appendChild(el('span', {cls:'qp-sem-necessidade'}, '✓ Estoque OK'));
+        }
+        tdNome.appendChild(nameSpan);
+        tdNome.appendChild(el('div', {cls:'qp-rendimento'}, ft.rendimento));
+        tr.appendChild(tdNome);
+
+        // Cobertura (select)
+        const tdCob = el('td', {style:'text-align:center'});
+        const cobSel = el('select', {cls:'qp-cobertura-sel'});
+        [1,2,3].forEach(n => {
+          const opt = document.createElement('option');
+          opt.value = String(n);
+          opt.textContent = n + (n === 1 ? ' entrega' : ' entregas');
+          if (n === cobertura) opt.selected = true;
+          cobSel.appendChild(opt);
+        });
+        cobSel.addEventListener('change', () => {
+          const newCob = parseInt(cobSel.value);
+          qpSet(`cob_${ft.id}`, newCob);
+          // Recalcular sugestão sem re-renderizar o DOM inteiro
+          const { lotes: newLotes } = calcLotesSugeridos(ft, newCob);
+          const thisTr = cobSel.closest('tr');
+          if (thisTr) {
+            const sugEl = thisTr.querySelector('[data-role="sug"]');
+            if (sugEl) {
+              sugEl.textContent = newLotes > 0 ? '↑ ' + newLotes + ' lotes' : '—';
+              sugEl.className = 'qp-sugestao' + (newLotes === 0 ? ' zero' : '');
+              sugEl.onclick = newLotes > 0 ? () => {
+                qpSet('qty_' + dayIdx + '_' + ft.id, newLotes);
+                const qi = thisTr.querySelector('.qp-qty-input');
+                if (qi) qi.value = String(newLotes);
+              } : null;
+            }
+          }
+        });
+        tdCob.appendChild(cobSel);
+        if (dayCode) {
+          const cobInfo = el('div', {style:'font-size:10px;color:var(--text-3);margin-top:3px'});
+          cobInfo.textContent = 'A enviar: ' + aEnviarTotal + ' · CPD: ' + estCPD;
+          tdCob.appendChild(cobInfo);
+        }
+        tr.appendChild(tdCob);
+
+        // Sugestão automática
+        const tdSug = el('td', {style:'text-align:center'});
+        if (dayCode) {
+          const sugSpan = document.createElement('span');
+          sugSpan.className = 'qp-sugestao' + (lotes === 0 ? ' zero' : '');
+          sugSpan.setAttribute('data-role', 'sug');
+          sugSpan.title = lotes > 0 ? 'Clique para usar esta sugestão' : 'Sem necessidade de produção';
+          sugSpan.textContent = lotes > 0 ? '↑ ' + lotes + ' lotes' : '—';
+          if (lotes > 0) {
+            sugSpan.addEventListener('click', () => {
+              qpSet('qty_' + dayIdx + '_' + ft.id, lotes);
+              const qi = tr.querySelector('.qp-qty-input');
+              if (qi) qi.value = String(lotes);
+            });
+          }
+          tdSug.appendChild(sugSpan);
+        } else {
+          tdSug.appendChild(el('span', {style:'color:var(--text-3);font-size:11px'}, 'manual'));
+        }
+        tr.appendChild(tdSug);
+
+        // Quantidade de lotes (manual)
+        const tdQty = el('td', {style:'text-align:center'});
+        const qtyCell = el('div', {cls:'qp-lotes-cell'});
+        const minusBtn = el('button', {cls:'qp-qty-btn'}, '−');
+        const qtyInp = el('input', {cls:'qp-qty-input', type:'number', min:'0'});
+        qtyInp.value = String(lotesEfetivos);
+        const plusBtn = el('button', {cls:'qp-qty-btn'}, '+');
+        // Atualizar insumos inline sem re-renderizar
+        function _updateInsumos(v) {
+          qpSet('qty_' + dayIdx + '_' + ft.id, v);
+          // Atualizar insDiv na mesma linha
+          const thisTr2 = qtyInp.closest('tr');
+          if (!thisTr2) return;
+          const insDiv2 = thisTr2.querySelector('.qp-insumos');
+          if (insDiv2) {
+            insDiv2.innerHTML = '';
+            if (v > 0) {
+              ft.mp.forEach(i => {
+                const line = document.createElement('div');
+                line.innerHTML = i.n + ': <b>' + +(i.q * v).toFixed(2) + ' ' + i.u + '</b>';
+                insDiv2.appendChild(line);
+              });
+              if (ft.emb && ft.emb.length) {
+                ft.emb.forEach(i => {
+                  const line = document.createElement('div');
+                  line.className = 'qp-insumos emb';
+                  line.innerHTML = '[emb] ' + i.n + ': <b>' + +(i.q * v).toFixed(2) + ' ' + i.u + '</b>';
+                  insDiv2.appendChild(line);
+                });
+              }
+            } else {
+              const dash = document.createElement('span');
+              dash.style.cssText = 'color:var(--text-3);font-size:11px';
+              dash.textContent = '—';
+              insDiv2.appendChild(dash);
+            }
+          }
+          // Atualizar botão liberar
+          const libBtn2 = thisTr2.querySelector('.qp-status-btn');
+          if (libBtn2 && !libBtn2.classList.contains('liberado')) {
+            libBtn2.classList.toggle('disabled', v === 0);
+          }
+          // Se liberado e zerou, des-liberar
+          if (v === 0 && qpGet('lib_' + dayIdx + '_' + ft.id, false)) {
+            qpSet('lib_' + dayIdx + '_' + ft.id, false);
+            if (libBtn2) {
+              libBtn2.classList.remove('liberado');
+              libBtn2.textContent = 'Liberar';
+            }
+          }
+        }
+
+        minusBtn.addEventListener('click', () => {
+          const v = Math.max(0, (parseInt(qtyInp.value) || 0) - 1);
+          qtyInp.value = v;
+          _updateInsumos(v);
+        });
+        plusBtn.addEventListener('click', () => {
+          const v = (parseInt(qtyInp.value) || 0) + 1;
+          qtyInp.value = v;
+          _updateInsumos(v);
+        });
+        qtyInp.addEventListener('change', () => {
+          const v = Math.max(0, parseInt(qtyInp.value) || 0);
+          qtyInp.value = v;
+          _updateInsumos(v);
+        });
+        qtyCell.append(minusBtn, qtyInp, plusBtn);
+        tdQty.appendChild(qtyCell);
+        tr.appendChild(tdQty);
+
+        // Insumos calculados
+        const tdIns = el('td');
+        const insDiv = el('div', {cls:'qp-insumos'});
+        if (lotesEfetivos > 0) {
+          ft.mp.forEach(i => {
+            const line = el('div');
+            line.innerHTML = `${i.n}: <b>${+(i.q * lotesEfetivos).toFixed(2)} ${i.u}</b>`;
+            insDiv.appendChild(line);
+          });
+          if (ft.emb && ft.emb.length) {
+            ft.emb.forEach(i => {
+              const line = el('div', {cls:'emb'});
+              line.innerHTML = `[emb] ${i.n}: <b>${+(i.q * lotesEfetivos).toFixed(2)} ${i.u}</b>`;
+              insDiv.appendChild(line);
+            });
+          }
+        } else {
+          insDiv.appendChild(el('span', {style:'color:var(--text-3);font-size:11px'}, '—'));
+        }
+        tdIns.appendChild(insDiv);
+        tr.appendChild(tdIns);
+
+        // Observações
+        const tdObs = el('td');
+        const obsInp = el('textarea', {cls:'qp-obs-input', rows:'2',
+          placeholder:'Obs...', style:'min-width:80px'});
+        obsInp.value = qpGet(`obs_${dayIdx}_${ft.id}`, '');
+        obsInp.addEventListener('change', () => qpSet(`obs_${dayIdx}_${ft.id}`, obsInp.value));
+        tdObs.appendChild(obsInp);
+        tr.appendChild(tdObs);
+
+        // Status / Liberar
+        const tdStatus = el('td', {style:'text-align:center'});
+        const libBtn = el('button', {
+          cls: 'qp-status-btn' + (liberado ? ' liberado' : lotesEfetivos === 0 ? ' disabled' : ''),
+        });
+        libBtn.textContent = liberado ? '✓ Liberado' : 'Liberar';
+        if (!liberado && lotesEfetivos > 0) {
+          libBtn.addEventListener('click', () => {
+            qpSet(`lib_${dayIdx}_${ft.id}`, true);
+            qpSalvarHistorico(dayIdx);
+            renderQPBody(dayIdx);
+          });
+        } else if (liberado) {
+          libBtn.addEventListener('click', () => {
+            qpSet(`lib_${dayIdx}_${ft.id}`, false);
+            renderQPBody(dayIdx);
+          });
+        }
+        tdStatus.appendChild(libBtn);
+        tr.appendChild(tdStatus);
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      tableWrap.style.display = 'none';
+      areaWrap.appendChild(tableWrap);
+
+      const footer = el('div', {cls:'qp-section-footer'});
+      footer.style.display = 'none';
+      footer.appendChild(el('span', {cls:'qp-footer-info'},
+        items.filter(i => i.lotes > 0).length + ' com necessidade · ' + liberadosArea + '/' + totalArea + ' liberados'));
+      areaWrap.appendChild(footer);
+
+      // Toggle ao clicar no header
+      areaHdr.addEventListener('click', e => {
+        if (e.target.closest('button,input,select,textarea')) return;
+        openAreas[area] = !openAreas[area];
+        const chev = areaHdr.querySelector('.qp-chevron');
+        if (chev) chev.style.transform = openAreas[area] ? 'rotate(180deg)' : '';
+        tableWrap.style.display = openAreas[area] ? '' : 'none';
+        footer.style.display    = openAreas[area] ? '' : 'none';
+      });
+
+      bodyEl.appendChild(areaWrap);
+    });
+  }
+
+  renderQPBody(activeDay);
+  return frag;
+}
+
+// ── Salvar histórico no Firebase ──────────────────────────────────────────────
+function qpSalvarHistorico(dayIdx) {
+  if (!window._fb || !window._fb.ready || typeof db === 'undefined') return;
+  const today = new Date();
+  const diff  = dayIdx - ((new Date().getDay() + 6) % 7);
+  const d     = new Date(today); d.setDate(d.getDate() + diff);
+  const isoDate = d.toISOString().slice(0,10);
+  const snapshot = { date: isoDate, day: QP_DIAS[dayIdx], areas: {} };
+  QP_AREAS.forEach(area => {
+    const items = FT_LIBRARY.filter(f => f.area === area);
+    snapshot.areas[area] = items.map(ft => ({
+      id: ft.id, nome: ft.nome,
+      lotes: qpGet(`qty_${dayIdx}_${ft.id}`, 0),
+      liberado: qpGet(`lib_${dayIdx}_${ft.id}`, false),
+      obs: qpGet(`obs_${dayIdx}_${ft.id}`, ''),
+    })).filter(i => i.lotes > 0 || i.liberado);
+  });
+  snapshot.masseiro = {
+    mucarela: qpGet(`prod_${dayIdx}_Muçarela`, 0),
+    biga:     qpGet(`prod_${dayIdx}_Biga`, 0),
+    massa:    qpGet(`prod_${dayIdx}_Massa`, 0),
+  };
+  db.ref('dados/pizza_production_log/' + isoDate).set(snapshot)
+    .catch(e => console.warn('[Quadro] Erro ao salvar histórico:', e));
+}
+
+// ── PDF Ordem de Produção ─────────────────────────────────────────────────────
+function qpGerarPDF() {
+  const dayIdx  = qpGet('activeDay', 0);
+  const dayName = QP_DIAS[dayIdx];
+  const today   = new Date();
+  const diff    = dayIdx - ((new Date().getDay() + 6) % 7);
+  const d       = new Date(today); d.setDate(d.getDate() + diff);
+  const dateStr = d.toLocaleDateString('pt-BR', {weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+  let body = '';
+  QP_AREAS.forEach(area => {
+    const items = FT_LIBRARY.filter(f => f.area === area);
+    let linhas = '';
+    items.forEach(ft => {
+      const lotes = qpGet(`qty_${dayIdx}_${ft.id}`, 0);
+      if (!lotes) return;
+      const lib = qpGet(`lib_${dayIdx}_${ft.id}`, false);
+      const obs = qpGet(`obs_${dayIdx}_${ft.id}`, '');
+      let ins = ft.mp.map(i => `${i.n}: <b>${+(i.q*lotes).toFixed(2)} ${i.u}</b>`).join('<br>');
+      if (ft.emb && ft.emb.length) ins += '<br>' + ft.emb.map(i =>
+        `<span style="color:#2a5080">[emb] ${i.n}: <b>${+(i.q*lotes).toFixed(2)} ${i.u}</b></span>`
+      ).join('<br>');
+      linhas += `<tr>
+        <td class="nm">${lib ? '✓ ' : ''}${ft.nome}<br><span class="rend">${ft.rendimento}</span></td>
+        <td class="ct">${lotes}</td>
+        <td>${obs}</td>
+        <td>${ins || '—'}</td>
+      </tr>`;
+    });
+    if (!linhas) return;
+    body += `<h2>${area}</h2>
+      <table><thead><tr><th>Preparo</th><th>Lotes</th><th>Obs</th><th>Insumos + Embalagens</th></tr></thead>
+      <tbody>${linhas}</tbody></table>`;
+  });
+
+  const win = window.open('','_blank');
+  if (!win) { toast('Permita pop-ups para gerar o PDF'); return; }
+  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+    <title>Ordem de Produção — ${dayName}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:'Segoe UI',Arial,sans-serif;color:#111;padding:20px;font-size:12px}
+      h1{font-size:17px;margin-bottom:2px}
+      .sub{color:#555;font-size:11px;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #111}
+      h2{font-size:13px;margin:16px 0 5px;background:#e8f5ec;padding:5px 8px;border-left:4px solid #2a6049;color:#1a3d26}
+      table{width:100%;border-collapse:collapse;margin-bottom:8px}
+      th{background:#f0f0f0;border:1px solid #bbb;padding:5px 6px;text-align:left;font-size:10px;text-transform:uppercase}
+      td{border:1px solid #ccc;padding:5px 6px;vertical-align:top;font-size:11px}
+      td.nm{font-weight:bold;width:22%}.ct{text-align:center;width:7%}
+      .rend{font-size:10px;color:#666;font-weight:normal}
+      @media print{body{padding:0}h2{page-break-after:avoid}tr{page-break-inside:avoid}}
+    </style></head><body>
+    <h1>ORDEM DE PRODUÇÃO — CPD SESCONETTO'S</h1>
+    <div class="sub">${dayName} · ${dateStr}</div>
+    ${body || '<p style="color:#999;padding:20px">Nenhum item com quantidade definida para este dia.</p>'}
+    </body></html>`);
+  win.document.close();
+  setTimeout(() => { win.focus(); win.print(); }, 400);
+  toast('PDF aberto — Salvar como PDF na impressão');
+}
+
 // ═══ HISTÓRICO DE CONTAGENS ═══════════════════════════════════════════════════
 function viewHistoricoContagens() {
   const frag = document.createDocumentFragment();
@@ -9163,6 +10070,7 @@ function render() {
   else if (currentView === 'catalogo')   node = viewCatalogo();
   else if (currentView === 'envios-dia') node = viewEnviosDia();
   else if (currentView === 'historico-contagens') node = viewHistoricoContagens();
+  else if (currentView === 'producao') node = viewQuadroProducao();
   else if (currentView === 'validade') node = viewValidadeControl();
   else if (currentView === 'dashboard')  node = viewDashboard();
   if (node) contentEl.appendChild(node);
