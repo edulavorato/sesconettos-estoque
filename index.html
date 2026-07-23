@@ -373,7 +373,6 @@
   }
 
   td.muted { color: var(--text-3); }
-  td.secondary { color: var(--text-2); }
 
   /* Collapsible category header */
   .cat-toggle {
@@ -570,19 +569,12 @@
   .qp-insumos { font-size:11px; color:var(--text-3); line-height:1.7; }
   .qp-insumos b { color:var(--text-2); }
   .qp-insumos .emb { color:var(--accent-dark,#2a6049); }
-  .qp-empty { padding:40px; text-align:center; color:var(--text-3); font-size:13px; }
-  .qp-empty-icon { font-size:36px; margin-bottom:10px; }
   .qp-obs-input {
     width:100%; font-size:12px; padding:5px 8px;
     border:1.5px solid var(--border); border-radius:6px;
     background:var(--surface); color:var(--text); resize:none;
   }
   .qp-obs-input:focus { outline:none; border-color:var(--accent); }
-  .qp-alerta-val {
-    display:inline-flex; align-items:center; gap:4px;
-    font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;
-    background:rgba(192,122,0,.15); color:#C07A00; margin-left:6px;
-  }
   .qp-sem-necessidade {
     display:inline-flex; align-items:center; gap:4px;
     font-size:10px; padding:2px 6px; border-radius:4px;
@@ -657,7 +649,6 @@
     border-bottom:1px solid var(--border); border-top:1.5px solid var(--border);
   }
   /* Status dot na coluna de dias */
-  .valid-days-cell { display:flex; align-items:center; gap:5px; justify-content:flex-end; }
   .valid-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
   .valid-dot.expired { background:#C53030; }
   .valid-dot.alert   { background:#C07A00; }
@@ -819,14 +810,6 @@
     padding:12px 18px;border-top:1px solid var(--border);
     display:flex;gap:8px;justify-content:flex-end;
   }
-  .general-confirm-wrap {
-    display:flex;gap:8px;align-items:center;
-    margin-bottom:14px;padding:12px 16px;
-    background:#EAF2EC;border-radius:var(--radius);
-    border:1.5px solid rgba(42,145,72,.3);
-  }
-  .general-confirm-info { flex:1;font-size:12px;color:var(--text-2); }
-  .general-confirm-info strong { display:block;font-size:13px;color:var(--accent-dark,#2a6049); }
 
   /* ── Painel Envios do Dia ───────────────────────────────────────────────── */
   .envios-wrap { border: 1.5px solid var(--border); border-radius: var(--radius); overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -886,22 +869,6 @@
     letter-spacing: 0;
     opacity: 0.7;
   }
-  /* Receipt checklist modal */
-  .checklist-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 0; border-bottom: 1px solid var(--border-light);
-    font-size: 13px;
-  }
-  .checklist-row:last-child { border-bottom: none; }
-  .check-name { flex: 1; font-weight: 500; }
-  .check-sent { font-size: 11px; color: var(--text-3); min-width: 90px; text-align: right; }
-  .check-recv-inp {
-    width: 64px; padding: 4px 8px; border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
-    text-align: center; outline: none; background: var(--surface); color: var(--text);
-  }
-  .check-recv-inp.ok { border-color: var(--success); color: var(--success); }
-  .check-recv-inp.diff { border-color: var(--danger); color: var(--danger); }
 
   /* Category row stretches full width */
   .cat-row { background: none; }
@@ -914,9 +881,6 @@
   .cat-toggle.janela-fechada .cat-count { color: #C89600 !important; }
   .confirm-btn { flex:0 0 auto; width:32px; height:32px; border-radius:50%; border:2px solid var(--border); background:transparent; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .18s; }
   .confirm-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
-  .confirm-btn.conf-ok   { border-color:#2a9148; background:rgba(34,139,34,.12); color:#2a9148; }
-  .confirm-btn.conf-low  { border-color:#E8A020; background:rgba(232,160,32,.12); color:#C88000; }
-  .confirm-btn.conf-zero { border-color:var(--danger); background:var(--danger-bg); color:var(--danger); }
   .confirm-btn:disabled  { opacity:0.4; cursor:default; }
 
   .qty-controls { display: flex; align-items: center; gap: 5px; justify-content: flex-end; }
@@ -983,14 +947,6 @@
     width: 100%; max-width: 420px;
     overflow: hidden;
   }
-  .confirm-modal-top {
-    background: var(--accent);
-    padding: 24px 24px 20px;
-    text-align: center;
-  }
-  .confirm-modal-icon {
-    font-size: 40px; line-height: 1; margin-bottom: 10px;
-  }
   .confirm-modal-title {
     font-family: 'Playfair Display', serif;
     font-size: 20px; font-weight: 700;
@@ -1004,26 +960,6 @@
     border-bottom: 1px solid var(--border-light);
     max-height: 220px; overflow-y: auto;
   }
-  .confirm-modal-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 6px 0;
-    border-bottom: 1px solid var(--border-light);
-    font-size: 13px;
-  }
-  .confirm-modal-row:last-child { border-bottom: none; }
-  .confirm-modal-item { color: var(--text); font-weight: 500; flex: 1; }
-  .confirm-modal-qty  { color: var(--accent); font-weight: 700; margin-left: 12px; white-space: nowrap; }
-  .confirm-modal-actions {
-    padding: 16px 20px;
-    display: flex; flex-direction: column; gap: 8px;
-  }
-  .confirm-modal-actions .btn {
-    width: 100%; justify-content: center; padding: 11px;
-    font-size: 14px;
-  }
-
-  /* Price input inline */
-  .price-cell { position: relative; }
 
   /* -- FEATURES 1-9 ---------------------------------------- */
 
@@ -1040,74 +976,12 @@
   .alert-banner-title { font-weight: 700; margin-bottom: 2px; }
   .alert-banner-items { font-size: 12px; opacity: .85; }
 
-  /* Dashboard grid */
-  .dash-unit-card {
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
-    margin-bottom: 16px;
-  }
-  .dash-unit-header {
-    padding: 12px 16px; background: var(--surface-2);
-    border-bottom: 1.5px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700;
-  }
-  .dash-semaphore {
-    display: flex; gap: 6px; align-items: center;
-  }
   .sem-dot {
     width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
   }
   .sem-red    { background: var(--danger); }
   .sem-yellow { background: #E8A020; }
   .sem-green  { background: var(--success); }
-  .dash-items-grid {
-    padding: 10px 16px 14px;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px;
-  }
-  .dash-item-chip {
-    display: flex; align-items: center; gap: 7px;
-    padding: 6px 9px; border-radius: 6px;
-    background: var(--surface-2); font-size: 12px;
-    border: 1px solid var(--border-light);
-  }
-  .dash-item-chip .sem-dot { width: 8px; height: 8px; }
-  .dash-item-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .dash-item-qty  { font-weight: 700; font-size: 12px; }
-
-  /* Template button */
-  .template-btn {
-    background: var(--gold-light); border: 1.5px solid var(--gold);
-    color: var(--gold); border-radius: var(--radius-sm);
-    padding: 8px 14px; font-family: 'Lato', sans-serif;
-    font-size: 13px; font-weight: 700; cursor: pointer;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .template-btn:hover { background: #EFE3C0; }
-
-  /* Min qty field in catalog */
-  .min-inp {
-    width: 52px; padding: 3px 6px;
-    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-    font-family: 'Lato', sans-serif; font-size: 12px; text-align: right;
-    outline: none; background: var(--surface); color: var(--text);
-  }
-  .min-inp:focus { border-color: var(--gold); }
-
-  /* Chart bars */
-  .chart-bar-wrap { display: flex; align-items: flex-end; gap: 4px; height: 80px; margin-top: 8px; }
-  .chart-bar-col  { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
-  .chart-bar      { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; background: var(--accent); transition: height .3s; }
-  .chart-label    { font-size: 10px; color: var(--text-3); white-space: nowrap; }
-  .chart-value    { font-size: 11px; font-weight: 700; color: var(--text-2); }
-
-  /* Notification dot */
-  .nav-item-notif { position: relative; }
-  .notif-dot {
-    position: absolute; top: 6px; right: 6px;
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--danger); border: 1.5px solid var(--sidebar-bg);
-  }
 
   /* Push notification toast variant */
   #push-toast {
@@ -1123,162 +997,6 @@
   .push-toast-title { font-weight: 700; font-size: 14px; color: var(--text); display: flex; align-items: center; gap: 7px; }
   .push-toast-body  { font-size: 13px; color: var(--text-2); }
   .push-toast-actions { display: flex; gap: 8px; margin-top: 4px; }
-
-  /* Checklist for feature 9 */
-  .checklist-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 0; border-bottom: 1px solid var(--border-light);
-    font-size: 13px;
-  }
-  .checklist-row:last-child { border-bottom: none; }
-  .check-name { flex: 1; }
-  .check-sent { color: var(--text-3); font-size: 12px; min-width: 60px; text-align: right; }
-  .check-recv-inp {
-    width: 52px; padding: 3px 6px;
-    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
-    font-family: 'Lato', sans-serif; font-size: 13px; font-weight: 600;
-    text-align: center; outline: none;
-    -webkit-appearance: none; -moz-appearance: textfield;
-  }
-  .check-recv-inp:focus { border-color: var(--accent); }
-  .check-recv-inp.ok   { border-color: var(--success); color: var(--success); }
-  .check-recv-inp.diff { border-color: var(--danger);  color: var(--danger); }
-
-  /* Receipt divergence */
-  .divergence-banner {
-    background: var(--danger-bg); border: 1.5px solid #C07070;
-    border-radius: var(--radius-sm); padding: 10px 14px;
-    font-size: 13px; color: var(--danger); margin-top: 10px;
-    font-weight: 600;
-  }
-  .order-card {
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    overflow: hidden;
-    margin-bottom: 14px;
-  }
-  .order-card-header {
-    padding: 12px 16px;
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 10px; flex-wrap: wrap;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--border-light);
-  }
-  .order-meta { flex: 1; min-width: 0; }
-  .order-unit { font-size: 15px; font-weight: 700; color: var(--text); font-family: 'Playfair Display', serif; }
-  .order-sub  { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-  .order-badge {
-    padding: 3px 10px; border-radius: 20px;
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
-  }
-  .order-badge.pendente  { background: #FEF3E2; color: #8A5A0A; }
-  .order-badge.separando { background: #E8F5EC; color: #26743E; }
-  .order-badge.enviado   { background: #EAF0FF; color: #2A4B9A; }
-  .order-items-list { padding: 10px 16px; }
-  .order-item-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 5px 0; border-bottom: 1px solid var(--border-light);
-    font-size: 13px;
-  }
-  .order-item-row:last-child { border-bottom: none; }
-  .order-item-name { color: var(--text); font-weight: 500; flex: 1; }
-  .order-item-qty  { color: var(--accent); font-weight: 700; margin-left: 12px; white-space: nowrap; }
-  .order-actions   { padding: 10px 16px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-  .empty-orders { padding: 40px; text-align: center; color: var(--text-3); font-size: 14px; }
-  .empty-orders svg { opacity: .3; margin-bottom: 12px; }
-  .price-view { cursor: pointer; display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
-  .price-view:hover .price-edit-icon { opacity: 1; }
-  .price-edit-icon { opacity: 0; font-size: 11px; color: var(--accent); transition: opacity .15s; }
-  .price-inp {
-    width: 90px; padding: 3px 6px;
-    border: 1.5px solid var(--accent);
-    border-radius: var(--radius-sm);
-    font-family: 'Lato', sans-serif;
-    font-size: 12px; font-weight: 600;
-    text-align: right; outline: none;
-    background: var(--surface);
-    color: var(--text);
-  }
-  .price-total { font-weight: 600; color: var(--accent-dark); }
-
-  /* -- BATCH OPERATION UI ------------------------------ */
-  .dest-box {
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 18px;
-    margin-bottom: 14px;
-    box-shadow: var(--shadow);
-  }
-  .dest-box select {
-    margin-top: 4px;
-    background: var(--surface-2);
-    font-weight: 600;
-    color: var(--accent-dark);
-  }
-
-  .batch-summary {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    background: var(--surface);
-    border: 1.5px solid var(--accent);
-    border-radius: var(--radius);
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    box-shadow: 0 2px 12px rgba(38,116,62,.18);
-  }
-
-  .batch-info {
-    font-size: 14px;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex: 1;
-    min-width: 0;
-  }
-
-  .batch-count {
-    font-family: 'Playfair Display', serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--accent);
-    line-height: 1;
-  }
-
-  .batch-empty {
-    color: var(--text-3);
-    font-style: italic;
-    font-size: 13px;
-  }
-
-  .batch-actions {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  .batch-actions .btn-primary {
-    padding: 9px 18px;
-    font-size: 13px;
-  }
-
-  @media (max-width: 599px) {
-    .batch-summary {
-      padding: 10px 12px;
-      gap: 8px;
-    }
-    .batch-info { font-size: 12px; }
-    .batch-count { font-size: 18px; }
-    .batch-actions .btn-primary { padding: 8px 12px; font-size: 12px; }
-  }
 
   /* Mobile table fixes */
   @media (max-width: 599px) {
@@ -1307,7 +1025,6 @@
     .catalog-table td.col-min  { display: table-cell; }
     .catalog-table { table-layout: auto; width: 100%; font-size: 11px; }
     .catalog-table td, .catalog-table th { padding: 5px 3px; }
-    .catalog-table .cat-inline-min { display: none; } /* hide inline min on mobile */
 
     /* Fix table layout on mobile */
     .stock-table { table-layout: auto; width: 100%; }
@@ -1456,11 +1173,6 @@
   .btn-primary:hover { background: var(--accent-hover); }
   .btn-primary:active { transform: scale(0.98); }
 
-  .btn-success {
-    background: var(--success);
-    color: #fff;
-  }
-
   .btn-outline {
     background: transparent;
     border: 1.5px solid var(--border);
@@ -1509,19 +1221,6 @@
     color: var(--text-3);
     pointer-events: none;
   }
-
-  /* MOVEMENTS */
-  .movement-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border-light);
-    font-size: 13px;
-  }
-  .movement-row:last-child { border-bottom: none; }
-
-  /* Batch movement row — new grouped style */
 
   .empty {
     padding: 40px;
@@ -1788,8 +1487,6 @@
     #main    { margin-left: 180px; }
     .content { padding: 20px 18px; }
   }
-
-  .section-gap { margin-top: 28px; }
 </style>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -2028,16 +1725,6 @@ auth.onAuthStateChanged(user => {
     Object.keys(window.unitMinimums).forEach(k => delete window.unitMinimums[k]);
     Object.assign(window.unitMinimums, val);
     saveLocal('pizza_unit_minimums', window.unitMinimums);
-  });
-
-  // ── 6. MOVIMENTAÇÕES E PEDIDOS (só CPD precisa em tempo real) ──────────────
-
-  db.ref('dados/pizza_orders').on('value', snap => {
-    if (!window._fb.ready) return;
-    const val = snap.val();
-    orders.length = 0;
-    if (Array.isArray(val)) val.forEach(o => orders.push(o));
-    saveLocal('pizza_orders', orders);
   });
 
   // ── 7. ENVIOS, REMESSAS, PENDÊNCIAS, CONTADOS ──────────────────────────────
@@ -2292,7 +1979,6 @@ auth.onAuthStateChanged(user => {
       </div>
     </div>
   </div>
-  <div id="reset-notice-banner" class="alert-banner warn" style="display:none;margin:12px 16px 0"></div>
   <div id="open-count-banner" class="alert-banner warn" style="display:none;margin:12px 16px 0"></div>
   <div class="content" id="content"></div>
 </main>
@@ -2356,6 +2042,30 @@ const CATEGORIES = [
 // uma regra de frequência definida (fica a critério da operação por enquanto).
 // Ajustar esta lista aqui caso a regra mude no futuro.
 const DAILY_REQUIRED_CATEGORIES = ['Refrigerados', 'Estoque Seco'];
+
+// Categorias obrigatórias adicionais em dias específicos da semana (0=Dom...6=Sáb,
+// no horário de Brasília). Vinhos: entrega semanal e margem apertada — contagem
+// desatualizada dói mais aqui, então vira obrigatório às quartas (dia 3).
+const DAILY_REQUIRED_CATEGORIES_BY_WEEKDAY = {
+  3: ['Vinhos'], // Quarta-feira
+};
+
+// Retorna a lista de categorias obrigatórias válida para a data informada
+// (ou para agora, se omitida), já somando as obrigatórias fixas + as do dia
+// da semana (horário de Brasília).
+function getDailyRequiredCategories(date) {
+  const now = date || new Date();
+  const brt = new Date(now.getTime() - 3*60*60*1000); // UTC-3
+  const extras = DAILY_REQUIRED_CATEGORIES_BY_WEEKDAY[brt.getDay()] || [];
+  return DAILY_REQUIRED_CATEGORIES.concat(extras.filter(c => !DAILY_REQUIRED_CATEGORIES.includes(c)));
+}
+
+// Formata uma lista de categorias em texto natural: "A", "A e B", "A, B e C"
+function formatCategoryList(cats) {
+  if (!cats || cats.length === 0) return '';
+  if (cats.length === 1) return cats[0];
+  return cats.slice(0, -1).join(', ') + ' e ' + cats[cats.length - 1];
+}
 
 const MEASURES = ['Un','PCT','Cx','Kg','g','L','mL','Saco','Balde','Pe\u00E7a','Bandeja','Por\u00E7\u00E3o','Ma\u00E7o','Pote','Garrafa','Rolo','Gal\u00E3o','Barril','Caixa','Fardo'];
 
@@ -3239,13 +2949,6 @@ const SIG_CATALOG = [
   {id:'ud13',name:'Forro caixa grande',category:'Delivery',unit:'PCT'},
   {id:'ud14',name:'Forro caixa fatia',category:'Delivery',unit:'PCT'},
   {id:'ud15',name:'Lacre de caixa de pizza',category:'Delivery',unit:'PCT'},
-  {id:'ud16',name:'Bloco de papel',category:'Delivery',unit:'Un'},
-  {id:'ud17',name:'Fita adesiva durex',category:'Delivery',unit:'Un'},
-  {id:'ud18',name:'Fita adesiva fina 12mmx50m',category:'Delivery',unit:'Un'},
-  {id:'ud19',name:'Caneta',category:'Delivery',unit:'Un'},
-  {id:'ud20',name:'Agenda',category:'Delivery',unit:'Un'},
-  {id:'ud21',name:'Caderno',category:'Delivery',unit:'Un'},
-  {id:'ud22',name:'Marca texto',category:'Delivery',unit:'Un'},
   {id:'ul01',name:'Touca de cabelo',category:'Limpeza',unit:'Cx'},
   {id:'ul02',name:'Luva nitrilo sem pó P',category:'Limpeza',unit:'Cx'},
   {id:'ul03',name:'Luva nitrilo sem pó M',category:'Limpeza',unit:'Cx'},
@@ -3665,13 +3368,6 @@ const DELIVERY_CATALOG = [
   {id:'ud14',name:'Bobina plástica 20x30',category:'Delivery',unit:'Un'},
   {id:'ud15',name:'Bobina plástica 30x40',category:'Delivery',unit:'Un'},
   {id:'ud16',name:'Lacre de caixa de pizza',category:'Delivery',unit:'PCT'},
-  {id:'ud17',name:'Caneta',category:'Delivery',unit:'Un'},
-  {id:'ud18',name:'Bloco de papel',category:'Delivery',unit:'Un'},
-  {id:'ud19',name:'Fita adesiva durex',category:'Delivery',unit:'Un'},
-  {id:'ud20',name:'Fita adesiva fina 12mmx50m',category:'Delivery',unit:'Un'},
-  {id:'ud21',name:'Agenda',category:'Delivery',unit:'Un'},
-  {id:'ud22',name:'Caderno',category:'Delivery',unit:'Un'},
-  {id:'ud23',name:'Marca texto',category:'Delivery',unit:'Un'},
   {id:'ud24',name:'Forro caixa fatia',category:'Delivery',unit:'PCT'},
   {id:'ul01',name:'Touca de cabelo',category:'Limpeza',unit:'Un'},
   {id:'ul02',name:'Luva nitrilo sem pó P',category:'Limpeza',unit:'Un'},
@@ -4211,74 +3907,74 @@ const MIN_PER_DAY_SIG = {
   'Lenha 25kg':{'SEG':10,'SEX':10},
   'Álcool em gel p/forno':{'SEG':6,'SEX':6},
   'Palmito de pupunha 1kg':{'SEG':2,'SEX':2},
-  'Vodka Absolut':{'QUA':1,'SEG':1},
-  'Gin Hype':{'QUA':1,'SEG':1},
+  'Vodka Absolut':{'SEX':1,'SEG':1},
+  'Gin Hype':{'SEX':1,'SEG':1},
   'Rum':{'SEG':1},
-  'Martiny':{'QUA':1,'SEG':1},
-  'Campari':{'QUA':1,'SEG':1},
-  'Aperol':{'QUA':1,'SEG':1},
-  'Cachaça 51':{'QUA':1,'SEG':1},
-  'Monin Maçã Verde':{'QUA':1,'SEG':1},
-  'Monin  Limão Siciliano':{'QUA':1,'SEG':1},
-  'Monin  Gengibre':{'QUA':1,'SEG':1},
-  'Monin Grenadine':{'QUA':1,'SEG':1},
-  'Monin Tangerina':{'QUA':1,'SEG':1},
-  'Monin Morango':{'QUA':1,'SEG':1},
-  'Monin  Morango Le Fruit':{'QUA':1,'SEG':1},
-  'Monin  Maracujá':{'QUA':1,'SEG':1},
-  'Monin Jabuticaba':{'QUA':1,'SEG':1},
-  'Leite de Coco':{'QUA':1,'SEG':1},
-  'Espuma de limão':{'QUA':1,'SEG':1},
-  'Espuma de gengibre':{'QUA':1,'SEG':1},
-  'Água sem gás 500ml':{'QUA':50,'SEG':50},
-  'Água com gás 500ml':{'QUA':50,'SEG':50},
-  'Água tônica lata 350':{'QUA':15,'SEG':15},
-  'Água tônica zero lata 350':{'QUA':15,'SEG':15},
-  'Coca Cola KS normal 290ml':{'QUA':50,'SEG':50},
-  'Coca Cola KS zero 290ml':{'QUA':50,'SEG':50},
-  'Coca Cola lata 310ml':{'QUA':70,'SEG':70},
-  'Coca Cola zero lata 310ml':{'QUA':15,'SEG':15},
-  'Sprite lata 310ml':{'QUA':20,'SEG':20},
-  'Schweppes citrus zero 310ml':{'QUA':15,'SEG':15},
-  'Schweppes citrus 310ml':{'QUA':15,'SEG':15},
-  'H2O 500ml':{'QUA':15,'SEG':15},
-  'H2O limoneto 500ml':{'QUA':15,'SEG':15},
-  'Guaraná Antarctica lata 350':{'QUA':15,'SEG':15},
-  'Guaraná zero lata 350':{'QUA':15,'SEG':15},
-  'Suco de abacaxi 500ml':{'QUA':1,'SEG':1},
-  'Suco de uva integral 1L':{'QUA':5,'SEG':5},
-  'Suco de uva integral 300ml':{'QUA':10,'SEG':10},
-  'Stella Artois':{'QUA':15,'SEG':15},
-  'Budweiser':{'QUA':15,'SEG':15},
-  'Corona':{'QUA':15,'SEG':15},
-  'Heineken zero':{'QUA':30,'SEG':12},
-  'Stella Puro Gold':{'QUA':15,'SEG':15},
-  'Spaten':{'QUA':15,'SEG':15},
+  'Martiny':{'SEX':1,'SEG':1},
+  'Campari':{'SEX':1,'SEG':1},
+  'Aperol':{'SEX':1,'SEG':1},
+  'Cachaça 51':{'SEX':1,'SEG':1},
+  'Monin Maçã Verde':{'SEX':1,'SEG':1},
+  'Monin  Limão Siciliano':{'SEX':1,'SEG':1},
+  'Monin  Gengibre':{'SEX':1,'SEG':1},
+  'Monin Grenadine':{'SEX':1,'SEG':1},
+  'Monin Tangerina':{'SEX':1,'SEG':1},
+  'Monin Morango':{'SEX':1,'SEG':1},
+  'Monin  Morango Le Fruit':{'SEX':1,'SEG':1},
+  'Monin  Maracujá':{'SEX':1,'SEG':1},
+  'Monin Jabuticaba':{'SEX':1,'SEG':1},
+  'Leite de Coco':{'SEX':1,'SEG':1},
+  'Espuma de limão':{'SEX':1,'SEG':1},
+  'Espuma de gengibre':{'SEX':1,'SEG':1},
+  'Água sem gás 500ml':{'SEX':50,'SEG':50},
+  'Água com gás 500ml':{'SEX':50,'SEG':50},
+  'Água tônica lata 350':{'SEX':15,'SEG':15},
+  'Água tônica zero lata 350':{'SEX':15,'SEG':15},
+  'Coca Cola KS normal 290ml':{'SEX':50,'SEG':50},
+  'Coca Cola KS zero 290ml':{'SEX':50,'SEG':50},
+  'Coca Cola lata 310ml':{'SEX':70,'SEG':70},
+  'Coca Cola zero lata 310ml':{'SEX':15,'SEG':15},
+  'Sprite lata 310ml':{'SEX':20,'SEG':20},
+  'Schweppes citrus zero 310ml':{'SEX':15,'SEG':15},
+  'Schweppes citrus 310ml':{'SEX':15,'SEG':15},
+  'H2O 500ml':{'SEX':15,'SEG':15},
+  'H2O limoneto 500ml':{'SEX':15,'SEG':15},
+  'Guaraná Antarctica lata 350':{'SEX':15,'SEG':15},
+  'Guaraná zero lata 350':{'SEX':15,'SEG':15},
+  'Suco de abacaxi 500ml':{'SEX':1,'SEG':1},
+  'Suco de uva integral 1L':{'SEX':5,'SEG':5},
+  'Suco de uva integral 300ml':{'SEX':10,'SEG':10},
+  'Stella Artois':{'SEX':15,'SEG':15},
+  'Budweiser':{'SEX':15,'SEG':15},
+  'Corona':{'SEX':15,'SEG':15},
+  'Heineken zero':{'SEX':30,'SEG':12},
+  'Stella Puro Gold':{'SEX':15,'SEG':15},
+  'Spaten':{'SEX':15,'SEG':15},
   'Gelato pistache 5L':{'SEG':1},
   'Gelato doce de leite 5L':{'SEG':1},
   'Gelato fior de latte 5L':{'SEG':1},
-  'Morango congelado':{'QUA':2,'SEG':3},
-  'Panacotta c/geleia frutas':{'QUA':3,'SEG':3},
-  'Tiramisu taça 160g':{'QUA':5,'SEG':3},
+  'Morango congelado':{'SEX':2,'SEG':3},
+  'Panacotta c/geleia frutas':{'SEX':3,'SEG':3},
+  'Tiramisu taça 160g':{'SEX':5,'SEG':3},
   'Canudo sachê preto':{'SEG':1},
   'Canudo sachê colorido':{'SEG':1},
   'Laranja Bahia':{'SEG':3},
-  'Laranja suco saco 20kg':{'QUA':1,'SEG':1},
-  'Limão':{'QUA':1,'SEG':1},
-  'Limão siciliano':{'QUA':5,'SEG':5},
-  'Maracujá':{'QUA':5,'SEG':4},
-  'Maçã verde':{'QUA':4,'SEG':3},
-  'Hortelã':{'QUA':1,'SEG':1},
-  'Uva preta 500g':{'QUA':1},
-  'Abacaxi':{'QUA':2,'SEG':1},
-  'Don Segundo chardonnay':{'QUA':1,'SEG':1},
-  'Don Segundo cab. sauvignon':{'QUA':1,'SEG':1},
-  'Don Segundo carmenere':{'QUA':1,'SEG':1},
-  'Don Segundo rosé':{'QUA':1,'SEG':1},
-  'Guaraná Pepsi lata':{'QUA':15,'SEG':15},
-  'Eisenbahn':{'QUA':15,'SEG':15},
-  'Fanta laranja lata':{'QUA':6,'SEG':6},
-  'Heineken normal':{'QUA':24,'SEG':24},
+  'Laranja suco saco 20kg':{'SEX':1,'SEG':1},
+  'Limão':{'SEX':1,'SEG':1},
+  'Limão siciliano':{'SEX':5,'SEG':5},
+  'Maracujá':{'SEX':5,'SEG':4},
+  'Maçã verde':{'SEX':4,'SEG':3},
+  'Hortelã':{'SEX':1,'SEG':1},
+  'Uva preta 500g':{'SEX':1},
+  'Abacaxi':{'SEX':2,'SEG':1},
+  'Don Segundo chardonnay':{'SEX':1,'SEG':1},
+  'Don Segundo cab. sauvignon':{'SEX':1,'SEG':1},
+  'Don Segundo carmenere':{'SEX':1,'SEG':1},
+  'Don Segundo rosé':{'SEX':1,'SEG':1},
+  'Guaraná Pepsi lata':{'SEX':15,'SEG':15},
+  'Eisenbahn':{'SEX':15,'SEG':15},
+  'Fanta laranja lata':{'SEX':6,'SEG':6},
+  'Heineken normal':{'SEX':24,'SEG':24},
   'Goiabada':{'SEG':1},
   'Biscoito lottus ou Tostines':{'SEG':1},
   'Açucar Refinado':{'SEG':3},
@@ -4294,20 +3990,20 @@ const MIN_PER_DAY_SIG = {
   'Redinha de cabelo':{'QUA':2},
   'Velas sparkes':{'QUA':5},
   'Palito de dente':{'QUA':1},
-  'Caneta':{'QUA':20},
-  'Bloco de papel':{'QUA':10},
+  'Caneta':{'QUA':10},
+  'Bloco de papel':{'QUA':5},
   'Borrifador':{'QUA':5},
-  'Fita adesiva fina 12mmx50m':{'QUA':4},
+  'Fita adesiva fina 12mmx50m':{'QUA':2},
   'Copo descartável':{'QUA':1},
   'Ketchup':{'QUA':1},
   'Mostarda':{'QUA':1},
   'Maionese':{'QUA':1},
   'Acucar':{'QUA':1},
   'Adocante':{'QUA':1},
-  'Fita adesiva durex':{'QUA':4},
-  'Agenda':{'QUA':2},
-  'Caderno':{'QUA':2},
-  'Marca texto':{'QUA':4},
+  'Fita adesiva durex':{'QUA':2},
+  'Agenda':{'QUA':1},
+  'Caderno':{'QUA':1},
+  'Marca texto':{'QUA':2},
   'Riscos Classic Malbec':{'QUA':10},
   'Riscos Classic Cab. Sauv':{'QUA':10},
   'Riscos Classic Carmenere':{'QUA':25},
@@ -4447,75 +4143,75 @@ const MIN_PER_DAY_VICENTE_PIRES = {
   'Lenha 25kg':{'SEG':20,'SEX':20},
   'Álcool em gel p/forno':{'SEG':6,'SEX':8},
   'Palmito de pupunha 1kg':{'SEG':4,'SEX':5},
-  'Vodka Absolut':{'QUA':1,'SEG':1},
-  'Gin Gordons':{'QUA':1,'SEG':1},
-  'Rum':{'QUA':1,'SEG':1},
-  'Martiny':{'QUA':1,'SEG':1},
-  'Campari':{'QUA':1,'SEG':1},
-  'Aperol':{'QUA':1,'SEG':1},
-  'Cachaça 51':{'QUA':1,'SEG':1},
-  'Duo Mix Maçã Verde':{'QUA':2,'SEG':2},
-  'Duo Mix Limão Siciliano':{'QUA':2,'SEG':2},
-  'Duo Mix Gengibre':{'QUA':2,'SEG':2},
-  'Duo Mix Grenadine':{'QUA':2,'SEG':2},
-  'Duo Mix Tangerina':{'QUA':2,'SEG':2},
-  'Duo Mix Morango':{'QUA':2,'SEG':2},
-  'Duo Mix Morango Le Fruit':{'QUA':2,'SEG':2},
-  'Duo Mix Maracujá':{'QUA':2,'SEG':1},
-  'Duo Mix Le Fruit Jabuticaba':{'QUA':2,'SEG':2},
-  'Espuma de limão':{'QUA':2,'SEG':2},
-  'Espuma de gengibre':{'QUA':2,'SEG':2},
-  'Água sem gás 500ml':{'QUA':110,'SEG':110},
-  'Água com gás 500ml':{'QUA':154,'SEG':154},
-  'Água tônica lata 350':{'QUA':7,'SEG':5},
-  'Água tônica zero lata 350':{'QUA':7,'SEG':5},
-  'Coca Cola KS normal 290ml':{'QUA':80,'SEG':80},
-  'Coca Cola KS zero 290ml':{'QUA':100,'SEG':100},
-  'Coca Cola lata 310ml':{'QUA':58,'SEG':58},
-  'Coca Cola zero lata 310ml':{'QUA':58,'SEG':58},
-  'Sprite lata 310ml':{'QUA':11,'SEG':11},
-  'Schweppes citrus zero 310ml':{'QUA':10,'SEG':10},
-  'Schweppes citrus 310ml':{'QUA':10,'SEG':10},
-  'H2O 500ml':{'QUA':20,'SEG':20},
-  'H2O limoneto 500ml':{'QUA':20,'SEG':20},
-  'Guaraná Antarctica lata 350':{'QUA':26,'SEG':26},
-  'Guaraná zero lata 350':{'QUA':20,'SEG':20},
-  'Suco de abacaxi 500ml':{'QUA':2,'SEG':2},
-  'Suco de uva integral 1L':{'QUA':16,'SEG':14},
-  'Suco de uva integral 300ml':{'QUA':16,'SEG':14},
-  'Stella Artois':{'QUA':26,'SEG':26},
-  'Budweiser':{'QUA':26,'SEG':26},
-  'Corona':{'QUA':26,'SEG':26},
-  'Heineken zero':{'QUA':26,'SEG':26},
-  'Stella Puro Gold':{'QUA':53,'SEG':53},
-  'Spaten':{'QUA':30,'SEG':30},
-  'Gelato pistache 5L':{'QUA':1,'SEG':1},
-  'Gelato doce de leite 5L':{'QUA':1,'SEG':1},
-  'Gelato fior de latte 5L':{'QUA':1,'SEG':1},
-  'Morango congelado':{'QUA':11,'SEG':11},
-  'Panacotta c/geleia frutas':{'QUA':3,'SEG':3},
-  'Tiramisu taça 160g':{'QUA':10,'SEG':10},
-  'Canudo sachê preto':{'QUA':3,'SEG':3},
-  'Canudo sachê colorido':{'QUA':2,'SEG':2},
-  'Laranja Bahia':{'QUA':6,'SEG':6},
-  'Laranja suco saco 20kg':{'QUA':6,'SEG':6},
-  'Limão':{'QUA':2,'SEG':2},
-  'Limão siciliano':{'QUA':13,'SEG':13},
-  'Maracujá':{'QUA':11,'SEG':11},
-  'Maçã verde':{'QUA':11,'SEG':11},
-  'Hortelã':{'QUA':3,'SEG':3},
-  'Uva preta 500g':{'QUA':3,'SEG':3},
-  'Abacaxi':{'QUA':3,'SEG':3},
-  'Don Segundo chardonnay':{'QUA':8,'SEG':8},
-  'Don Segundo cab. sauvignon':{'QUA':12,'SEG':12},
-  'Don Segundo carmenere':{'QUA':12,'SEG':12},
-  'Don Segundo rosé':{'QUA':5,'SEG':5},
-  'Choop claro':{'QUA':2,'SEG':2},
-  'Choop escuro':{'QUA':1,'SEG':1},
-  'Guaraná Pepsi lata':{'QUA':53,'SEG':53},
-  'Eisenbahn':{'QUA':26,'SEG':15},
-  'Fanta laranja lata':{'QUA':8,'SEG':8},
-  'Heineken normal':{'QUA':92,'SEG':92},
+  'Vodka Absolut':{'SEX':1,'SEG':1},
+  'Gin Gordons':{'SEX':1,'SEG':1},
+  'Rum':{'SEX':1,'SEG':1},
+  'Martiny':{'SEX':1,'SEG':1},
+  'Campari':{'SEX':1,'SEG':1},
+  'Aperol':{'SEX':1,'SEG':1},
+  'Cachaça 51':{'SEX':1,'SEG':1},
+  'Duo Mix Maçã Verde':{'SEX':2,'SEG':2},
+  'Duo Mix Limão Siciliano':{'SEX':2,'SEG':2},
+  'Duo Mix Gengibre':{'SEX':2,'SEG':2},
+  'Duo Mix Grenadine':{'SEX':2,'SEG':2},
+  'Duo Mix Tangerina':{'SEX':2,'SEG':2},
+  'Duo Mix Morango':{'SEX':2,'SEG':2},
+  'Duo Mix Morango Le Fruit':{'SEX':2,'SEG':2},
+  'Duo Mix Maracujá':{'SEX':2,'SEG':1},
+  'Duo Mix Le Fruit Jabuticaba':{'SEX':2,'SEG':2},
+  'Espuma de limão':{'SEX':2,'SEG':2},
+  'Espuma de gengibre':{'SEX':2,'SEG':2},
+  'Água sem gás 500ml':{'SEX':110,'SEG':110},
+  'Água com gás 500ml':{'SEX':154,'SEG':154},
+  'Água tônica lata 350':{'SEX':7,'SEG':5},
+  'Água tônica zero lata 350':{'SEX':7,'SEG':5},
+  'Coca Cola KS normal 290ml':{'SEX':80,'SEG':80},
+  'Coca Cola KS zero 290ml':{'SEX':100,'SEG':100},
+  'Coca Cola lata 310ml':{'SEX':58,'SEG':58},
+  'Coca Cola zero lata 310ml':{'SEX':58,'SEG':58},
+  'Sprite lata 310ml':{'SEX':11,'SEG':11},
+  'Schweppes citrus zero 310ml':{'SEX':10,'SEG':10},
+  'Schweppes citrus 310ml':{'SEX':10,'SEG':10},
+  'H2O 500ml':{'SEX':20,'SEG':20},
+  'H2O limoneto 500ml':{'SEX':20,'SEG':20},
+  'Guaraná Antarctica lata 350':{'SEX':26,'SEG':26},
+  'Guaraná zero lata 350':{'SEX':20,'SEG':20},
+  'Suco de abacaxi 500ml':{'SEX':2,'SEG':2},
+  'Suco de uva integral 1L':{'SEX':16,'SEG':14},
+  'Suco de uva integral 300ml':{'SEX':16,'SEG':14},
+  'Stella Artois':{'SEX':26,'SEG':26},
+  'Budweiser':{'SEX':26,'SEG':26},
+  'Corona':{'SEX':26,'SEG':26},
+  'Heineken zero':{'SEX':26,'SEG':26},
+  'Stella Puro Gold':{'SEX':53,'SEG':53},
+  'Spaten':{'SEX':30,'SEG':30},
+  'Gelato pistache 5L':{'SEX':1,'SEG':1},
+  'Gelato doce de leite 5L':{'SEX':1,'SEG':1},
+  'Gelato fior de latte 5L':{'SEX':1,'SEG':1},
+  'Morango congelado':{'SEX':11,'SEG':11},
+  'Panacotta c/geleia frutas':{'SEX':3,'SEG':3},
+  'Tiramisu taça 160g':{'SEX':10,'SEG':10},
+  'Canudo sachê preto':{'SEX':3,'SEG':3},
+  'Canudo sachê colorido':{'SEX':2,'SEG':2},
+  'Laranja Bahia':{'SEX':6,'SEG':6},
+  'Laranja suco saco 20kg':{'SEX':6,'SEG':6},
+  'Limão':{'SEX':2,'SEG':2},
+  'Limão siciliano':{'SEX':13,'SEG':13},
+  'Maracujá':{'SEX':11,'SEG':11},
+  'Maçã verde':{'SEX':11,'SEG':11},
+  'Hortelã':{'SEX':3,'SEG':3},
+  'Uva preta 500g':{'SEX':3,'SEG':3},
+  'Abacaxi':{'SEX':3,'SEG':3},
+  'Don Segundo chardonnay':{'SEX':8,'SEG':8},
+  'Don Segundo cab. sauvignon':{'SEX':12,'SEG':12},
+  'Don Segundo carmenere':{'SEX':12,'SEG':12},
+  'Don Segundo rosé':{'SEX':5,'SEG':5},
+  'Choop claro':{'SEX':2,'SEG':2},
+  'Choop escuro':{'SEX':1,'SEG':1},
+  'Guaraná Pepsi lata':{'SEX':53,'SEG':53},
+  'Eisenbahn':{'SEX':26,'SEG':15},
+  'Fanta laranja lata':{'SEX':8,'SEG':8},
+  'Heineken normal':{'SEX':92,'SEG':92},
   'Coca-Cola zero 1,5L':{'SEG':6},
   'Coca-Cola 1,5L':{'SEG':6},
   'Guaraná 1,5L':{'SEG':6},
@@ -4720,20 +4416,20 @@ const MIN_PER_DAY_DELIVERY = {
   'Bobina térmica cartão 57mm':{'QUA':15},
   'Redinha de cabelo':{'QUA':2},
   'Palito de dente':{'QUA':1},
-  'Caneta':{'QUA':20},
-  'Bloco de papel':{'QUA':12},
+  'Caneta':{'QUA':10},
+  'Bloco de papel':{'QUA':7},
   'Borrifador':{'QUA':5},
-  'Fita adesiva fina 12mmx50m':{'QUA':8},
+  'Fita adesiva fina 12mmx50m':{'QUA':6},
   'Copo descartável':{'QUA':1},
   'Ketchup':{'QUA':1},
   'Mostarda':{'QUA':1},
   'Maionese':{'QUA':1},
   'Acucar':{'QUA':1},
   'Adocante':{'QUA':1},
-  'Fita adesiva durex':{'QUA':8},
-  'Agenda':{'QUA':2},
-  'Caderno':{'QUA':2},
-  'Marca texto':{'QUA':7},
+  'Fita adesiva durex':{'QUA':2},
+  'Agenda':{'QUA':1},
+  'Caderno':{'QUA':1},
+  'Marca texto':{'QUA':5},
   'Embalagens para molho':{'QUA':1},
   'Grampeador':{'QUA':1},
   'Coca-Cola zero 1,5L':{'QUA':54},
@@ -4814,6 +4510,25 @@ function nextEnviarDay() {
     if (dmap[dd]) return dmap[dd];
   }
   return 'SEG';
+}
+
+// Mesma lógica de nextEnviarDay(), mas retorna a data real (não só o código
+// SEG/QUA/SEX) — necessário para calcular a janela de validade da contagem.
+function nextEnviarDate() {
+  const now = new Date();
+  const dow = now.getDay();
+  const dmap = {1:'SEG', 3:'QUA', 5:'SEX'};
+  for (let d = 0; d <= 6; d++) {
+    const dd = (dow + d) % 7;
+    if (dmap[dd]) {
+      const dt = new Date(now);
+      dt.setDate(now.getDate() + d);
+      return dt;
+    }
+  }
+  const dt = new Date(now);
+  dt.setDate(now.getDate() + 7);
+  return dt;
 }
 
 // Aliases para compatibilidade
@@ -5097,65 +4812,16 @@ function qpSet(key, val) { _qpState[key] = val; qpSave(_qpState); }
 // qtys = snapshot das quantidades no momento da confirmação
 let catConfirmations = load('pizza_cat_confirms', {});
 
-// Reset diário às 6h (horário de Brasília = UTC-3)
+// Antes, isto apagava as confirmações do dia às 6h (com um auto-save de
+// emergência antes de apagar). Decisão da operação: a rede de segurança não
+// pode confirmar nada sozinha, nem trocar dado real por dado velho disfarçado
+// de novo. Agora as confirmações de categoria simplesmente NÃO são apagadas
+// automaticamente — o "rascunho" fica em aberto (ver getOpenCountUnits) até
+// alguém de fato finalizar (Confirmar Contagem Geral) ou descartar
+// explicitamente (gate de saída em logout()). Mantido como no-op só para não
+// quebrar as chamadas existentes em getCatConfirmState/getGeneralConfirmState.
 function _checkDailyReset() {
-  const now = new Date();
-  const brt = new Date(now.getTime() - 3*60*60*1000); // UTC-3
-  const resetKey = brt.toISOString().slice(0,10) + '-reset';
-  if (catConfirmations._resetKey === resetKey) return; // já resetou hoje
-
-  // Antes de apagar o progresso do dia: se alguma unidade tiver categoria(s)
-  // confirmada(s) mas nunca chegou à Confirmação Geral, o snapshot em
-  // pizza_history nunca seria salvo — e o dia sumiria dos relatórios sem
-  // nenhum aviso. Para não perder o dado, salvamos um snapshot automático
-  // (marcado como não finalizado) e deixamos um aviso para quem abrir o app.
-  _autoSalvarPendentesAntesDoReset();
-
-  // Resetar apenas as confirmações, manter o resto
-  const newConf = { _resetKey: resetKey };
-  catConfirmations = newConf;
-  save('pizza_cat_confirms', catConfirmations);
-  console.log('[Confirmação] Reset diário às 6h executado');
-}
-
-// Verifica cada unidade: as categorias OBRIGATÓRIAS do dia (Refrigerados e
-// Estoque Seco) foram confirmadas mas a Confirmação Geral não — ou seja, a
-// contagem do dia realmente deveria ter sido finalizada e não foi. Categorias
-// opcionais confirmadas sozinhas (sem as obrigatórias) NÃO disparam isso,
-// porque nem toda categoria precisa ser contada todo dia.
-// Salva um snapshot de emergência com o estoque atual da unidade e registra
-// um aviso (lido em renderResetNoticeBanner) para avisar o responsável quando
-// o app abrir.
-function _autoSalvarPendentesAntesDoReset() {
-  const unidadesAfetadas = [];
-  UNIT_NAMES.forEach(unitName => {
-    const slug = unitSlug(unitName);
-    const confData = catConfirmations[slug] || {};
-    const hasGeneral = !!confData._general;
-    const ustock = unitStock[unitName] || {};
-    if (dailyRequiredCatsConfirmed(unitName, ustock) && !hasGeneral) {
-      unidadesAfetadas.push(unitName);
-      if (window._fb && window._fb.ready && typeof db !== 'undefined') {
-        saveHistoricoSnapshot(unitName, '\u26A0\uFE0F Auto-salvo (n\u00E3o finalizado \u00E0s 6h)');
-      }
-    }
-  });
-  if (unidadesAfetadas.length > 0) {
-    try {
-      const pendentes = JSON.parse(localStorage.getItem('_avisosResetDiario') || '[]');
-      pendentes.push({ ts: Date.now(), unidades: unidadesAfetadas });
-      // Mantém só os últimos 10 avisos, para não crescer indefinidamente
-      localStorage.setItem('_avisosResetDiario', JSON.stringify(pendentes.slice(-10)));
-      console.warn('[Confirmação] Reset com contagem pendente — auto-salvo para:', unidadesAfetadas.join(', '));
-    } catch(e) {}
-  }
-}
-
-// Verificar se a hora atual é após 6h BRT (para decidir se deve resetar)
-function _isAfter6hBRT() {
-  const now = new Date();
-  const brt = new Date(now.getTime() - 3*60*60*1000);
-  return brt.getHours() >= 6;
+  // Intencionalmente vazio — ver comentário acima.
 }
 
 // Salvar confirmação de categoria
@@ -5186,20 +4852,13 @@ function getCatConfirmState(unitName, cat, stockObj) {
   return changed ? 'needs-reconfirm' : 'confirmed';
 }
 
-// Verificar se TODAS as categorias da unidade estão confirmadas
-// (não usada para gatilhos de aviso — ver dailyRequiredCatsConfirmed abaixo,
-// já que nem toda categoria precisa ser contada todo dia)
-function allCatsConfirmed(unitName, stockObj) {
-  const cats = getUnitCatalog(unitName).categories;
-  return cats.every(cat => getCatConfirmState(unitName, cat, stockObj) === 'confirmed');
-}
-
-// Verificar se as categorias OBRIGATÓRIAS DO DIA (DAILY_REQUIRED_CATEGORIES)
-// estão confirmadas. É este o critério real usado para avisar/liberar a
-// Confirmação Geral — as demais categorias ainda não têm frequência definida.
+// Verificar se as categorias OBRIGATÓRIAS DO DIA (fixas + extras do dia da
+// semana, via getDailyRequiredCategories) estão confirmadas. É este o
+// critério real usado para avisar/liberar a Confirmação Geral — as demais
+// categorias ainda não têm frequência definida.
 function dailyRequiredCatsConfirmed(unitName, stockObj) {
   const unitCats = getUnitCatalog(unitName).categories;
-  const required = DAILY_REQUIRED_CATEGORIES.filter(cat => unitCats.includes(cat));
+  const required = getDailyRequiredCategories().filter(cat => unitCats.includes(cat));
   if (required.length === 0) return false; // unidade sem essas categorias — não se aplica
   return required.every(cat => getCatConfirmState(unitName, cat, stockObj) === 'confirmed');
 }
@@ -5252,11 +4911,14 @@ function getGeneralConfirmState(unitName) {
 }
 
 // ═══ AVISO DE CONTAGEM EM ABERTO ═══════════════════════════════════════════
-// Lista as unidades onde as categorias obrigatórias do dia (Refrigerados e
-// Estoque Seco) já foram confirmadas, mas a Confirmação Geral ainda não foi
-// feita — ou seja, o snapshot de hoje ainda NÃO foi salvo em pizza_history.
-// Não dispara s\u00f3 porque alguma categoria opcional foi confirmada, já que
-// nem toda categoria precisa ser contada todo dia.
+// Lista as unidades onde as categorias obrigatórias do dia já foram
+// confirmadas, mas a Confirmação Geral ainda não foi feita — ou seja, o
+// snapshot ainda NÃO foi salvo em pizza_history. Não dispara só porque
+// alguma categoria opcional foi confirmada, já que nem toda categoria
+// precisa ser contada todo dia. Como as confirmações não são mais apagadas
+// automaticamente (rascunho não morre sozinho), calcula também desde quando
+// está em aberto, usando o carimbo de tempo da última categoria obrigatória
+// confirmada.
 function getOpenCountUnits() {
   const abertas = [];
   UNIT_NAMES.forEach(unitName => {
@@ -5265,7 +4927,11 @@ function getOpenCountUnits() {
     const hasGeneral = !!confData._general;
     const ustock = unitStock[unitName] || {};
     if (dailyRequiredCatsConfirmed(unitName, ustock) && !hasGeneral) {
-      abertas.push({ unitName });
+      const unitCats = getUnitCatalog(unitName).categories;
+      const required = getDailyRequiredCategories().filter(cat => unitCats.includes(cat));
+      const tsList = required.map(cat => confData[cat] && confData[cat].ts).filter(Boolean);
+      const since = tsList.length ? Math.max(...tsList) : null; // momento em que a última obrigatória foi confirmada
+      abertas.push({ unitName, since });
     }
   });
   return abertas;
@@ -5315,45 +4981,22 @@ function renderOpenCountBanner() {
     el.innerHTML = '';
     return;
   }
-  const nomes = abertas.map(u => u.unitName).join(', ');
+  const todayStr = _operationalDateStr(Date.now());
+  const nomes = abertas.map(u => {
+    if (!u.since) return u.unitName;
+    const sinceStr = _operationalDateStr(u.since);
+    if (sinceStr === todayStr) return u.unitName;
+    const dias = Math.round((new Date(todayStr) - new Date(sinceStr)) / 86400000);
+    return u.unitName + ' (em aberto há ' + dias + (dias === 1 ? ' dia' : ' dias') + ')';
+  }).join(', ');
   const titulo = abertas.length === 1
     ? 'Contagem em aberto \u2014 ' + nomes
     : 'Contagens em aberto \u2014 ' + nomes;
-  const corpo = 'Refrigerados e Estoque Seco já foram confirmados, mas ainda falta "Confirmar Contagem Geral". '
-    + 'Sem essa confirmação, o dia de hoje não entra no histórico usado nos relatórios de envio semanal.';
+  const reqTxt = formatCategoryList(getDailyRequiredCategories());
+  const corpo = reqTxt + ' já foram confirmados, mas ainda falta "Confirmar Contagem Geral". '
+    + 'Sem essa confirmação, o dia não entra no histórico usado nos relatórios de envio semanal. '
+    + 'A contagem fica aberta até alguém finalizar ou descartar — não é apagada sozinha.';
   _buildBannerContent(el, '\u26A0\uFE0F', titulo, corpo, null);
-}
-
-// Banner fechável — avisa quando o reset automático das 6h precisou
-// auto-salvar uma contagem que não tinha sido finalizada a tempo.
-function renderResetNoticeBanner() {
-  const el = document.getElementById('reset-notice-banner');
-  if (!el || !session) return;
-  let avisos = [];
-  try { avisos = JSON.parse(localStorage.getItem('_avisosResetDiario') || '[]'); } catch(e) {}
-  const relevantes = isCPD() ? avisos : avisos.filter(a => a.unidades.includes(session.unit));
-
-  if (relevantes.length === 0) {
-    el.style.display = 'none';
-    el.innerHTML = '';
-    return;
-  }
-  const linhas = relevantes.map(a => {
-    const dt = new Date(a.ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
-    return (isCPD() ? a.unidades.join(', ') + ' em ' : '') + dt;
-  });
-  const titulo = 'Contagem não finalizada foi salva automaticamente';
-  const corpo = 'O reset das 6h encontrou uma contagem sem a Confirmação Geral e salvou um snapshot '
-    + 'marcado como "auto-salvo" para não perder o dia (' + linhas.join(' \u00B7 ') + '). '
-    + 'Vale conferir se os números batem no Histórico de Contagens.';
-  _buildBannerContent(el, '\uD83D\uDD53', titulo, corpo, () => {
-    try {
-      const restantes = isCPD() ? [] : avisos.filter(a => !a.unidades.includes(session.unit));
-      localStorage.setItem('_avisosResetDiario', JSON.stringify(restantes));
-    } catch(e) {}
-    el.style.display = 'none';
-    el.innerHTML = '';
-  });
 }
 
 // Modal de confirmação genérico (categoria ou geral)
@@ -5488,9 +5131,8 @@ function saveLocal(key, data) {
 
 // Chaves que devem sincronizar com o Firebase em tempo real
 const FIREBASE_SYNC_KEYS = new Set([
-  'pizza_cpd', 'pizza_orders',
+  'pizza_cpd',
   'pizza_catalog', 'pizza_minimums', 'pizza_prices', 'pizza_unit_minimums',
-  'pizza_confirmados',
   'pizza_counted', 'pizza_cat_confirms'
   // pizza_unit_catalog é sincronizado por slug via listeners separados (não via FIREBASE_SYNC_KEYS)
   // Nota: pizza_units NÃO está aqui — salvo por unidade via saveUnit()
@@ -5672,7 +5314,7 @@ function _updatePendingBadge(count) {
 }
 
 // Persistir fila de writes pendentes no localStorage ao sair/refresh
-window.addEventListener('beforeunload', () => {
+window.addEventListener('beforeunload', (e) => {
   if (window._fb && window._fb.pendingWrites && window._fb.pendingWrites.length > 0) {
     try {
       // Não persistir dados muito grandes (limite 50 items)
@@ -5680,6 +5322,19 @@ window.addEventListener('beforeunload', () => {
       localStorage.setItem('_pendingWrites', JSON.stringify(toSave));
     } catch(e) {}
   }
+  // Aviso genérico do navegador quando a própria unidade logada tem contagem
+  // obrigatória pronta mas ainda sem Confirmação Geral. É best-effort: o
+  // navegador não permite botões customizados aqui, só a mensagem padrão dele —
+  // isso NÃO substitui o gate de decisão do botão "Sair" dentro do app.
+  try {
+    if (session && !isCPD()) {
+      const ustock = unitStock[session.unit] || {};
+      if (dailyRequiredCatsConfirmed(session.unit, ustock) && !getGeneralConfirmState(session.unit)) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    }
+  } catch(err) {}
 });
 
 // ── MIGRAÇÃO ESTRUTURA DE UNIDADES (pizza_units flat → pizza_units/<slug>) ──
@@ -5744,25 +5399,7 @@ function _migrarEstruturaPizzaUnits() {
 }
 
 // Activity log
-let activityLog = load('pizza_log', []);
 window.unitMinimums = load('pizza_unit_minimums', {});
-
-function logAction(type, description, extra) {
-  if (!session) return;
-  const entry = {
-    id: 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
-    ts: new Date().toISOString(),
-    user: session.name,
-    unit: session.unit === 'cpd' ? 'CPD' : session.unit,
-    role: session.role,
-    type,       // 'pedido' | 'separacao' | 'envio' | 'recebimento' | 'entrada' | 'saida' | 'catalogo' | 'estoque'
-    description,
-    extra: extra || null,
-  };
-  activityLog.unshift(entry);
-  if (activityLog.length > 500) activityLog = activityLog.slice(0, 500); // cap at 500
-  save('pizza_log', activityLog);
-}
 
 let catalog     = load('pizza_catalog', SEED_CATALOG);       // CPD
 // unitCatalog é resolvido dinamicamente conforme a sessão/unidade ativa
@@ -5776,18 +5413,6 @@ function resolveUnitCatalog() {
   unitCatalog = info.catalog;
 }
 
-// Retorna o catálogo ativo conforme sessão
-// CPD → catalog; Unidade → catálogo específico dela
-function activeCatalog() {
-  if (isCPD()) return catalog;
-  return getUnitCatalog(session ? session.unit : 'Asa Sul').catalog;
-}
-
-// Retorna as categorias ativas conforme sessão
-function activeCategories() {
-  if (isCPD()) return CATEGORIES;
-  return getUnitCatalog(session ? session.unit : 'Asa Sul').categories;
-}
 // If catalog is empty (corrupted localStorage or first run), use SEED_CATALOG
 if (!catalog || catalog.length === 0) {
   catalog = SEED_CATALOG.slice();
@@ -5813,10 +5438,7 @@ let unitStock = (() => {
   return hasGranular ? consolidated : load('pizza_units', {});
 })();
 let prices    = load('pizza_prices', {}); // {itemId: unitPrice}
-let orders    = load('pizza_orders', []); // [{id, unit, userName, date, status, items:[{itemId,qty}]}]
 let minimums  = load('pizza_minimums', {}); // {itemId: minQty} \u2014 feature 1: stock minimums
-let templates = load('pizza_templates', {}); // {unitName: [{itemId,qty}]} \u2014 feature 2: recurring orders
-let shipments  = [];
 let countedMap = load('pizza_counted', {});
 
 // Chave única da janela de contagem atual (ex: "2026-06-15-0" = domingo 15/06)
@@ -5853,8 +5475,7 @@ function pruneCountedMap() {
       keys.slice(0, keys.length - 4).forEach(k => delete countedMap[unit][k]);
     }
   });
-}   // envios em trânsito/recebidos
-let confirmados = load('pizza_confirmados', {}); // {unidade: {itemId: {qty, diaOp}}}
+}
 let activeUnit = UNIT_NAMES[0];
 let currentView = 'cpd';
 
@@ -5888,14 +5509,12 @@ function updateHamburgerVisibility() {
 }
 window.addEventListener('resize', updateHamburgerVisibility);
 function isCPD()  { return session && session.unit === 'cpd'; }
-function unitKey(){ return session ? session.unit : 'cpd'; }
 
 // Views available per role
 function allowedViews() {
   if (!session) return [];
   if (isCPD()) return ['cpd','units','dashboard','envios-dia','historico-contagens','validade','producao','catalogo'];
-  return ['units','validade'];
-  return ['units']; // Unidades: apenas o Painel de Contagem
+  return ['units','validade']; // Unidades: apenas o Painel de Contagem
 }
 
 function defaultView() {
@@ -5922,6 +5541,43 @@ function diaOperacional() {
   let d = now.getDay();
   if (now.getHours() < 3) d = (d + 6) % 7;
   return d;
+}
+
+// Data operacional (string YYYY-MM-DD) de um timestamp qualquer — mesma regra
+// de corte (antes das 3h conta como o dia anterior) usada em windowKey().
+// Serve para comparar "foi confirmado hoje?" de forma consistente.
+function _operationalDateStr(ts) {
+  const d = new Date(ts);
+  if (d.getHours() < 3) d.setDate(d.getDate() - 1);
+  d.setHours(12, 0, 0, 0);
+  return d.toISOString().slice(0, 10);
+}
+
+// Verifica se a última confirmação de uma categoria está fora da janela
+// válida para o envio em cálculo. A janela vai das 18h do dia anterior ao
+// envio até o horário ideal de envio (14h do dia do envio) — ou seja, uma
+// contagem feita depois das 3h da manhã (fora da janela "clássica") ainda
+// conta como válida se tiver sido feita antes das 14h do dia do envio.
+// Retorna null se a confirmação está dentro dessa janela (ou nunca precisou
+// existir); retorna {days, never} se estiver mais velha que isso.
+// days = dias corridos desde a última confirmação (para exibir na mensagem).
+// never = true se a categoria nunca foi confirmada nenhuma vez.
+function getCategoryStaleness(unitName, cat) {
+  const slug = unitSlug(unitName);
+  const conf = catConfirmations[slug] && catConfirmations[slug][cat];
+  if (!conf) return { days: null, never: true };
+
+  const shipDate = nextEnviarDate();
+  const windowStart = new Date(shipDate);
+  windowStart.setDate(windowStart.getDate() - 1);
+  windowStart.setHours(18, 0, 0, 0);
+
+  if (conf.ts >= windowStart.getTime()) return null; // dentro da janela válida do envio
+
+  const todayStr = _operationalDateStr(Date.now());
+  const confStr  = _operationalDateStr(conf.ts);
+  const days = Math.max(1, Math.round((new Date(todayStr) - new Date(confStr)) / 86400000));
+  return { days, never: false };
 }
 
 // Está dentro do horário de funcionamento (15h-3h)?
@@ -5991,7 +5647,21 @@ function doLogin() {
 }
 
 function logout() {
+  // Gate de saída: se a própria unidade tem as categorias obrigatórias do dia
+  // prontas mas a Confirmação Geral ainda não foi feita, não deixa sair sem
+  // decidir. Duas opções, nenhuma terceira: finalizar agora ou descartar.
+  if (session && !isCPD()) {
+    const ustock = unitStock[session.unit] || {};
+    if (dailyRequiredCatsConfirmed(session.unit, ustock) && !getGeneralConfirmState(session.unit)) {
+      _openExitDecisionModal(session.unit);
+      return;
+    }
+  }
   if (!confirm(`Sair da conta de ${session?.name || 'usu\u00E1rio'}?`)) return;
+  _doLogout();
+}
+
+function _doLogout() {
   session = null;
   save('pizza_session', null);
   // Clear password field for security
@@ -6000,6 +5670,51 @@ function logout() {
   // Full reload is the most reliable way to reset all state
   // (works in Electron, Chrome, Safari)
   window.location.reload();
+}
+
+// Modal sem opção de fechar/cancelar — só "Finalizar agora" ou "Descartar
+// contagem". Usado quando alguém tenta sair (botão Sair) com a contagem
+// obrigatória do dia pronta mas ainda não confirmada como Contagem Geral.
+function _openExitDecisionModal(unitName) {
+  const overlay = el('div', {cls:'confirm-modal-overlay'});
+  const box = el('div', {cls:'confirm-modal-box'});
+  const hdr = el('div', {cls:'confirm-modal-hdr'});
+  hdr.appendChild(el('div', {cls:'confirm-modal-title'}, 'Contagem em aberto'));
+  const reqTxt = formatCategoryList(getDailyRequiredCategories().filter(c => getUnitCatalog(unitName).categories.includes(c)));
+  hdr.appendChild(el('div', {cls:'confirm-modal-sub'},
+    reqTxt + ' já foram confirmados, mas a Confirmação Geral ainda não. Escolha antes de sair:'));
+  box.appendChild(hdr);
+  const ftr = el('div', {cls:'confirm-modal-ftr', style:'flex-direction:column;gap:8px;align-items:stretch'});
+  const finBtn = el('button', {cls:'btn btn-sm', style:'width:100%;justify-content:center;background:var(--accent,#2a6049);color:#fff'});
+  finBtn.textContent = '\u2713 Finalizar agora';
+  finBtn.addEventListener('click', () => {
+    overlay.remove();
+    openConfirmModal(
+      'Confirmar Contagem Geral',
+      'Confirme a contagem completa de ' + unitName + ' digitando seu nome (gerente).',
+      (name) => {
+        confirmGeneral(unitName, name);
+        toast('\u2713 Contagem geral confirmada por ' + name);
+        _doLogout();
+      }
+    );
+  });
+  const descBtn = el('button', {cls:'btn btn-sm btn-outline', style:'width:100%;justify-content:center;color:var(--danger,#C53030);border-color:var(--danger,#C53030)'});
+  descBtn.textContent = '\u2715 Descartar contagem';
+  descBtn.addEventListener('click', () => {
+    if (!confirm('Descartar a contagem em aberto de ' + unitName + '? As confirmações de categoria de hoje serão apagadas (o estoque contado em si não é afetado, só o registro de confirmação).')) return;
+    const slug = unitSlug(unitName);
+    catConfirmations[slug] = {};
+    save('pizza_cat_confirms', catConfirmations);
+    overlay.remove();
+    toast('Contagem descartada');
+    _doLogout();
+  });
+  ftr.appendChild(finBtn);
+  ftr.appendChild(descBtn);
+  box.appendChild(ftr);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 
 function applySession() {
@@ -6713,7 +6428,14 @@ function el(tag, attrs={}, ...children) {
             const envTd = el('td', {style:'text-align:right;font-weight:700;color:' + (aEnviar > 0 ? 'var(--accent-dark,#2a6049)' : 'var(--text-3)')});
             envTd.setAttribute('data-aenviar-cell', item.id);
             envTd.textContent = aEnviar > 0 ? String(aEnviar) : '\u2014';
-            const _minDia = (getMinPerDay(_unitDisp)[item.name] || {})[_day] || 0;
+            // Mesma lógica de match por nome normalizado usada em calcAEnviar —
+            // busca direta (sem normalizar) podia mostrar "Mín: 0" errado no
+            // tooltip quando o nome do item tinha acento/caixa diferente do
+            // MIN_PER_DAY (ex: "Açucar refinado" vs "Açucar Refinado").
+            const _minMap  = getMinPerDay(_unitDisp);
+            const _n = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+            const _minKey  = Object.keys(_minMap).find(k => _n(k) === _n(item.name));
+            const _minDia  = _minKey ? (_minMap[_minKey][_day] || 0) : 0;
             envTd.title = 'M\u00EDn (' + _day + '): ' + _minDia + ' | Estoque: ' + qty + ' | A Enviar: ' + aEnviar;
             tr.appendChild(envTd);
           }
@@ -6731,246 +6453,7 @@ function el(tag, attrs={}, ...children) {
   return wrap;
 }
 
-// BATCHMOVEMENTHELPERS
-// PURE-JSPDFGENERATOR
-// Builds a valid PDF/1.4 file from scratch \u2014 no external libraries needed.
-// Works offline, file://, Safari, Chrome, Firefox, iOS, Android.
-
-function printBatchPdf(batch) {
-  const first    = batch[0];
-  const type     = first.type;
-  const dest     = first.unitName || '';
-  const date     = new Date(first.date);
-  const dateStr  = date.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
-  const timeStr  = date.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-  const count    = batch.length;
-  const typeLabel = type === 'entrada' ? 'Entrada  -  CPD' : `Saida  -  CPD  ->  ${dest}`;
-  const subLabel  = `${dateStr}  as  ${timeStr}    ${count} ${count===1?'produto':'produtos'}`;
-  const typeTag   = type === 'entrada' ? 'ENTRADA' : 'SAIDA';
-
-  // Build row data
-  const rows = batch.map(m => {
-    const item = catalog.find(c => c.id === m.itemId);
-    return { name: item?.name || '-', qty: String(m.qty), unit: item?.unit || '' };
-  });
-
-  // PDFLatin-1encoder
-  // Converts UTF-8 string to PDF octal-escaped Latin-1 string literal.
-  // This is the correct way to handle accented chars with standard PDF fonts.
-  function pdfStr(str) {
-    // Encoder Latin-1/WinAnsi correto: ASCII passa direto,
-    // chars 0x80-0xFF viram escape octal (suporta acentos PT-BR)
-    let out = '';
-    for (const ch of String(str)) {
-      const code = ch.charCodeAt(0);
-      if (ch === '(') out += '\\(';
-      else if (ch === ')') out += '\\)';
-      else if (ch === '\\') out += '\\\\';
-      else if (code < 128) out += ch;
-      else if (code <= 0xFF) out += '\\' + code.toString(8).padStart(3, '0');
-      else {
-        // Acima de latin-1: normaliza para base ASCII (ex: \u0161 -> s)
-        const norm = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        out += (norm && norm.charCodeAt(0) < 128) ? norm : '?';
-      }
-    }
-    return `(${out})`;
-  }
-
-  // Dimensions
-  const W = 595.28, H = 841.89;
-  const ml = 50, mr = 50;
-  const col1x = ml + 4;
-  const col2x = W - mr - 115;
-  const col3x = W - mr - 60;
-
-  function rgb(r,g,b) { return `${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`; }
-
-  const cmds = [];
-  const c = (...p) => cmds.push(p.join(' '));
-
-  // Header
-  c(`${rgb(12,26,15)} rg`, `${ml-10} ${H-70} ${W-80} 56 re f`);
-
-  // Green circle
-  const cx=ml+14, cy=H-48, cr=12, k=0.5523;
-  c(`${rgb(38,116,62)} rg`);
-  c(`${cx+cr} ${cy} m ${cx+cr} ${cy+cr*k} ${cx+cr*k} ${cy+cr} ${cx} ${cy+cr} c`);
-  c(`${cx-cr*k} ${cy+cr} ${cx-cr} ${cy+cr*k} ${cx-cr} ${cy} c`);
-  c(`${cx-cr} ${cy-cr*k} ${cx-cr*k} ${cy-cr} ${cx} ${cy-cr} c`);
-  c(`${cx+cr*k} ${cy-cr} ${cx+cr} ${cy-cr*k} ${cx+cr} ${cy} c f`);
-
-  c(`BT /F1 11 Tf ${rgb(255,255,255)} rg ${cx-3} ${cy-4.5} Td (S) Tj ET`);
-  c(`BT /F1 14 Tf ${rgb(240,237,224)} rg ${cx+20} ${cy+3} Td ${pdfStr("Sesconetto's Pizzeria")} Tj ET`);
-  c(`BT /F2 8 Tf ${rgb(168,196,174)} rg ${cx+20} ${cy-12} Td (CONTROLE DE ESTOQUE) Tj ET`);
-
-  // Badge
-  const badgeY = H - 105;
-  const badgeW = type === 'entrada' ? 54 : 46;
-  const badgeRgb = type === 'entrada' ? rgb(38,116,62) : rgb(138,90,16);
-  c(`${badgeRgb} rg ${ml} ${badgeY} ${badgeW} 14 re f`);
-  c(`BT /F1 8 Tf ${rgb(255,255,255)} rg ${ml+4} ${badgeY+4} Td (${typeTag}) Tj ET`);
-
-  // Title
-  c(`BT /F1 20 Tf ${rgb(26,26,18)} rg ${ml} ${badgeY-28} Td ${pdfStr(typeLabel)} Tj ET`);
-  c(`BT /F2 10 Tf ${rgb(90,87,64)} rg ${ml} ${badgeY-44} Td ${pdfStr(subLabel)} Tj ET`);
-
-  // Gold line
-  const lineY = badgeY - 56;
-  c(`${rgb(184,146,42)} RG 0.8 w ${ml} ${lineY} m ${W-mr} ${lineY} l S`);
-
-  // Tableheader
-  const thY = lineY - 24;
-  c(`${rgb(38,116,62)} rg ${ml} ${thY} ${W-ml-mr} 20 re f`);
-  c(`BT /F1 9 Tf ${rgb(255,255,255)} rg ${col1x} ${thY+6} Td (ITEM) Tj ET`);
-  c(`BT /F1 9 Tf ${rgb(255,255,255)} rg ${col2x} ${thY+6} Td (QUANTIDADE) Tj ET`);
-  c(`BT /F1 9 Tf ${rgb(255,255,255)} rg ${col3x} ${thY+6} Td (UNIDADE) Tj ET`);
-
-  // Tablerows
-  const rowH = 22;
-  let rowY = thY - rowH;
-
-  rows.forEach((row, i) => {
-    if (i % 2 === 1) {
-      c(`${rgb(245,242,232)} rg ${ml} ${rowY} ${W-ml-mr} ${rowH} re f`);
-    } else {
-      c(`${rgb(253,252,247)} rg ${ml} ${rowY} ${W-ml-mr} ${rowH} re f`);
-    }
-    c(`${rgb(218,215,197)} RG 0.3 w ${ml} ${rowY} m ${W-mr} ${rowY} l S`);
-
-    // Truncate long names
-    const maxName = 52;
-    const dispName = row.name.length > maxName ? row.name.substring(0, maxName) + '...' : row.name;
-
-    c(`BT /F2 10 Tf ${rgb(26,26,18)} rg ${col1x} ${rowY+7} Td ${pdfStr(dispName)} Tj ET`);
-    c(`BT /F1 11 Tf ${rgb(38,116,62)} rg ${col2x+18} ${rowY+7} Td ${pdfStr(row.qty)} Tj ET`);
-    c(`BT /F2 9 Tf ${rgb(154,152,128)} rg ${col3x} ${rowY+7} Td ${pdfStr(row.unit)} Tj ET`);
-
-    rowY -= rowH;
-  });
-
-  // Bottom border
-  c(`${rgb(218,215,197)} RG 0.3 w ${ml} ${rowY+rowH} m ${W-mr} ${rowY+rowH} l S`);
-
-  // Summary
-  const sumY = rowY - 8;
-  c(`${rgb(232,242,234)} rg ${ml} ${sumY} ${W-ml-mr} 20 re f`);
-  const sumText = `Total: ${count} ${count===1?'produto movimentado':'produtos movimentados'}`;
-  c(`BT /F1 10 Tf ${rgb(26,58,32)} rg ${ml+6} ${sumY+6} Td ${pdfStr(sumText)} Tj ET`);
-
-  // Signature block
-  const sigY = sumY - 50;
-  c(`${rgb(200,196,170)} RG 0.5 w ${ml} ${sigY+20} m ${W-mr} ${sigY+20} l S 0 0 0 RG`);
-  c(`BT /F1 9 Tf ${rgb(26,26,18)} rg ${ml} ${sigY+8} Td (Assinaturas) Tj ET`);
-  const sigLW = (W - ml - mr - 40) / 2;
-  const sig1x = ml, sig2x = ml + sigLW + 40;
-  const sigLineY = sigY - 24;
-  c(`${rgb(90,87,64)} RG 0.5 w ${sig1x} ${sigLineY} m ${sig1x+sigLW} ${sigLineY} l S`);
-  c(`${rgb(90,87,64)} RG 0.5 w ${sig2x} ${sigLineY} m ${sig2x+sigLW} ${sigLineY} l S`);
-  c(`BT /F1 9 Tf ${rgb(26,26,18)} rg ${sig1x} ${sigLineY-14} Td (Estoquista) Tj ET`);
-  c(`BT /F1 9 Tf ${rgb(26,26,18)} rg ${sig2x} ${sigLineY-14} Td (Gerente da Unidade) Tj ET`);
-  c(`BT /F2 7 Tf ${rgb(154,152,128)} rg ${sig1x} ${sigLineY-24} Td (Nome e assinatura) Tj ET`);
-  c(`BT /F2 7 Tf ${rgb(154,152,128)} rg ${sig2x} ${sigLineY-24} Td (Nome e assinatura) Tj ET`);
-
-  // Footer
-  c(`${rgb(218,215,197)} RG 0.5 w ${ml} 40 m ${W-mr} 40 l S`);
-  c(`BT /F2 8 Tf ${rgb(154,152,128)} rg ${ml} 28 Td ${pdfStr("Sesconetto's Pizzeria  -  Sistema de Estoque")} Tj ET`);
-  const genDate = `Gerado em ${new Date().toLocaleDateString('pt-BR')} as ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
-  c(`BT /F2 8 Tf ${rgb(154,152,128)} rg ${W-mr-130} 28 Td ${pdfStr(genDate)} Tj ET`);
-
-  // AssemblePDF
-  const streamContent = cmds.join(String.fromCharCode(10));
-
-  // Convert stream to binary bytes correctly
-  const bytes = [];
-  for (let i = 0; i < streamContent.length; i++) {
-    bytes.push(streamContent.charCodeAt(i) & 0xff);
-  }
-
-  const objs = [];
-  function addObj(content) {
-    const id = objs.length + 1;
-    objs.push({ id, content });
-    return id;
-  }
-
-  const f1id = addObj(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`);
-  const f2id = addObj(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`);
-  const streamId = addObj(`<< /Length ${bytes.length} >>\nstream\n${streamContent}\nendstream`);
-  const pageId   = addObj(`<< /Type /Page /Parent 5 0 R /MediaBox [0 0 ${W} ${H}] /Contents ${streamId} 0 R /Resources << /Font << /F1 ${f1id} 0 R /F2 ${f2id} 0 R >> >> >>`);
-  const pagesId  = addObj(`<< /Type /Pages /Kids [${pageId} 0 R] /Count 1 >>`);
-  const catId    = addObj(`<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
-
-  let out = '%PDF-1.4\n%\xFF\xFF\xFF\xFF\n';
-  const offsets = [];
-  objs.forEach(obj => {
-    offsets.push(out.length);
-    out += `${obj.id} 0 obj\n${obj.content}\nendobj\n`;
-  });
-
-  const xrefOff = out.length;
-  out += `xref\n0 ${objs.length+1}\n`;
-  out += '0000000000 65535 f \n';
-  offsets.forEach(o => { out += String(o).padStart(10,'0') + ' 00000 n \n'; });
-  out += `trailer\n<< /Size ${objs.length+1} /Root ${catId} 0 R >>\nstartxref\n${xrefOff}\n%%EOF`;
-
-  // Use Latin-1 encoding for the blob so byte values survive intact
-  const binaryStr = out;
-  const bArr = new Uint8Array(binaryStr.length);
-  for (let i = 0; i < binaryStr.length; i++) bArr[i] = binaryStr.charCodeAt(i) & 0xff;
-
-  const blob = new Blob([bArr], { type: 'application/pdf' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  const typeSlug = type === 'entrada' ? 'Entrada' : `Saida-${dest.replace(/\s+/g,'-')}`;
-  const dateSlug = date.toISOString().slice(0,10);
-  a.href     = url;
-  a.download = `Sesconettos-${typeSlug}-${dateSlug}.pdf`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 3000);
-  toast('PDF gerado e baixado!');
-}function showOrderConfirmModal(order, entries, unitName) {
-  const date    = new Date(order.date);
-  const timeStr = date.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-  const count   = order.items.length;
-  const overlay = el('div', {cls:'confirm-modal-overlay'});
-  const box     = el('div', {cls:'confirm-modal-box'});
-
-  const top = el('div', {cls:'confirm-modal-top'});
-  top.appendChild(el('div', {cls:'confirm-modal-icon'}, '\uD83D\uDCCB'));
-  top.appendChild(el('div', {cls:'confirm-modal-title'}, 'Pedido enviado ao CPD'));
-  top.appendChild(el('div', {cls:'confirm-modal-sub'}, `${timeStr}  \u00B7  ${count} ${count===1?'produto':'produtos'}  \u00B7  ${order.unit}`));
-  box.appendChild(top);
-
-  const body = el('div', {cls:'confirm-modal-body'});
-  order.items.forEach(({itemId, qty}) => {
-    const item = catalog.find(c => c.id === itemId);
-    const row = el('div', {cls:'confirm-modal-row'});
-    row.appendChild(el('span', {cls:'confirm-modal-item'}, item?.name||'\u2014'));
-    row.appendChild(el('span', {cls:'confirm-modal-qty'}, `${qty} ${item?.unit||''}`));
-    body.appendChild(row);
-  });
-  box.appendChild(body);
-
-  const footer = el('div', {cls:'modal-footer', style:'flex-direction:column;gap:8px'});
-
-  // Feature 2: Save as template
-  if (entries && entries.length > 0) {
-    footer.appendChild(el('button', {cls:'template-btn', style:'width:100%;justify-content:center', onclick:()=>{
-      const cart = {};
-      entries.forEach(([itemId,qty])=>{ cart[itemId]=qty; });
-      saveTemplate(unitName, cart);
-    }}, '\u2B50 Salvar como modelo de pedido'));
-  }
-
-  footer.appendChild(el('button', {cls:'btn btn-primary', style:'width:100%', onclick: () => printOrderPdf(order)}, '\uD83D\uDCC4 Gerar PDF do Pedido'));
-  footer.appendChild(el('button', {cls:'btn btn-outline', style:'width:100%', onclick: () => { overlay.remove(); setView('pedido'); }}, '\u2795 Novo Pedido'));
-  footer.appendChild(el('button', {cls:'btn btn-outline', style:'width:100%;color:var(--text-3);border-color:var(--border-light)', onclick: () => { overlay.remove(); setView('units'); }}, '\uD83C\uDFE0 In\u00EDcio'));
-  box.appendChild(footer);
-  overlay.appendChild(box);
-  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
-}function printStockPdf(unitLabel, stockObj, onlyCategory) {
+function printStockPdf(unitLabel, stockObj, onlyCategory) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
   const timeStr = now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
@@ -7284,267 +6767,6 @@ function printBatchPdf(batch) {
   setTimeout(()=>URL.revokeObjectURL(url), 3000);
 }
 
-function printLogPdf(entries) {
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
-  const W = 595, ML = 40, MR = 40, TW = W - ML - MR;
-  let y = 0;
-  const ops = [];
-  const pages = [];
-  // --- Bloco de assinaturas ---
-  function addSignatureBlock() {
-    if (y < 120) { if (ops.length) pages.push(ops.splice(0)); y = 760; }
-    y -= 20;
-    ops.push(ML + ' ' + y + ' m ' + (W-MR) + ' ' + y + ' l 0.6 0.6 0.6 RG S 0 0 0 RG');
-    y -= 16;
-    ops.push('BT /F1 9 Tf ' + ML + ' ' + y + ' Td (Assinaturas) Tj ET');
-    y -= 30;
-    var lw = (TW - 40) / 2;
-    var x1 = ML, x2 = ML + lw + 40;
-    ops.push(x1 + ' ' + y + ' m ' + (x1+lw) + ' ' + y + ' l S');
-    ops.push(x2 + ' ' + y + ' m ' + (x2+lw) + ' ' + y + ' l S');
-    y -= 14;
-    ops.push('BT /F2 8 Tf ' + x1 + ' ' + y + ' Td (Estoquista) Tj ET');
-    ops.push('BT /F2 8 Tf ' + x2 + ' ' + y + ' Td (Gerente da Unidade) Tj ET');
-    y -= 6;
-    ops.push('BT /F2 7 Tf ' + x1 + ' ' + y + ' Td (Nome e assinatura) Tj ET');
-    ops.push('BT /F2 7 Tf ' + x2 + ' ' + y + ' Td (Nome e assinatura) Tj ET');
-  }
-
-
-  function pdfStr(s) {
-    // Encoder Latin-1/WinAnsi (retorna sem parenteses externos)
-    let o = '';
-    for (const ch of (s||'').toString()) {
-      const c = ch.charCodeAt(0);
-      if (ch==='(') o+='\\(';
-      else if (ch===')') o+='\\)';
-      else if (ch==='\\') o+='\\\\';
-      else if (c<128) o+=ch;
-      else if (c<=0xFF) o+='\\' + c.toString(8).padStart(3,'0');
-      else {
-        const norm = ch.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-        o += (norm && norm.charCodeAt(0)<128) ? norm : '?';
-      }
-    }
-    return o;
-  }
-
-  function newPage() {
-    if (ops.length) pages.push(ops.splice(0));
-    y = 780;
-    ops.push(`BT /F1 16 Tf ${ML} ${y} Td (Sesconetto's - Movimentacoes do Dia) Tj ET`);
-    y -= 18;
-    ops.push(`BT /F2 10 Tf ${ML} ${y} Td (${pdfStr(dateStr)}) Tj ET`);
-    y -= 8;
-    ops.push(`${ML} ${y} m ${W-MR} ${y} l S`);
-    y -= 16;
-  }
-
-  newPage();
-  entries.forEach(entry => {
-    if (y < 80) newPage();
-    const ts = new Date(entry.ts);
-    const time = ts.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-    const header = `[${time}]  ${entry.user} (${entry.unit})`;
-    ops.push(`BT /F1 9 Tf ${ML} ${y} Td (${pdfStr(header)}) Tj ET`);
-    y -= 13;
-    ops.push(`BT /F2 8 Tf ${ML+8} ${y} Td (${pdfStr(entry.description)}) Tj ET`);
-    ops.push(`${ML} ${y-4} m ${W-MR} ${y-4} l 0.9 0.9 0.9 RG S 0 0 0 RG`);
-    y -= 18;
-  });
-  addSignatureBlock();
-  if (ops.length) pages.push(ops.splice(0));
-
-  const font1 = '<<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica-Bold\n/Encoding /WinAnsiEncoding\n>>';
-  const font2 = '<<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica\n/Encoding /WinAnsiEncoding\n>>';
-  let pdf = '%PDF-1.4\n';
-  const offsets = [];
-  let offset = pdf.length;
-
-  function addObj(n, content) {
-    offsets[n] = offset;
-    const obj = `${n} 0 obj\n${content}\nendobj\n`;
-    pdf += obj; offset += obj.length;
-  }
-
-  addObj(1, font1); addObj(2, font2);
-  addObj(3, `<<\n/Type /Resources\n/Font <<\n/F1 1 0 R\n/F2 2 0 R\n>>\n>>`);
-
-  const pageIds = [];
-  const baseObj = 4;
-  pages.forEach((pageOps, pi) => {
-    const NL = String.fromCharCode(10);
-  const stream = pageOps.join(String.fromCharCode(10));
-    const lenObj = baseObj + pi*2;
-    const pageObj = baseObj + pi*2 + 1;
-    addObj(lenObj, `<<\n/Length ${stream.length}\n>>\nstream\n${stream}\nendstream`);
-    addObj(pageObj, `<<\n/Type /Page\n/Parent ${baseObj + pages.length*2} 0 R\n/MediaBox [0 0 ${W} 842]\n/Contents ${lenObj} 0 R\n/Resources 3 0 R\n>>`);
-    pageIds.push(pageObj);
-  });
-
-  const pagesObj = baseObj + pages.length*2;
-  addObj(pagesObj, `<<\n/Type /Pages\n/Kids [${pageIds.map(i=>`${i} 0 R`).join(' ')}]\n/Count ${pages.length}\n>>`);
-  const catObjN = pagesObj + 1;
-  addObj(catObjN, `<<\n/Type /Catalog\n/Pages ${pagesObj} 0 R\n>>`);
-
-  const xrefOffset = offset;
-  const total = catObjN + 1;
-  let xref = `xref\n0 ${total}\n0000000000 65535 f \n`;
-  for (let i = 1; i < total; i++) xref += `${String(offsets[i]||0).padStart(10,'0')} 00000 n \n`;
-  pdf += xref + `trailer\n<<\n/Size ${total}\n/Root ${catObjN} 0 R\n>>\nstartxref\n${xrefOffset}\n%%EOF`;
-
-  const blob = new Blob([pdf], {type:'application/pdf'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `movimentacoes-${now.toISOString().slice(0,10)}.pdf`;
-  a.click();
-  setTimeout(()=>URL.revokeObjectURL(url), 3000);
-}
-
-function printOrderPdf(order) {
-  const date     = new Date(order.date);
-  const dateStr  = date.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
-  const timeStr  = date.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-  const count    = order.items.length;
-
-  function pdfStr(str) {
-    // Encoder Latin-1/WinAnsi correto
-    let out = '';
-    for (const ch of String(str)) {
-      const code = ch.charCodeAt(0);
-      if (ch === '(') out += '\\(';
-      else if (ch === ')') out += '\\)';
-      else if (ch === '\\') out += '\\\\';
-      else if (code < 128) out += ch;
-      else if (code <= 0xFF) out += '\\' + code.toString(8).padStart(3, '0');
-      else {
-        const norm = ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        out += (norm && norm.charCodeAt(0) < 128) ? norm : '?';
-      }
-    }
-    return `(${out})`;
-  }
-
-  const W=595.28, H=841.89, ml=50, mr=50;
-  function rgb(r,g,b){return `${(r/255).toFixed(3)} ${(g/255).toFixed(3)} ${(b/255).toFixed(3)}`;}
-  const cmds=[];
-  const c=(...p)=>cmds.push(p.join(' '));
-
-  // Header
-  c(`${rgb(12,26,15)} rg ${ml-10} ${H-70} ${W-80} 56 re f`);
-  const cx=ml+14, cy=H-48, cr=12, k=0.5523;
-  c(`${rgb(38,116,62)} rg`);
-  c(`${cx+cr} ${cy} m ${cx+cr} ${cy+cr*k} ${cx+cr*k} ${cy+cr} ${cx} ${cy+cr} c ${cx-cr*k} ${cy+cr} ${cx-cr} ${cy+cr*k} ${cx-cr} ${cy} c ${cx-cr} ${cy-cr*k} ${cx-cr*k} ${cy-cr} ${cx} ${cy-cr} c ${cx+cr*k} ${cy-cr} ${cx+cr} ${cy-cr*k} ${cx+cr} ${cy} c f`);
-  c(`BT /F1 11 Tf ${rgb(255,255,255)} rg ${cx-3} ${cy-4.5} Td (S) Tj ET`);
-  c(`BT /F1 14 Tf ${rgb(240,237,224)} rg ${cx+20} ${cy+3} Td ${pdfStr("Sesconetto's Pizzeria")} Tj ET`);
-  c(`BT /F2 8 Tf ${rgb(168,196,174)} rg ${cx+20} ${cy-12} Td (CONTROLE DE ESTOQUE) Tj ET`);
-
-  // Badge
-  const badgeY=H-105;
-  c(`${rgb(38,116,62)} rg ${ml} ${badgeY} 56 14 re f`);
-  c(`BT /F1 8 Tf ${rgb(255,255,255)} rg ${ml+4} ${badgeY+4} Td (PEDIDO) Tj ET`);
-
-  // Title
-  c(`BT /F1 20 Tf ${rgb(26,26,18)} rg ${ml} ${badgeY-28} Td ${pdfStr(`Pedido - ${order.unit}`)} Tj ET`);
-  c(`BT /F2 10 Tf ${rgb(90,87,64)} rg ${ml} ${badgeY-44} Td ${pdfStr(`${dateStr}  as  ${timeStr}    ${order.userName}  -  ${order.role}    ${count} ${count===1?'produto':'produtos'}`)} Tj ET`);
-  c(`BT /F2 9 Tf ${rgb(154,152,128)} rg ${ml} ${badgeY-58} Td ${pdfStr(`Ref: ${order.id}`)} Tj ET`);
-
-  const lineY=badgeY-68;
-  c(`${rgb(184,146,42)} RG 0.8 w ${ml} ${lineY} m ${W-mr} ${lineY} l S`);
-
-  // Table header
-  const thY=lineY-24;
-  c(`${rgb(38,116,62)} rg ${ml} ${thY} ${W-ml-mr} 20 re f`);
-  c(`BT /F1 9 Tf ${rgb(255,255,255)} rg ${ml+4} ${thY+6} Td (ITEM) Tj ET`);
-  c(`BT /F1 9 Tf ${rgb(255,255,255)} rg ${W-mr-95} ${thY+6} Td (QUANTIDADE) Tj ET`);
-  c(`BT /F1 9 Tf ${rgb(255,255,255)} rg ${W-mr-40} ${thY+6} Td (UN.) Tj ET`);
-
-  const rowH=22; const catH=16; let rowY=thY-rowH;
-  let rowAltIndex=0; // alternating row counter across categories
-
-  // Group items by category preserving CATEGORIES order
-  const grouped = CATEGORIES.map(cat => ({
-    cat,
-    items: order.items.filter(({itemId}) => {
-      const it = catalog.find(c=>c.id===itemId);
-      return it?.category === cat;
-    })
-  })).filter(g => g.items.length > 0);
-
-  grouped.forEach(({cat, items}) => {
-    // Category header row
-    c(`${rgb(234,242,236)} rg ${ml} ${rowY} ${W-ml-mr} ${catH} re f`);
-    c(`${rgb(218,215,197)} RG 0.3 w ${ml} ${rowY} m ${W-mr} ${rowY} l S`);
-    c(`BT /F1 8 Tf ${rgb(38,116,62)} rg ${ml+4} ${rowY+4} Td ${pdfStr(cat.toUpperCase())} Tj ET`);
-    rowY -= rowH;
-
-    items.forEach(({itemId,qty}) => {
-      const item=catalog.find(c=>c.id===itemId);
-      if(rowAltIndex%2===1) c(`${rgb(245,242,232)} rg ${ml} ${rowY} ${W-ml-mr} ${rowH} re f`);
-      else c(`${rgb(253,252,247)} rg ${ml} ${rowY} ${W-ml-mr} ${rowH} re f`);
-      c(`${rgb(218,215,197)} RG 0.3 w ${ml} ${rowY} m ${W-mr} ${rowY} l S`);
-      const nm=item?.name||'\u2014'; const disp=nm.length>52?nm.substring(0,52)+'...':nm;
-      c(`BT /F2 10 Tf ${rgb(26,26,18)} rg ${ml+4} ${rowY+7} Td ${pdfStr(disp)} Tj ET`);
-      c(`BT /F1 11 Tf ${rgb(38,116,62)} rg ${W-mr-90} ${rowY+7} Td ${pdfStr(String(qty))} Tj ET`);
-      c(`BT /F2 9 Tf ${rgb(154,152,128)} rg ${W-mr-38} ${rowY+7} Td ${pdfStr(item?.unit||'')} Tj ET`);
-      rowY -= rowH;
-      rowAltIndex++;
-    });
-  });
-  c(`${rgb(218,215,197)} RG 0.3 w ${ml} ${rowY+rowH} m ${W-mr} ${rowY+rowH} l S`);
-
-  // Summary
-  const sumY=rowY-8;
-  c(`${rgb(232,242,234)} rg ${ml} ${sumY} ${W-ml-mr} 20 re f`);
-  c(`BT /F1 10 Tf ${rgb(26,58,32)} rg ${ml+6} ${sumY+6} Td ${pdfStr(`Total: ${count} ${count===1?'produto solicitado':'produtos solicitados'}`)} Tj ET`);
-
-  // Signature block
-  const sigY2 = sumY - 50;
-  c(`${rgb(200,196,170)} RG 0.5 w ${ml} ${sigY2+20} m ${W-mr} ${sigY2+20} l S 0 0 0 RG`);
-  c(`BT /F1 9 Tf ${rgb(26,26,18)} rg ${ml} ${sigY2+8} Td (Assinaturas) Tj ET`);
-  const sigLW2 = (W - ml - mr - 40) / 2;
-  const sig1x2 = ml, sig2x2 = ml + sigLW2 + 40;
-  const sigLY2 = sigY2 - 24;
-  c(`${rgb(90,87,64)} RG 0.5 w ${sig1x2} ${sigLY2} m ${sig1x2+sigLW2} ${sigLY2} l S`);
-  c(`${rgb(90,87,64)} RG 0.5 w ${sig2x2} ${sigLY2} m ${sig2x2+sigLW2} ${sigLY2} l S`);
-  c(`BT /F1 9 Tf ${rgb(26,26,18)} rg ${sig1x2} ${sigLY2-14} Td (Estoquista) Tj ET`);
-  c(`BT /F1 9 Tf ${rgb(26,26,18)} rg ${sig2x2} ${sigLY2-14} Td (Gerente da Unidade) Tj ET`);
-  c(`BT /F2 7 Tf ${rgb(154,152,128)} rg ${sig1x2} ${sigLY2-24} Td (Nome e assinatura) Tj ET`);
-  c(`BT /F2 7 Tf ${rgb(154,152,128)} rg ${sig2x2} ${sigLY2-24} Td (Nome e assinatura) Tj ET`);
-
-  // Footer
-  c(`${rgb(218,215,197)} RG 0.5 w ${ml} 40 m ${W-mr} 40 l S`);
-  c(`BT /F2 8 Tf ${rgb(154,152,128)} rg ${ml} 28 Td ${pdfStr("Sesconetto's Pizzeria  -  Pedido ao CPD")} Tj ET`);
-  const gen=`Gerado em ${new Date().toLocaleDateString('pt-BR')} as ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
-  c(`BT /F2 8 Tf ${rgb(154,152,128)} rg ${W-mr-130} 28 Td ${pdfStr(gen)} Tj ET`);
-
-  const sc=cmds.join(String.fromCharCode(10));
-  const objs=[];
-  function addObj(content){const id=objs.length+1;objs.push({id,content});return id;}
-  const f1=addObj(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`);
-  const f2=addObj(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>`);
-  const sid=addObj(`<< /Length ${sc.length} >>\nstream\n${sc}\nendstream`);
-  const pid=addObj(`<< /Type /Page /Parent 5 0 R /MediaBox [0 0 ${W} ${H}] /Contents ${sid} 0 R /Resources << /Font << /F1 ${f1} 0 R /F2 ${f2} 0 R >> >> >>`);
-  const pgid=addObj(`<< /Type /Pages /Kids [${pid} 0 R] /Count 1 >>`);
-  const cid=addObj(`<< /Type /Catalog /Pages ${pgid} 0 R >>`);
-  let out='%PDF-1.4\n%\xFF\xFF\xFF\xFF\n';
-  const offs=[];
-  objs.forEach(o=>{offs.push(out.length);out+=`${o.id} 0 obj\n${o.content}\nendobj\n`;});
-  const xo=out.length;
-  out+=`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`;
-  offs.forEach(o=>{out+=String(o).padStart(10,'0')+' 00000 n \n';});
-  out+=`trailer\n<< /Size ${objs.length+1} /Root ${cid} 0 R >>\nstartxref\n${xo}\n%%EOF`;
-  const ba=new Uint8Array(out.length);
-  for(let i=0;i<out.length;i++) ba[i]=out.charCodeAt(i)&0xff;
-  const blob=new Blob([ba],{type:'application/pdf'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download=`Pedido-${order.unit.replace(/\s+/g,'-')}-${date.toISOString().slice(0,10)}.pdf`;
-  a.click(); setTimeout(()=>URL.revokeObjectURL(url),3000);
-  toast('PDF do pedido gerado!');
-}
 
 // FEATUREHELPERS
 
@@ -7571,204 +6793,6 @@ function hidePush() {
   clearTimeout(pushTimer);
 }
 
-// Feature1:Stockminimumalerts
-function getLowStockItems(stockObj) {
-  return catalog.filter(item => {
-    const min = minimums[item.id];
-    if (!min || min <= 0) return false;
-    const qty = stockObj[item.id] || 0;
-    return qty < min;
-  });
-}
-
-function buildAlerts(stockObj, label) {
-  const low = getLowStockItems(stockObj);
-  if (!low.length) return null;
-  const zero = low.filter(i => (stockObj[i.id]||0) === 0);
-  const frag = document.createDocumentFragment();
-  if (zero.length) {
-    const b = el('div', {cls:'alert-banner danger'});
-    b.appendChild(el('span', {cls:'alert-banner-icon'}, '\uD83D\uDEA8'));
-    const bd = el('div', {cls:'alert-banner-body'});
-    bd.appendChild(el('div', {cls:'alert-banner-title'}, `${zero.length} ${zero.length===1?'item':'itens'} SEM estoque no ${label}`));
-    b.appendChild(bd); frag.appendChild(b);
-  }
-  const low2 = low.filter(i => (stockObj[i.id]||0) > 0);
-  if (low2.length) {
-    const b = el('div', {cls:'alert-banner warn'});
-    b.appendChild(el('span', {cls:'alert-banner-icon'}, '\u26A0\uFE0F'));
-    const bd = el('div', {cls:'alert-banner-body'});
-    bd.appendChild(el('div', {cls:'alert-banner-title'}, `${low2.length} ${low2.length===1?'item':'itens'} abaixo do m\u00EDnimo no ${label}`));
-    b.appendChild(bd); frag.appendChild(b);
-  }
-  return frag;
-}
-
-// Feature2:Ordertemplates
-function saveTemplate(unitName, cart) {
-  templates[unitName] = Object.entries(cart).filter(([_,q])=>q>0).map(([itemId,qty])=>({itemId,qty}));
-  save('pizza_templates', templates);
-  toast('Modelo de pedido salvo!');
-}
-function loadTemplate(unitName) {
-  return templates[unitName] || [];
-}
-
-// Feature6:Consumptionanalysis
-
-// Feature9:Receiptconfirmation
-function showReceiptModal(order) {
-  const overlay = el('div', {cls:'modal-overlay'});
-  const box = el('div', {cls:'modal-box', style:'max-width:440px'});
-
-  const header = el('div', {cls:'modal-header'});
-  header.appendChild(el('div', {cls:'modal-title'}, '\uD83D\uDE9A Confirmar Recebimento'));
-  header.appendChild(el('button', {cls:'modal-close', onclick:()=>overlay.remove()}, '\u00D7'));
-  box.appendChild(header);
-
-  const body = el('div', {cls:'modal-body'});
-  body.appendChild(el('p', {style:'font-size:13px;color:var(--text-2);margin-bottom:16px'}, `Pedido enviado pelo CPD com ${order.items.length} ${order.items.length===1?'produto':'produtos'}. Como foi o recebimento?`));
-
-  // Item preview
-  const preview = el('div', {style:'background:var(--surface-2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:16px'});
-  order.items.slice(0,5).forEach(({itemId,qty}) => {
-    const item = catalog.find(c=>c.id===itemId);
-    const row = el('div', {style:'display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--text-2)'});
-    row.appendChild(el('span', {}, item?.name||'\u2014'));
-    row.appendChild(el('span', {style:'font-weight:600;color:var(--accent)'}, `${qty} ${item?.unit||''}`));
-    preview.appendChild(row);
-  });
-  if (order.items.length > 5) {
-    preview.appendChild(el('div', {style:'font-size:11px;color:var(--text-3);margin-top:4px'}, `... e mais ${order.items.length-5} itens`));
-  }
-  body.appendChild(preview);
-  box.appendChild(body);
-
-  const footer = el('div', {cls:'modal-footer', style:'flex-direction:column;gap:8px'});
-
-  // All received
-  const allBtn = el('button', {cls:'btn btn-primary', style:'width:100%;justify-content:center', onclick:()=>{
-    order.status = 'recebido';
-    order.receivedAt = new Date().toISOString();
-    order.divergences = [];
-    save('pizza_orders', orders);
-    logAction('recebimento', `${session.name} confirmou recebimento completo do pedido do CPD em ${order.unit}`, {orderId: order.id, unit: order.unit});
-    overlay.remove();
-    render();
-    showPushNotif('\u2705 Recebimento confirmado \u2014 ' + order.unit, `${order.unit} confirmou o recebimento completo do pedido.`, []);
-    toast('Recebimento confirmado!');
-  }});
-  allBtn.textContent = '\u2705 Todos os itens recebidos';
-  footer.appendChild(allBtn);
-
-  // Incomplete
-  const incBtn = el('button', {cls:'btn btn-outline', style:'width:100%;justify-content:center;color:var(--danger);border-color:var(--danger)', onclick:()=>{
-    overlay.remove();
-    showIncompleteModal(order);
-  }});
-  incBtn.textContent = '\u26A0\uFE0F Pedido incompleto';
-  footer.appendChild(incBtn);
-
-  footer.appendChild(el('button', {cls:'btn btn-outline', style:'width:100%;color:var(--text-3)', onclick:()=>overlay.remove()}, 'Cancelar'));
-  box.appendChild(footer);
-  overlay.appendChild(box);
-  overlay.addEventListener('click', e=>{if(e.target===overlay)overlay.remove();});
-  document.body.appendChild(overlay);
-}
-
-function showIncompleteModal(order) {
-  const overlay = el('div', {cls:'modal-overlay'});
-  const box = el('div', {cls:'modal-box', style:'max-width:500px'});
-
-  const header = el('div', {cls:'modal-header'});
-  header.appendChild(el('div', {cls:'modal-title'}, '\u26A0\uFE0F Pedido Incompleto'));
-  header.appendChild(el('button', {cls:'modal-close', onclick:()=>overlay.remove()}, '\u00D7'));
-  box.appendChild(header);
-
-  const body = el('div', {cls:'modal-body', style:'max-height:60vh'});
-  body.appendChild(el('p', {style:'font-size:13px;color:var(--text-2);margin-bottom:14px'}, 'Para cada item que n\u00E3o chegou corretamente, informe a quantidade recebida. Deixe igual ao pedido se chegou certo.'));
-
-  const inputs = [];
-  order.items.forEach(({itemId, qty}) => {
-    const item = catalog.find(c=>c.id===itemId);
-    const row = el('div', {cls:'checklist-row'});
-    row.appendChild(el('span', {cls:'check-name'}, item?.name||'\u2014'));
-    row.appendChild(el('span', {cls:'check-sent'}, `Pedido: ${qty} ${item?.unit||''}`));
-    const inp = el('input', {type:'text', inputmode:'decimal', cls:'check-recv-inp', value:String(qty)});
-    inp.addEventListener('input', () => {
-      const v = parseFloat(inp.value)||0;
-      inp.className = 'check-recv-inp' + (v===qty?' ok':v<qty?' diff':'');
-    });
-    inp.dispatchEvent(new Event('input'));
-    inputs.push({itemId, sent:qty, inp, item});
-    row.appendChild(inp);
-    body.appendChild(row);
-  });
-  box.appendChild(body);
-
-  const footer = el('div', {cls:'modal-footer'});
-  footer.appendChild(el('button', {cls:'btn btn-outline', onclick:()=>{overlay.remove(); showReceiptModal(order);}}, '\u2190 Voltar'));
-  footer.appendChild(el('button', {cls:'btn btn-primary', style:'background:var(--danger)', onclick:()=>{
-    const divergences = inputs
-      .filter(({sent,inp})=> (parseFloat(inp.value)||0) !== sent)
-      .map(({itemId,sent,inp,item})=>({itemId, sent, recv:parseFloat(inp.value)||0, diff:sent-(parseFloat(inp.value)||0)}));
-
-    // Update unit stock with actually received quantities
-    if (!unitStock[order.unit]) unitStock[order.unit]={};
-    inputs.forEach(({itemId,inp})=>{
-      const recv = parseFloat(inp.value)||0;
-      unitStock[order.unit][itemId] = (unitStock[order.unit][itemId]||0) + recv;
-    });
-    // Salvar estoque de cada unidade afetada individualmente (granular)
-    Object.keys(unitStock).forEach(u => saveUnit(u, unitStock[u]));
-
-    // Mark original order as received incomplete
-    order.status = 'recebido_incompleto';
-    order.receivedAt = new Date().toISOString();
-    order.divergences = divergences;
-
-    // Create a NEW follow-up order with only the missing items
-    if (divergences.length > 0) {
-      const followUp = {
-        id: 'order_' + Date.now(),
-        unit: order.unit,
-        userName: order.userName,
-        role: order.role,
-        date: new Date().toISOString(),
-        status: 'pendente',
-        parentOrderId: order.id,  // reference to original order
-        isFollowUp: true,
-        items: divergences.map(d => ({ itemId: d.itemId, qty: d.diff }))
-      };
-      orders.unshift(followUp);
-    }
-
-    save('pizza_orders', orders);
-    logAction('recebimento_incompleto',
-      `${session.name} registrou recebimento incompleto em ${order.unit}: ${divergences.length} item${divergences.length!==1?'s':''} com diverg\u00EAncia${divergences.length>0?' \u2014 novo pedido de reenvio criado':''}`,
-      {orderId: order.id, unit: order.unit, divergences: divergences.length}
-    );
-    overlay.remove();
-    render();
-
-    const divCount = divergences.length;
-    const msg = divCount > 0
-      ? `${order.unit} reportou recebimento incompleto. ${divCount} item${divCount!==1?'s':''} com diverg\u00EAncia \u2014 novo pedido criado automaticamente com os itens faltantes.`
-      : `${order.unit} confirmou recebimento completo.`;
-    showPushNotif(
-      divCount > 0 ? '\u26A0\uFE0F Pedido incompleto \u2014 ' + order.unit : '\u2705 Recebido \u2014 ' + order.unit,
-      msg,
-      []
-    );
-    toast(divCount > 0 ? `Novo pedido criado com ${divCount} item${divCount!==1?'s':''} faltantes` : 'Recebimento confirmado!');
-  }}, 'Confirmar'));
-  box.appendChild(footer);
-  overlay.appendChild(box);
-  overlay.addEventListener('click', e=>{if(e.target===overlay)overlay.remove();});
-  document.body.appendChild(overlay);
-}
-
-// Also show unit notification banner when order status is aguardando_recebimento
 // VIEW: Dashboard consolidado (Feature 5)
 function viewDashboard() {
   const frag = document.createDocumentFragment();
@@ -7941,11 +6965,6 @@ function viewCpd() {
   const inStock = catalog.filter(i => (cpd[i.id]||0) > 0).length;
   const zeroStock = catalog.length - inStock;
 
-  // Stock minimum alerts (Feature 1)
-  // Alertas de estoque CPD desativados temporariamente (catálogo em atualização)
-
-  // Pending orders alert
-
   const metrics = el('div', {cls:'metrics-grid'});
   const makeMetric = (label, value, cls='') => {
     const c = el('div', {cls:'metric-card'});
@@ -8023,7 +7042,7 @@ function viewUnits() {
   const _catKeys_u     = Object.keys(_confData_u).filter(k => !k.startsWith('_'));
   const _catsTotal_u   = getUnitCatalog(activeUnit).categories.length;
   const _catsDone_u    = _catKeys_u.filter(cat => getCatConfirmState(activeUnit, cat, ustock) === 'confirmed').length;
-  const _reqCats_u     = DAILY_REQUIRED_CATEGORIES.filter(cat => getUnitCatalog(activeUnit).categories.includes(cat));
+  const _reqCats_u     = getDailyRequiredCategories().filter(cat => getUnitCatalog(activeUnit).categories.includes(cat));
   const _reqDone_u     = _reqCats_u.filter(cat => getCatConfirmState(activeUnit, cat, ustock) === 'confirmed').length;
   const requiredCatsDone = !isCPD() && dailyRequiredCatsConfirmed(activeUnit, ustock);
   const pdfWrapUnit    = el('div', {style:'display:flex;gap:8px;align-items:center;margin-left:auto'});
@@ -8151,6 +7170,7 @@ function gerarPdfEnvios(tipo) {
 
   // Coletar itens com falta no CPD filtrados por tipo
   const linhas = [];
+  const relevantPairs = new Set();
   UNIT_NAMES.forEach(unitName => {
     const ucat   = getUnitCatalog(unitName).catalog;
     const ustock = unitStock[unitName] || {};
@@ -8160,7 +7180,7 @@ function gerarPdfEnvios(tipo) {
       const estUnit = ustock[item.id] || 0;
       const aEnviar = calcAEnviar(unitName, item.name, estUnit, day);
       if (aEnviar === 0) return; // sem mínimo ou unidade já tem
-      if (aEnviar === 0) return;
+      relevantPairs.add(unitName + '|' + item.category);
       const cpdItem = (catalog || []).find(c => _norm(c.name) === _norm(item.name));
       const estCPD  = cpdItem ? (cpd[cpdItem.id] || 0) : 0;
       const falta   = Math.max(0, aEnviar - estCPD);
@@ -8174,6 +7194,17 @@ function gerarPdfEnvios(tipo) {
                       category: item.category, detalhe: unitName + ' (' + aEnviar + ')' });
       }
     });
+  });
+
+  const staleEntries = [];
+  relevantPairs.forEach(pair => {
+    const [unitName, cat] = pair.split('|');
+    const st = getCategoryStaleness(unitName, cat);
+    if (st) {
+      staleEntries.push(unitName + ' - ' + cat + (st.never
+        ? ' (nunca confirmada)'
+        : ' (' + st.days + (st.days === 1 ? ' dia' : ' dias') + ' atr\u00E1s)'));
+    }
   });
 
   if (linhas.length === 0) {
@@ -8211,12 +7242,19 @@ function gerarPdfEnvios(tipo) {
 
   function newPage() {
     cmds = [];
-    c(rgb(12,26,15)+' rg', ml+' '+(H-50)+' '+(W-80)+' 40 re f');
+    const warnLines = staleEntries.length > 0
+      ? wrapText('\u26A0 Contagem desatualizada usada no c\u00E1lculo: ' + staleEntries.join('; '), 95)
+      : [];
+    const extraH = warnLines.length * 11;
+    c(rgb(12,26,15)+' rg', ml+' '+(H-50-extraH)+' '+(W-80)+' '+(40+extraH)+' re f');
     c('BT /F1 13 Tf '+rgb(240,237,224)+' rg '+(ml+8)+' '+(H-34)+' Td '+pdfStr(titulo+' - '+dayFull)+' Tj ET');
     c('BT /F2 8 Tf '+rgb(168,196,174)+' rg '+(W-mr-80)+' '+(H-34)+' Td '+pdfStr(genDate)+' Tj ET');
     c('BT /F2 9 Tf '+rgb(168,196,174)+' rg '+(ml+8)+' '+(H-48)+' Td '+pdfStr(linhas.length+' itens com falta no CPD')+' Tj ET');
-    c(rgb(184,146,42)+' RG 0.8 w '+ml+' '+(H-58)+' m '+(W-mr)+' '+(H-58)+' l S');
-    const thY = H-78;
+    warnLines.forEach((wl, wi) => {
+      c('BT /F1 8 Tf '+rgb(255,214,120)+' rg '+(ml+8)+' '+(H-48-12-wi*11)+' Td '+pdfStr(wl)+' Tj ET');
+    });
+    c(rgb(184,146,42)+' RG 0.8 w '+ml+' '+(H-58-extraH)+' m '+(W-mr)+' '+(H-58-extraH)+' l S');
+    const thY = H-78-extraH;
     c(rgb(38,116,62)+' rg '+ml+' '+thY+' '+(W-ml-mr)+' 18 re f');
     ['ITEM','UN','FALTA','PARA - UNIDADES'].forEach((h,i) => {
       c('BT /F1 8 Tf 1 1 1 rg '+col[i]+' '+(thY+5)+' Td '+pdfStr(h)+' Tj ET');
@@ -8337,6 +7375,9 @@ function viewEnviosDia() {
   // Um item entra na tabela se ao menos uma unidade tiver A Enviar > 0 neste dia
   // Estrutura: Map de itemName → { unit, aEnviar, estoqueUnidade } por unidade
   const itemMap = new Map(); // itemName → { category, unit, cpdId, perUnit: {unitName: {est, aEnv}} }
+  // Unidade+categoria cujo estoque atual (potencialmente desatualizado) entrou
+  // no cálculo de A Enviar de hoje — usado para o aviso de dado desatualizado
+  const relevantPairs = new Set();
 
   UNIT_NAMES.forEach(unitName => {
     const ucat   = getUnitCatalog(unitName).catalog;
@@ -8371,6 +7412,7 @@ function viewEnviosDia() {
       if (minDia === 0) return; // sem mínimo para este dia — não é relevante
 
       const aEnviar = calcAEnviar(unitName, name, estSoma, day);
+      if (aEnviar > 0) relevantPairs.add(unitName + '|' + item.category);
 
       if (!itemMap.has(name)) {
         const cpdItem = catalog.find(c => _norm(c.name) === _norm(name));
@@ -8384,6 +7426,29 @@ function viewEnviosDia() {
       itemMap.get(name).perUnit[unitName] = { est: estSoma, aEnviar };
     });
   });
+
+  // ── Aviso de contagem desatualizada usada neste cálculo ────────────────────
+  const staleEntries = [];
+  relevantPairs.forEach(pair => {
+    const [unitName, cat] = pair.split('|');
+    const st = getCategoryStaleness(unitName, cat);
+    if (st) {
+      staleEntries.push(unitName + ' \u2014 ' + cat + (st.never
+        ? ' (nunca confirmada)'
+        : ' (' + st.days + (st.days === 1 ? ' dia' : ' dias') + ' atr\u00E1s)'));
+    }
+  });
+  if (staleEntries.length > 0) {
+    const staleBanner = el('div', {cls:'alert-banner warn', style:'margin-bottom:14px'});
+    const icon = el('span', {cls:'alert-banner-icon'}, '\u26A0\uFE0F');
+    const body = el('div', {cls:'alert-banner-body'});
+    body.appendChild(el('div', {cls:'alert-banner-title'}, 'Este cálculo usa contagem desatualizada'));
+    body.appendChild(el('div', {cls:'alert-banner-items'},
+      staleEntries.join(' \u00B7 ') + '. O valor de A Enviar usa o último estoque registrado, não uma contagem de hoje.'));
+    staleBanner.appendChild(icon);
+    staleBanner.appendChild(body);
+    frag.appendChild(staleBanner);
+  }
 
   // Enriquecer com totais e situação
   const rows = [];
@@ -10298,8 +9363,7 @@ function render() {
 
   // Notificações de recebimento pendentes
 
-  // Avisos de contagem (em aberto / auto-salva pelo reset das 6h)
-  renderResetNoticeBanner();
+  // Aviso de contagem em aberto (rascunho que não morre sozinho — só finaliza ou descarta)
   renderOpenCountBanner();
 }
 
