@@ -2352,6 +2352,11 @@ const CATEGORIES = [
   'Limpeza',
 ];
 
+// Categorias que precisam ser contadas TODO dia. As demais ainda não têm
+// uma regra de frequência definida (fica a critério da operação por enquanto).
+// Ajustar esta lista aqui caso a regra mude no futuro.
+const DAILY_REQUIRED_CATEGORIES = ['Refrigerados', 'Estoque Seco'];
+
 const MEASURES = ['Un','PCT','Cx','Kg','g','L','mL','Saco','Balde','Pe\u00E7a','Bandeja','Por\u00E7\u00E3o','Ma\u00E7o','Pote','Garrafa','Rolo','Gal\u00E3o','Barril','Caixa','Fardo'];
 
 const SEED_CATALOG = [
@@ -5113,18 +5118,22 @@ function _checkDailyReset() {
   console.log('[Confirmação] Reset diário às 6h executado');
 }
 
-// Verifica cada unidade: categoria(s) confirmada(s) sem Confirmação Geral =
-// contagem que ficaria de fora do histórico. Salva um snapshot de emergência
-// com o estoque atual da unidade e registra um aviso (lido em
-// renderResetNoticeBanner) para avisar o responsável quando o app abrir.
+// Verifica cada unidade: as categorias OBRIGATÓRIAS do dia (Refrigerados e
+// Estoque Seco) foram confirmadas mas a Confirmação Geral não — ou seja, a
+// contagem do dia realmente deveria ter sido finalizada e não foi. Categorias
+// opcionais confirmadas sozinhas (sem as obrigatórias) NÃO disparam isso,
+// porque nem toda categoria precisa ser contada todo dia.
+// Salva um snapshot de emergência com o estoque atual da unidade e registra
+// um aviso (lido em renderResetNoticeBanner) para avisar o responsável quando
+// o app abrir.
 function _autoSalvarPendentesAntesDoReset() {
   const unidadesAfetadas = [];
   UNIT_NAMES.forEach(unitName => {
     const slug = unitSlug(unitName);
     const confData = catConfirmations[slug] || {};
-    const catKeys = Object.keys(confData).filter(k => !k.startsWith('_'));
     const hasGeneral = !!confData._general;
-    if (catKeys.length > 0 && !hasGeneral) {
+    const ustock = unitStock[unitName] || {};
+    if (dailyRequiredCatsConfirmed(unitName, ustock) && !hasGeneral) {
       unidadesAfetadas.push(unitName);
       if (window._fb && window._fb.ready && typeof db !== 'undefined') {
         saveHistoricoSnapshot(unitName, '\u26A0\uFE0F Auto-salvo (n\u00E3o finalizado \u00E0s 6h)');
@@ -5178,9 +5187,21 @@ function getCatConfirmState(unitName, cat, stockObj) {
 }
 
 // Verificar se TODAS as categorias da unidade estão confirmadas
+// (não usada para gatilhos de aviso — ver dailyRequiredCatsConfirmed abaixo,
+// já que nem toda categoria precisa ser contada todo dia)
 function allCatsConfirmed(unitName, stockObj) {
   const cats = getUnitCatalog(unitName).categories;
   return cats.every(cat => getCatConfirmState(unitName, cat, stockObj) === 'confirmed');
+}
+
+// Verificar se as categorias OBRIGATÓRIAS DO DIA (DAILY_REQUIRED_CATEGORIES)
+// estão confirmadas. É este o critério real usado para avisar/liberar a
+// Confirmação Geral — as demais categorias ainda não têm frequência definida.
+function dailyRequiredCatsConfirmed(unitName, stockObj) {
+  const unitCats = getUnitCatalog(unitName).categories;
+  const required = DAILY_REQUIRED_CATEGORIES.filter(cat => unitCats.includes(cat));
+  if (required.length === 0) return false; // unidade sem essas categorias — não se aplica
+  return required.every(cat => getCatConfirmState(unitName, cat, stockObj) === 'confirmed');
 }
 
 // Confirmação geral (gerente)
@@ -5231,21 +5252,20 @@ function getGeneralConfirmState(unitName) {
 }
 
 // ═══ AVISO DE CONTAGEM EM ABERTO ═══════════════════════════════════════════
-// Lista as unidades que têm progresso de contagem (categoria confirmada ou
-// itens marcados na janela atual) mas ainda não fizeram a Confirmação Geral —
-// ou seja, o snapshot de hoje ainda NÃO foi salvo em pizza_history.
+// Lista as unidades onde as categorias obrigatórias do dia (Refrigerados e
+// Estoque Seco) já foram confirmadas, mas a Confirmação Geral ainda não foi
+// feita — ou seja, o snapshot de hoje ainda NÃO foi salvo em pizza_history.
+// Não dispara s\u00f3 porque alguma categoria opcional foi confirmada, já que
+// nem toda categoria precisa ser contada todo dia.
 function getOpenCountUnits() {
   const abertas = [];
   UNIT_NAMES.forEach(unitName => {
     const slug = unitSlug(unitName);
     const confData = catConfirmations[slug] || {};
-    const catKeys = Object.keys(confData).filter(k => !k.startsWith('_'));
     const hasGeneral = !!confData._general;
-    const wk = windowKey();
-    const itemsMarcados = (countedMap[slug] && countedMap[slug][wk])
-      ? Object.keys(countedMap[slug][wk]).length : 0;
-    if ((catKeys.length > 0 || itemsMarcados > 0) && !hasGeneral) {
-      abertas.push({ unitName, catCount: catKeys.length, itemCount: itemsMarcados });
+    const ustock = unitStock[unitName] || {};
+    if (dailyRequiredCatsConfirmed(unitName, ustock) && !hasGeneral) {
+      abertas.push({ unitName });
     }
   });
   return abertas;
@@ -5299,7 +5319,7 @@ function renderOpenCountBanner() {
   const titulo = abertas.length === 1
     ? 'Contagem em aberto \u2014 ' + nomes
     : 'Contagens em aberto \u2014 ' + nomes;
-  const corpo = 'Há itens marcados/categorias confirmadas que ainda não passaram por "Confirmar Contagem Geral". '
+  const corpo = 'Refrigerados e Estoque Seco já foram confirmados, mas ainda falta "Confirmar Contagem Geral". '
     + 'Sem essa confirmação, o dia de hoje não entra no histórico usado nos relatórios de envio semanal.';
   _buildBannerContent(el, '\u26A0\uFE0F', titulo, corpo, null);
 }
@@ -6463,7 +6483,11 @@ function el(tag, attrs={}, ...children) {
                   'Atualize a confirmação desta categoria.',
                   (name) => {
                     confirmCategory(unitName, cat, name, stockObj);
-                    toast('\u2713 ' + cat + ' reconfirmada por ' + name);
+                    if (dailyRequiredCatsConfirmed(unitName, stockObj) && !getGeneralConfirmState(unitName)) {
+                      toast('\u2705 Refrigerados e Estoque Seco confirmados! Confirme a Contagem Geral para finalizar.');
+                    } else {
+                      toast('\u2713 ' + cat + ' reconfirmada por ' + name);
+                    }
                     render();
                   }
                 );
@@ -6497,7 +6521,11 @@ function el(tag, attrs={}, ...children) {
                 'Confirme a contagem desta categoria digitando seu nome.',
                 (name) => {
                   confirmCategory(unitName, cat, name, stockObj);
-                  toast('\u2713 ' + cat + ' confirmada por ' + name);
+                  if (dailyRequiredCatsConfirmed(unitName, stockObj) && !getGeneralConfirmState(unitName)) {
+                    toast('\u2705 Refrigerados e Estoque Seco confirmados! Confirme a Contagem Geral para finalizar.');
+                  } else {
+                    toast('\u2713 ' + cat + ' confirmada por ' + name);
+                  }
                   render();
                 }
               );
@@ -7989,36 +8017,70 @@ function viewUnits() {
   const th = el('div', {cls:'table-header'});
   th.appendChild(el('span', {cls:'table-title'}, 'Estoque \u2014 '+activeUnit));
   // ── Confirmação geral (gerente) ──────────────────────────────────────────
-  const generalState  = getGeneralConfirmState(activeUnit);
-  const _slug_u       = unitSlug(activeUnit);
-  const _confData_u   = catConfirmations[_slug_u] || {};
-  const anyCatConfirmed = !isCPD() && Object.keys(_confData_u)
-    .filter(k => !k.startsWith('_'))
-    .some(cat => getCatConfirmState(activeUnit, cat, ustock) === 'confirmed');
-  const pdfWrapUnit   = el('div', {style:'display:flex;gap:8px;align-items:center;margin-left:auto'});
+  const generalState   = getGeneralConfirmState(activeUnit);
+  const _slug_u        = unitSlug(activeUnit);
+  const _confData_u    = catConfirmations[_slug_u] || {};
+  const _catKeys_u     = Object.keys(_confData_u).filter(k => !k.startsWith('_'));
+  const _catsTotal_u   = getUnitCatalog(activeUnit).categories.length;
+  const _catsDone_u    = _catKeys_u.filter(cat => getCatConfirmState(activeUnit, cat, ustock) === 'confirmed').length;
+  const _reqCats_u     = DAILY_REQUIRED_CATEGORIES.filter(cat => getUnitCatalog(activeUnit).categories.includes(cat));
+  const _reqDone_u     = _reqCats_u.filter(cat => getCatConfirmState(activeUnit, cat, ustock) === 'confirmed').length;
+  const requiredCatsDone = !isCPD() && dailyRequiredCatsConfirmed(activeUnit, ustock);
+  const pdfWrapUnit    = el('div', {style:'display:flex;gap:8px;align-items:center;margin-left:auto'});
 
   if (!isCPD()) {
-    if (anyCatConfirmed && !generalState) {
-      // Todas categorias confirmadas — mostrar botão de confirmação geral
-      const genBtn = el('button', {cls:'btn btn-sm', style:'background:var(--accent,#2a6049);color:#fff;font-size:12px'});
-      genBtn.textContent = '\u2713 Confirmar Contagem Geral';
-      genBtn.addEventListener('click', () => {
-        openConfirmModal(
-          'Confirmar Contagem Geral',
-          'Confirme a contagem completa de ' + activeUnit + ' digitando seu nome (gerente).',
-          (name) => {
-            confirmGeneral(activeUnit, name);
-            toast('\u2713 Contagem geral confirmada por ' + name);
-            render();
-          }
-        );
-      });
-      pdfWrapUnit.appendChild(genBtn);
-    } else if (generalState) {
+    if (generalState) {
       const genInfo = el('span', {style:'font-size:11px;color:var(--accent-dark,#2a6049);font-weight:600'});
       genInfo.textContent = '\u2713 Geral: ' + generalState.name + ' ' + new Date(generalState.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
       pdfWrapUnit.appendChild(genInfo);
+    } else if (!requiredCatsDone) {
+      // Contagem ainda em andamento — mostrar progresso das categorias obrigatórias do dia
+      const progInfo = el('span', {style:'font-size:11px;color:var(--text-3,#888);font-weight:600'});
+      progInfo.textContent = _reqDone_u + '/' + _reqCats_u.length + ' obrigatórias confirmadas ('
+        + _catsDone_u + '/' + _catsTotal_u + ' categorias no total)';
+      pdfWrapUnit.appendChild(progInfo);
     }
+  }
+
+  th.appendChild(pdfWrapUnit);
+  tableBlock.appendChild(th);
+
+  // Aviso grande e destacado: as categorias obrigatórias do dia (Refrigerados
+  // e Estoque Seco) já foram confirmadas, mas a Confirmação Geral (que salva
+  // o histórico do dia) ainda não foi feita. As demais categorias são
+  // opcionais no dia a dia — não bloqueiam este aviso.
+  if (!isCPD() && requiredCatsDone && !generalState) {
+    const finishBanner = el('div', {style:
+      'display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;' +
+      'background:var(--accent-bg,#EAF6EF);border:2px solid var(--accent,#2a6049);' +
+      'border-radius:var(--radius);padding:16px 20px;margin:0 0 14px'
+    });
+    const finishText = el('div', {});
+    const finishTitle = el('div', {style:'font-weight:700;font-size:15px;color:var(--accent-dark,#2a6049)'},
+      '\u2705 Refrigerados e Estoque Seco confirmados');
+    const finishSub = el('div', {style:'font-size:13px;color:var(--text-2,#555);margin-top:2px'},
+      'Falta só finalizar: confirme a Contagem Geral para salvar o histórico de hoje.');
+    finishText.appendChild(finishTitle);
+    finishText.appendChild(finishSub);
+    const genBtn = el('button', {style:
+      'background:var(--accent,#2a6049);color:#fff;font-size:16px;font-weight:700;' +
+      'padding:14px 28px;border:none;border-radius:var(--radius);cursor:pointer;white-space:nowrap'
+    });
+    genBtn.textContent = '\u2713 Confirmar Contagem Geral';
+    genBtn.addEventListener('click', () => {
+      openConfirmModal(
+        'Confirmar Contagem Geral',
+        'Confirme a contagem completa de ' + activeUnit + ' digitando seu nome (gerente).',
+        (name) => {
+          confirmGeneral(activeUnit, name);
+          toast('\u2713 Contagem geral confirmada por ' + name);
+          render();
+        }
+      );
+    });
+    finishBanner.appendChild(finishText);
+    finishBanner.appendChild(genBtn);
+    tableBlock.appendChild(finishBanner);
   }
 
   const pdfUnitBtn = el('button', {cls:'btn btn-outline btn-sm'});
@@ -8031,8 +8093,6 @@ function viewUnits() {
     pdfUnitBtn.addEventListener('click', () => printStockPdf(activeUnit, ustock));
   }
   pdfWrapUnit.appendChild(pdfUnitBtn);
-  th.appendChild(pdfWrapUnit);
-  tableBlock.appendChild(th);
   const inner = el('div', {style:'padding:14px 18px 18px'});
   // Only the unit's own logged-in user can edit their stock panel
   const canEditUnit = !isCPD() && session && session.unit === activeUnit;
