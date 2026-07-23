@@ -2049,6 +2049,17 @@ auth.onAuthStateChanged(user => {
     const val = snap.val(); if (!val) return;
     countedMap = val;
     saveLocal('pizza_counted', countedMap);
+    if (typeof renderOpenCountBanner === 'function') renderOpenCountBanner();
+  });
+
+  // Sincroniza o estado de confirmação de categoria/geral entre dispositivos
+  // (necessário para o CPD enxergar contagens em aberto das unidades)
+  db.ref('dados/pizza_cat_confirms').on('value', snap => {
+    if (!window._fb.ready) return;
+    const val = snap.val(); if (!val) return;
+    catConfirmations = val;
+    saveLocal('pizza_cat_confirms', catConfirmations);
+    if (typeof renderOpenCountBanner === 'function') renderOpenCountBanner();
   });
 
   // ── 8. ESTOQUE DAS UNIDADES (granular por unidade) ─────────────────────────
@@ -2281,6 +2292,8 @@ auth.onAuthStateChanged(user => {
       </div>
     </div>
   </div>
+  <div id="reset-notice-banner" class="alert-banner warn" style="display:none;margin:12px 16px 0"></div>
+  <div id="open-count-banner" class="alert-banner warn" style="display:none;margin:12px 16px 0"></div>
   <div class="content" id="content"></div>
 </main>
 
@@ -5085,11 +5098,48 @@ function _checkDailyReset() {
   const brt = new Date(now.getTime() - 3*60*60*1000); // UTC-3
   const resetKey = brt.toISOString().slice(0,10) + '-reset';
   if (catConfirmations._resetKey === resetKey) return; // já resetou hoje
+
+  // Antes de apagar o progresso do dia: se alguma unidade tiver categoria(s)
+  // confirmada(s) mas nunca chegou à Confirmação Geral, o snapshot em
+  // pizza_history nunca seria salvo — e o dia sumiria dos relatórios sem
+  // nenhum aviso. Para não perder o dado, salvamos um snapshot automático
+  // (marcado como não finalizado) e deixamos um aviso para quem abrir o app.
+  _autoSalvarPendentesAntesDoReset();
+
   // Resetar apenas as confirmações, manter o resto
   const newConf = { _resetKey: resetKey };
   catConfirmations = newConf;
   save('pizza_cat_confirms', catConfirmations);
   console.log('[Confirmação] Reset diário às 6h executado');
+}
+
+// Verifica cada unidade: categoria(s) confirmada(s) sem Confirmação Geral =
+// contagem que ficaria de fora do histórico. Salva um snapshot de emergência
+// com o estoque atual da unidade e registra um aviso (lido em
+// renderResetNoticeBanner) para avisar o responsável quando o app abrir.
+function _autoSalvarPendentesAntesDoReset() {
+  const unidadesAfetadas = [];
+  UNIT_NAMES.forEach(unitName => {
+    const slug = unitSlug(unitName);
+    const confData = catConfirmations[slug] || {};
+    const catKeys = Object.keys(confData).filter(k => !k.startsWith('_'));
+    const hasGeneral = !!confData._general;
+    if (catKeys.length > 0 && !hasGeneral) {
+      unidadesAfetadas.push(unitName);
+      if (window._fb && window._fb.ready && typeof db !== 'undefined') {
+        saveHistoricoSnapshot(unitName, '\u26A0\uFE0F Auto-salvo (n\u00E3o finalizado \u00E0s 6h)');
+      }
+    }
+  });
+  if (unidadesAfetadas.length > 0) {
+    try {
+      const pendentes = JSON.parse(localStorage.getItem('_avisosResetDiario') || '[]');
+      pendentes.push({ ts: Date.now(), unidades: unidadesAfetadas });
+      // Mantém só os últimos 10 avisos, para não crescer indefinidamente
+      localStorage.setItem('_avisosResetDiario', JSON.stringify(pendentes.slice(-10)));
+      console.warn('[Confirmação] Reset com contagem pendente — auto-salvo para:', unidadesAfetadas.join(', '));
+    } catch(e) {}
+  }
 }
 
 // Verificar se a hora atual é após 6h BRT (para decidir se deve resetar)
@@ -5178,6 +5228,112 @@ function getGeneralConfirmState(unitName) {
   const slug = unitSlug(unitName);
   return catConfirmations[slug] && catConfirmations[slug]._general
     ? catConfirmations[slug]._general : null;
+}
+
+// ═══ AVISO DE CONTAGEM EM ABERTO ═══════════════════════════════════════════
+// Lista as unidades que têm progresso de contagem (categoria confirmada ou
+// itens marcados na janela atual) mas ainda não fizeram a Confirmação Geral —
+// ou seja, o snapshot de hoje ainda NÃO foi salvo em pizza_history.
+function getOpenCountUnits() {
+  const abertas = [];
+  UNIT_NAMES.forEach(unitName => {
+    const slug = unitSlug(unitName);
+    const confData = catConfirmations[slug] || {};
+    const catKeys = Object.keys(confData).filter(k => !k.startsWith('_'));
+    const hasGeneral = !!confData._general;
+    const wk = windowKey();
+    const itemsMarcados = (countedMap[slug] && countedMap[slug][wk])
+      ? Object.keys(countedMap[slug][wk]).length : 0;
+    if ((catKeys.length > 0 || itemsMarcados > 0) && !hasGeneral) {
+      abertas.push({ unitName, catCount: catKeys.length, itemCount: itemsMarcados });
+    }
+  });
+  return abertas;
+}
+
+// Monta o conteúdo de um alert-banner a partir de ícone/título/corpo, com
+// botão de fechar opcional
+function _buildBannerContent(el, icone, titulo, corpo, onClose) {
+  el.innerHTML = '';
+  el.style.display = 'flex';
+  const iconEl = document.createElement('span');
+  iconEl.className = 'alert-banner-icon';
+  iconEl.textContent = icone;
+  const body = document.createElement('div');
+  body.className = 'alert-banner-body';
+  const titleEl = document.createElement('div');
+  titleEl.className = 'alert-banner-title';
+  titleEl.textContent = titulo;
+  const itemsEl = document.createElement('div');
+  itemsEl.className = 'alert-banner-items';
+  itemsEl.textContent = corpo;
+  body.appendChild(titleEl);
+  body.appendChild(itemsEl);
+  el.appendChild(iconEl);
+  el.appendChild(body);
+  if (onClose) {
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '\u2715';
+    closeBtn.setAttribute('aria-label', 'Fechar aviso');
+    closeBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:13px;color:inherit;opacity:.6;margin-left:8px;align-self:flex-start';
+    closeBtn.addEventListener('click', onClose);
+    el.appendChild(closeBtn);
+  }
+}
+
+// Banner persistente (não fechável) — mostra contagens ainda não finalizadas.
+// Unidade vê só a própria; CPD vê todas.
+function renderOpenCountBanner() {
+  const el = document.getElementById('open-count-banner');
+  if (!el || !session) return;
+  const abertas = isCPD()
+    ? getOpenCountUnits()
+    : getOpenCountUnits().filter(u => u.unitName === session.unit);
+
+  if (abertas.length === 0) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const nomes = abertas.map(u => u.unitName).join(', ');
+  const titulo = abertas.length === 1
+    ? 'Contagem em aberto \u2014 ' + nomes
+    : 'Contagens em aberto \u2014 ' + nomes;
+  const corpo = 'Há itens marcados/categorias confirmadas que ainda não passaram por "Confirmar Contagem Geral". '
+    + 'Sem essa confirmação, o dia de hoje não entra no histórico usado nos relatórios de envio semanal.';
+  _buildBannerContent(el, '\u26A0\uFE0F', titulo, corpo, null);
+}
+
+// Banner fechável — avisa quando o reset automático das 6h precisou
+// auto-salvar uma contagem que não tinha sido finalizada a tempo.
+function renderResetNoticeBanner() {
+  const el = document.getElementById('reset-notice-banner');
+  if (!el || !session) return;
+  let avisos = [];
+  try { avisos = JSON.parse(localStorage.getItem('_avisosResetDiario') || '[]'); } catch(e) {}
+  const relevantes = isCPD() ? avisos : avisos.filter(a => a.unidades.includes(session.unit));
+
+  if (relevantes.length === 0) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const linhas = relevantes.map(a => {
+    const dt = new Date(a.ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+    return (isCPD() ? a.unidades.join(', ') + ' em ' : '') + dt;
+  });
+  const titulo = 'Contagem não finalizada foi salva automaticamente';
+  const corpo = 'O reset das 6h encontrou uma contagem sem a Confirmação Geral e salvou um snapshot '
+    + 'marcado como "auto-salvo" para não perder o dia (' + linhas.join(' \u00B7 ') + '). '
+    + 'Vale conferir se os números batem no Histórico de Contagens.';
+  _buildBannerContent(el, '\uD83D\uDD53', titulo, corpo, () => {
+    try {
+      const restantes = isCPD() ? [] : avisos.filter(a => !a.unidades.includes(session.unit));
+      localStorage.setItem('_avisosResetDiario', JSON.stringify(restantes));
+    } catch(e) {}
+    el.style.display = 'none';
+    el.innerHTML = '';
+  });
 }
 
 // Modal de confirmação genérico (categoria ou geral)
@@ -10081,6 +10237,10 @@ function render() {
   }
 
   // Notificações de recebimento pendentes
+
+  // Avisos de contagem (em aberto / auto-salva pelo reset das 6h)
+  renderResetNoticeBanner();
+  renderOpenCountBanner();
 }
 
 // INIT
