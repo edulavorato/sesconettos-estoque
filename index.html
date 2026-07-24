@@ -6583,6 +6583,61 @@ function el(tag, attrs={}, ...children) {
   return wrap;
 }
 
+// Modal de seleção de categorias antes de gerar o PDF de contagem (CPD ou
+// unidade). Permite escolher só as categorias que devem entrar no PDF.
+function openPdfCategoriesModal(pdfLabel, stockObj, categories) {
+  const overlay = el('div', {cls:'confirm-modal-overlay'});
+  const box = el('div', {cls:'confirm-modal-box'});
+
+  const hdr = el('div', {cls:'confirm-modal-hdr'});
+  hdr.appendChild(el('div', {cls:'confirm-modal-title'}, 'Gerar PDF de Contagem'));
+  hdr.appendChild(el('div', {cls:'confirm-modal-sub'}, 'Selecione as categorias que devem entrar no PDF.'));
+  box.appendChild(hdr);
+
+  const body = el('div', {cls:'confirm-modal-body'});
+  const selectRow = el('div', {style:'display:flex;gap:8px;margin-bottom:10px'});
+  const selAllBtn  = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:11px;padding:4px 10px'}, 'Selecionar todas');
+  const selNoneBtn = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:11px;padding:4px 10px'}, 'Nenhuma');
+  selectRow.appendChild(selAllBtn);
+  selectRow.appendChild(selNoneBtn);
+  body.appendChild(selectRow);
+
+  const listWrap = el('div', {style:'display:flex;flex-direction:column;gap:8px'});
+  const checks = [];
+  (categories || []).forEach(cat => {
+    const label = el('label', {style:'display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer'});
+    const cb = el('input', {type:'checkbox'});
+    cb.checked = true;
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(cat));
+    listWrap.appendChild(label);
+    checks.push({ cat, cb });
+  });
+  body.appendChild(listWrap);
+  box.appendChild(body);
+
+  selAllBtn.addEventListener('click', () => checks.forEach(c => { c.cb.checked = true; }));
+  selNoneBtn.addEventListener('click', () => checks.forEach(c => { c.cb.checked = false; }));
+
+  const ftr = el('div', {cls:'confirm-modal-ftr'});
+  const cancelBtn = el('button', {cls:'btn btn-outline btn-sm'}, 'Cancelar');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  const okBtn = el('button', {cls:'btn btn-sm', style:'background:var(--accent,#1A5229);color:#fff'}, 'Gerar PDF');
+  okBtn.addEventListener('click', () => {
+    const selected = checks.filter(c => c.cb.checked).map(c => c.cat);
+    if (selected.length === 0) { toast('Selecione ao menos uma categoria.'); return; }
+    overlay.remove();
+    printStockPdf(pdfLabel, stockObj, selected);
+  });
+  ftr.appendChild(cancelBtn);
+  ftr.appendChild(okBtn);
+  box.appendChild(ftr);
+
+  overlay.appendChild(box);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function printStockPdf(unitLabel, stockObj, onlyCategory) {
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
@@ -6594,10 +6649,15 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
   const _unitInfo  = (unitLabel !== 'CPD') ? getUnitCatalog(unitLabel) : null;
   const pdfCatSrc  = (unitLabel === 'CPD') ? catalog   : _unitInfo.catalog;
   const pdfCats    = (unitLabel === 'CPD') ? CATEGORIES : _unitInfo.categories;
+  // onlyCategory pode ser uma string (uma categoria) ou um array (várias
+  // categorias selecionadas no modal de seleção) — normaliza para array.
+  const _catFilter = onlyCategory
+    ? (Array.isArray(onlyCategory) ? onlyCategory : [onlyCategory])
+    : null;
   const byCategory = {};
   pdfCats.forEach(cat => { byCategory[cat] = []; });
   pdfCatSrc.forEach(item => {
-    if (onlyCategory && item.category !== onlyCategory) return;
+    if (_catFilter && !_catFilter.includes(item.category)) return;
     const qty = stockObj[item.id] || 0;
     const min = minimums[item.id] || 0;
     if (!byCategory[item.category]) byCategory[item.category] = [];
@@ -7142,7 +7202,7 @@ function viewCpd() {
   const tableBlock = el('div', {cls:'table-wrap'});
   const th = el('div', {cls:'table-header'});
   th.appendChild(el('span', {cls:'table-title'}, 'Estoque atual \u2014 CPD'));
-  const pdfBtn = el('button', {cls:'btn btn-outline btn-sm', style:'margin-left:auto', onclick:()=>printStockPdf('CPD', cpd)});
+  const pdfBtn = el('button', {cls:'btn btn-outline btn-sm', style:'margin-left:auto', onclick:()=>openPdfCategoriesModal('CPD', cpd, CATEGORIES)});
   pdfBtn.innerHTML = '\uD83D\uDCC4 PDF Contagem';
   th.appendChild(pdfBtn);
   tableBlock.appendChild(th);
@@ -7271,7 +7331,7 @@ function viewUnits() {
     pdfUnitBtn.classList.add('cat-pdf-btn-blocked');
     pdfUnitBtn.title = 'Confirme todas as categorias e a contagem geral para gerar o PDF';
   } else {
-    pdfUnitBtn.addEventListener('click', () => printStockPdf(activeUnit, ustock));
+    pdfUnitBtn.addEventListener('click', () => openPdfCategoriesModal(activeUnit, ustock, getUnitCatalog(activeUnit).categories));
   }
   pdfWrapUnit.appendChild(pdfUnitBtn);
   const inner = el('div', {style:'padding:14px 18px 18px'});
@@ -7506,6 +7566,131 @@ function gerarPdfEnvios(tipo) {
   toast('PDF ' + (tipo === 'produzido' ? 'Producao' : 'Compras') + ' gerado!');
 }
 
+// PDF da "Tabela de Envios" — a mesma tabela-matriz da tela (agrupada por
+// categoria, na mesma ordem), mas sem as colunas de estoque (Est. CPD e
+// Est. de cada unidade) e sem a coluna Situação: só item + quantidade a
+// enviar por unidade. Recebe as linhas já filtradas/buscadas como aparecem
+// na tela no momento do clique.
+function gerarPdfEnviosTabela(rows, dayFull) {
+  if (!rows || rows.length === 0) {
+    toast('Nenhum item para gerar o PDF com os filtros atuais.');
+    return;
+  }
+
+  function rgb(r,g,b) { return (r/255).toFixed(3)+' '+(g/255).toFixed(3)+' '+(b/255).toFixed(3); }
+  const W = 595.28, H = 841.89, ml = 40, mr = 40, TW = W - ml - mr;
+  const genDate = new Date().toLocaleDateString('pt-BR');
+  const nUnits  = UNIT_NAMES.length;
+  const itemW   = TW * 0.34;
+  const unitW   = (TW - itemW) / nUnits;
+  const col     = [ml + 2];
+  for (let i = 0; i < nUnits; i++) col.push(ml + itemW + unitW * i);
+  const rowH = 16, MARGIN_BOT = 50;
+
+  const pages = [];
+  let cmds = [];
+  const c = (...p) => cmds.push(p.join(' '));
+
+  function newPage() {
+    cmds = [];
+    c(rgb(12,26,15)+' rg', ml+' '+(H-50)+' '+(W-80)+' 40 re f');
+    c('BT /F1 13 Tf '+rgb(240,237,224)+' rg '+(ml+8)+' '+(H-34)+' Td '+pdfStr('Tabela de Envios - '+dayFull)+' Tj ET');
+    c('BT /F2 8 Tf '+rgb(168,196,174)+' rg '+(W-mr-80)+' '+(H-34)+' Td '+pdfStr(genDate)+' Tj ET');
+    c('BT /F2 9 Tf '+rgb(168,196,174)+' rg '+(ml+8)+' '+(H-48)+' Td '+pdfStr(rows.length+' itens')+' Tj ET');
+    c(rgb(184,146,42)+' RG 0.8 w '+ml+' '+(H-58)+' m '+(W-mr)+' '+(H-58)+' l S');
+    const thY = H-78;
+    c(rgb(38,116,62)+' rg '+ml+' '+thY+' '+(W-ml-mr)+' 18 re f');
+    c('BT /F1 8 Tf 1 1 1 rg '+col[0]+' '+(thY+5)+' Td '+pdfStr('ITEM')+' Tj ET');
+    UNIT_NAMES.forEach((u, i) => {
+      c('BT /F1 7 Tf 1 1 1 rg '+col[i+1]+' '+(thY+5)+' Td '+pdfStr(u.toUpperCase())+' Tj ET');
+    });
+    return thY - 2;
+  }
+
+  function closePage() {
+    c(rgb(218,215,197)+' RG 0.5 w '+ml+' 36 m '+(W-mr)+' 36 l S');
+    c('BT /F2 8 Tf '+rgb(154,152,128)+' rg '+ml+' 24 Td '+pdfStr("Sesconetto's Pizzeria  -  Sistema de Estoque")+' Tj ET');
+    pages.push(cmds.slice());
+  }
+
+  let y = newPage();
+  let lastCat = null;
+  let rowIdx = 0;
+
+  rows.forEach(row => {
+    const cat  = row._catOrder || row.category;
+    const catH = (cat !== lastCat) ? 15 : 0;
+
+    if (y - catH - rowH < MARGIN_BOT) {
+      closePage();
+      y = newPage();
+      lastCat = null;
+    }
+
+    if (cat !== lastCat) {
+      lastCat = cat;
+      c(rgb(220,238,224)+' rg '+ml+' '+(y-13)+' '+(W-ml-mr)+' 14 re f');
+      c('BT /F1 8 Tf '+rgb(16,48,22)+' rg '+(ml+4)+' '+(y-9)+' Td '+pdfStr(cat.toUpperCase())+' Tj ET');
+      y -= 15;
+    }
+
+    if (rowIdx%2===0) c(rgb(253,252,247)+' rg '+ml+' '+(y-rowH)+' '+(W-ml-mr)+' '+rowH+' re f');
+    else              c(rgb(245,242,232)+' rg '+ml+' '+(y-rowH)+' '+(W-ml-mr)+' '+rowH+' re f');
+
+    const midY     = y - rowH/2 - 3;
+    const maxChars = Math.floor(itemW / 5.2);
+    const nm = row.name.length > maxChars ? row.name.substring(0, maxChars-3)+'...' : row.name;
+    c('BT /F2 9 Tf '+rgb(26,26,18)+' rg '+col[0]+' '+midY+' Td '+pdfStr(nm)+' Tj ET');
+    UNIT_NAMES.forEach((u, i) => {
+      const pu  = row.perUnit ? row.perUnit[u] : null;
+      const has = pu && pu.aEnviar > 0;
+      const val = has ? String(pu.aEnviar) : '-';
+      const clr = has ? rgb(26,82,41) : rgb(160,158,140);
+      c('BT /F1 9 Tf '+clr+' rg '+col[i+1]+' '+midY+' Td '+pdfStr(val)+' Tj ET');
+    });
+    c(rgb(218,215,197)+' RG 0.3 w '+ml+' '+(y-rowH)+' m '+(W-mr)+' '+(y-rowH)+' l S');
+    y -= rowH;
+    rowIdx++;
+  });
+  closePage();
+
+  // Montar PDF multipágina
+  const objs = [];
+  function addObj(cnt) { const id=objs.length+1; objs.push({id,content:cnt}); return id; }
+  const f1id = addObj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+  const f2id = addObj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+  const pageObjIds = [];
+  pages.forEach(pageCmds => {
+    const sc = pageCmds.join(String.fromCharCode(10));
+    const NL2=String.fromCharCode(10); const sid = addObj('<< /Length '+sc.length+' >>'+NL2+'stream'+NL2+sc+NL2+'endstream');
+    const pid = addObj('<< /Type /Page /Parent 999 0 R /MediaBox [0 0 '+W+' '+H+'] /Contents '+sid+' 0 R /Resources << /Font << /F1 '+f1id+' 0 R /F2 '+f2id+' 0 R >> >> >>');
+    pageObjIds.push(pid);
+  });
+  const pagesId = objs.length + 1;
+  const catId   = addObj('<< /Type /Catalog /Pages '+(pagesId+1)+' 0 R >>');
+  addObj('<< /Type /Pages /Kids ['+pageObjIds.map(id=>id+' 0 R').join(' ')+'] /Count '+pages.length+' >>');
+  objs.forEach(obj => { obj.content = obj.content.replace('/Parent 999 0 R','/Parent '+pagesId+' 0 R'); });
+
+  let out = '%PDF-1.4'+String.fromCharCode(10)+'%'+String.fromCharCode(255,255,255,255)+String.fromCharCode(10);
+  const offsets = [];
+  objs.forEach(obj => { offsets.push(out.length); out += obj.id+' 0 obj'+String.fromCharCode(10)+obj.content+String.fromCharCode(10)+'endobj'+String.fromCharCode(10); });
+  const xrefOff = out.length;
+  out += 'xref'+String.fromCharCode(10)+'0 '+(objs.length+1)+String.fromCharCode(10)+'0000000000 65535 f '+String.fromCharCode(10);
+  offsets.forEach(o => { out += String(o).padStart(10,'0')+' 00000 n '+String.fromCharCode(10); });
+  out += 'trailer'+String.fromCharCode(10)+'<< /Size '+(objs.length+1)+' /Root '+catId+' 0 R >>'+String.fromCharCode(10)+'startxref'+String.fromCharCode(10)+xrefOff+String.fromCharCode(10)+'%%EOF';
+
+  const bArr = new Uint8Array(out.length);
+  for (let i = 0; i < out.length; i++) bArr[i] = out.charCodeAt(i) & 0xff;
+
+  const fname = 'Tabela_Envios_' + (typeof nextEnviarDay === 'function' ? nextEnviarDay() : Date.now()) + '.pdf';
+  const blob  = new Blob([bArr], {type:'application/pdf'});
+  const url   = URL.createObjectURL(blob);
+  const a     = document.createElement('a');
+  a.href = url; a.download = fname; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  toast('PDF da tabela de envios gerado!');
+}
+
 // ═══ ENVIOS DO DIA ═══════════════════════════════════════════════════════════
 function viewEnviosDia() {
   const frag = document.createDocumentFragment();
@@ -7528,8 +7713,13 @@ function viewEnviosDia() {
   btnComp.innerHTML = '\uD83D\uDCC4 PDF Compras';
   btnComp.title = 'Lista de itens comprados que faltam no CPD';
   btnComp.addEventListener('click', () => gerarPdfEnvios('comprado'));
+  const btnTabela = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:12px;display:flex;align-items:center;gap:5px'});
+  btnTabela.innerHTML = '📄 PDF Tabela';
+  btnTabela.title = 'Imprime a tabela de envios (item + quantidade a enviar por unidade), sem estoques';
+  btnTabela.addEventListener('click', () => gerarPdfEnviosTabela(currentFilteredRows, dayFull));
   pdfWrap.appendChild(btnProd);
   pdfWrap.appendChild(btnComp);
+  pdfWrap.appendChild(btnTabela);
   hdrWrap.appendChild(pdfWrap);
   frag.appendChild(hdrWrap);
 
@@ -7690,6 +7880,10 @@ function viewEnviosDia() {
   frag.appendChild(filterTabs);
   frag.appendChild(tableWrap);
 
+  // Guarda a lista atualmente filtrada/buscada (mesma que está na tela) para
+  // que o PDF "Tabela de Envios" imprima exatamente o que está sendo exibido.
+  let currentFilteredRows = rows;
+
   function buildMatrix() {
     tableWrap.innerHTML = '';
     tableWrap.classList.toggle('envios-searching', !!searchQuery);
@@ -7699,6 +7893,7 @@ function viewEnviosDia() {
       const q = _norm(searchQuery);
       filtered = filtered.filter(r => _norm(r.name).includes(q));
     }
+    currentFilteredRows = filtered;
 
     if (filtered.length === 0) {
       const empty = el('div', {style:'padding:24px;text-align:center;color:var(--success);font-weight:600;font-size:13px'});
