@@ -7567,10 +7567,11 @@ function gerarPdfEnvios(tipo) {
 }
 
 // PDF da "Tabela de Envios" — a mesma tabela-matriz da tela (agrupada por
-// categoria, na mesma ordem), mas sem as colunas de estoque (Est. CPD e
-// Est. de cada unidade) e sem a coluna Situação: só item + quantidade a
-// enviar por unidade. Recebe as linhas já filtradas/buscadas como aparecem
-// na tela no momento do clique.
+// categoria, na mesma ordem), mas sem a coluna Est. CPD e sem a coluna
+// Situação: item + Est. e A Enviar de cada unidade, com separadores
+// verticais mais fortes entre as unidades para facilitar a leitura.
+// Recebe as linhas já filtradas/buscadas como aparecem na tela no momento
+// do clique.
 function gerarPdfEnviosTabela(rows, dayFull) {
   if (!rows || rows.length === 0) {
     toast('Nenhum item para gerar o PDF com os filtros atuais.');
@@ -7581,11 +7582,14 @@ function gerarPdfEnviosTabela(rows, dayFull) {
   const W = 595.28, H = 841.89, ml = 40, mr = 40, TW = W - ml - mr;
   const genDate = new Date().toLocaleDateString('pt-BR');
   const nUnits  = UNIT_NAMES.length;
-  const itemW   = TW * 0.34;
-  const unitW   = (TW - itemW) / nUnits;
-  const col     = [ml + 2];
-  for (let i = 0; i < nUnits; i++) col.push(ml + itemW + unitW * i);
+  // Cada unidade ganha 2 sub-colunas: Est. (estoque atual) e A Env. (a enviar) —
+  // mesma leitura da tabela em tela, só sem a coluna Est. CPD e sem Situação.
+  const itemW      = TW * 0.28;
+  const subW       = (TW - itemW) / (nUnits * 2);
+  const unitGroupW = subW * 2;
+  const groupX     = i => ml + itemW + i * unitGroupW;
   const rowH = 16, MARGIN_BOT = 50;
+  const SEP_CLR = rgb(184,146,42); // dourado — mesmo tom do separador entre unidades na tela
 
   const pages = [];
   let cmds = [];
@@ -7597,14 +7601,31 @@ function gerarPdfEnviosTabela(rows, dayFull) {
     c('BT /F1 13 Tf '+rgb(240,237,224)+' rg '+(ml+8)+' '+(H-34)+' Td '+pdfStr('Tabela de Envios - '+dayFull)+' Tj ET');
     c('BT /F2 8 Tf '+rgb(168,196,174)+' rg '+(W-mr-80)+' '+(H-34)+' Td '+pdfStr(genDate)+' Tj ET');
     c('BT /F2 9 Tf '+rgb(168,196,174)+' rg '+(ml+8)+' '+(H-48)+' Td '+pdfStr(rows.length+' itens')+' Tj ET');
-    c(rgb(184,146,42)+' RG 0.8 w '+ml+' '+(H-58)+' m '+(W-mr)+' '+(H-58)+' l S');
-    const thY = H-78;
-    c(rgb(38,116,62)+' rg '+ml+' '+thY+' '+(W-ml-mr)+' 18 re f');
-    c('BT /F1 8 Tf 1 1 1 rg '+col[0]+' '+(thY+5)+' Td '+pdfStr('ITEM')+' Tj ET');
+    c(SEP_CLR+' RG 0.8 w '+ml+' '+(H-58)+' m '+(W-mr)+' '+(H-58)+' l S');
+
+    // Linha 1 do cabeçalho: nome da unidade (fundo verde escuro, texto branco)
+    const hdr1Top = H-58, hdr1H = 16;
+    c(rgb(38,116,62)+' rg '+ml+' '+(hdr1Top-hdr1H)+' '+(W-ml-mr)+' '+hdr1H+' re f');
+    c('BT /F1 8 Tf 1 1 1 rg '+(ml+4)+' '+(hdr1Top-hdr1H+5)+' Td '+pdfStr('ITEM')+' Tj ET');
+
+    // Linha 2 do cabeçalho: "Est." / "A Env." por unidade (fundo cinza claro)
+    const hdr2Top = hdr1Top - hdr1H, hdr2H = 15;
+    c(rgb(245,242,232)+' rg '+ml+' '+(hdr2Top-hdr2H)+' '+(W-ml-mr)+' '+hdr2H+' re f');
+
     UNIT_NAMES.forEach((u, i) => {
-      c('BT /F1 7 Tf 1 1 1 rg '+col[i+1]+' '+(thY+5)+' Td '+pdfStr(u.toUpperCase())+' Tj ET');
+      const gx = groupX(i);
+      // Separador vertical mais forte entre cada unidade — atravessa as duas
+      // linhas do cabeçalho, para deixar claro onde uma unidade termina e a
+      // próxima começa.
+      c(SEP_CLR+' RG 1.1 w '+gx+' '+(hdr1Top-hdr1H)+' m '+gx+' '+(hdr2Top-hdr2H)+' l S');
+      const nmW = u.length > 13 ? u.substring(0,13) : u;
+      c('BT /F1 6.5 Tf 1 1 1 rg '+(gx+3)+' '+(hdr1Top-hdr1H+5.5)+' Td '+pdfStr(nmW.toUpperCase())+' Tj ET');
+      c('BT /F1 6.5 Tf '+rgb(114,109,79)+' rg '+(gx+3)+' '+(hdr2Top-hdr2H+5)+' Td '+pdfStr('Est.')+' Tj ET');
+      c('BT /F1 6.5 Tf '+rgb(114,109,79)+' rg '+(gx+3+subW)+' '+(hdr2Top-hdr2H+5)+' Td '+pdfStr('A Env.')+' Tj ET');
     });
-    return thY - 2;
+    // Separador final à direita da última unidade
+    c(SEP_CLR+' RG 1.1 w '+(W-mr)+' '+(hdr1Top-hdr1H)+' m '+(W-mr)+' '+(hdr2Top-hdr2H)+' l S');
+    return hdr2Top - hdr2H - 2;
   }
 
   function closePage() {
@@ -7640,14 +7661,25 @@ function gerarPdfEnviosTabela(rows, dayFull) {
     const midY     = y - rowH/2 - 3;
     const maxChars = Math.floor(itemW / 5.2);
     const nm = row.name.length > maxChars ? row.name.substring(0, maxChars-3)+'...' : row.name;
-    c('BT /F2 9 Tf '+rgb(26,26,18)+' rg '+col[0]+' '+midY+' Td '+pdfStr(nm)+' Tj ET');
+    c('BT /F2 9 Tf '+rgb(26,26,18)+' rg '+(ml+4)+' '+midY+' Td '+pdfStr(nm)+' Tj ET');
+
     UNIT_NAMES.forEach((u, i) => {
-      const pu  = row.perUnit ? row.perUnit[u] : null;
-      const has = pu && pu.aEnviar > 0;
-      const val = has ? String(pu.aEnviar) : '-';
-      const clr = has ? rgb(26,82,41) : rgb(160,158,140);
-      c('BT /F1 9 Tf '+clr+' rg '+col[i+1]+' '+midY+' Td '+pdfStr(val)+' Tj ET');
+      const gx  = groupX(i);
+      // Separador vertical entre unidades, descendo por toda a altura da linha
+      c(SEP_CLR+' RG 0.6 w '+gx+' '+y+' m '+gx+' '+(y-rowH)+' l S');
+
+      const pu    = row.perUnit ? row.perUnit[u] : null;
+      const hasPu = !!pu;
+      const hasEnv = hasPu && pu.aEnviar > 0;
+      const estVal = hasPu ? String(pu.est) : '-';
+      const envVal = hasEnv ? String(pu.aEnviar) : '-';
+      const estClr = hasPu ? rgb(70,68,58) : rgb(160,158,140);
+      const envClr = hasEnv ? rgb(26,82,41) : rgb(160,158,140);
+      c('BT /F2 8.5 Tf '+estClr+' rg '+(gx+3)+' '+midY+' Td '+pdfStr(estVal)+' Tj ET');
+      c('BT /F1 8.5 Tf '+envClr+' rg '+(gx+3+subW)+' '+midY+' Td '+pdfStr(envVal)+' Tj ET');
     });
+    c(SEP_CLR+' RG 0.6 w '+(W-mr)+' '+y+' m '+(W-mr)+' '+(y-rowH)+' l S');
+
     c(rgb(218,215,197)+' RG 0.3 w '+ml+' '+(y-rowH)+' m '+(W-mr)+' '+(y-rowH)+' l S');
     y -= rowH;
     rowIdx++;
@@ -7715,7 +7747,7 @@ function viewEnviosDia() {
   btnComp.addEventListener('click', () => gerarPdfEnvios('comprado'));
   const btnTabela = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:12px;display:flex;align-items:center;gap:5px'});
   btnTabela.innerHTML = '📄 PDF Tabela';
-  btnTabela.title = 'Imprime a tabela de envios (item + quantidade a enviar por unidade), sem estoques';
+  btnTabela.title = 'Imprime a tabela de envios (item + estoque e quantidade a enviar de cada unidade), sem Est. CPD e sem Situação';
   btnTabela.addEventListener('click', () => gerarPdfEnviosTabela(currentFilteredRows, dayFull));
   pdfWrap.appendChild(btnProd);
   pdfWrap.appendChild(btnComp);
