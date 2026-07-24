@@ -9503,7 +9503,12 @@ function viewCatalogo() {
         catTd.style.cssText = 'padding:0;width:100%;';
         const togBtn = el('button', {cls:'cat-toggle' + (isOpen ? ' open' : '')});
         const alertCount = catItems.filter(i => (stockObj[i.id]||0) === 0 && (activeMins[i.id]||0) > 0).length;
-        togBtn.innerHTML = `<span class="cat-name">${cat}</span><span class="cat-count">${catItems.length} itens${alertCount > 0 ? ` \u00B7 \u26A0 ${alertCount}` : ''}</span><span class="cat-chevron">\u25B2</span>`;
+        // Nome da categoria vem do cat\u00E1logo (edit\u00E1vel por admin) \u2014 usa textContent
+        // via el() em vez de innerHTML para n\u00E3o interpretar o texto como HTML.
+        const catCountText = `${catItems.length} itens${alertCount > 0 ? ` \u00B7 \u26A0 ${alertCount}` : ''}`;
+        togBtn.appendChild(el('span', {cls:'cat-name'}, cat));
+        togBtn.appendChild(el('span', {cls:'cat-count'}, catCountText));
+        togBtn.appendChild(el('span', {cls:'cat-chevron'}, '\u25B2'));
         togBtn.addEventListener('click', () => {
           openCats[cat] = !openCats[cat];
           togBtn.classList.toggle('open', openCats[cat]);
