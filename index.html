@@ -4958,6 +4958,17 @@ function getCatConfirmState(unitName, cat, stockObj) {
   return changed ? 'needs-reconfirm' : 'confirmed';
 }
 
+// Verificar se PELO MENOS UMA categoria já foi confirmada hoje (estado
+// 'confirmed', não 'needs-reconfirm' nem 'none'). Usado para liberar o botão
+// "PDF Contagem" do topo antes da Confirmação Geral — a barra fica menor que
+// dailyRequiredCatsConfirmed, que exige todas as obrigatórias do dia.
+function hasAnyCategoryConfirmed(unitName, stockObj) {
+  const slug  = unitSlug(unitName);
+  const confs = catConfirmations[slug];
+  if (!confs) return false;
+  return Object.keys(confs).some(cat => getCatConfirmState(unitName, cat, stockObj) === 'confirmed');
+}
+
 // Verificar se as categorias OBRIGATÓRIAS DO DIA (fixas + extras do dia da
 // semana, via getDailyRequiredCategories) estão confirmadas. É este o
 // critério real usado para avisar/liberar a Confirmação Geral — as demais
@@ -7326,10 +7337,12 @@ function viewUnits() {
 
   const pdfUnitBtn = el('button', {cls:'btn btn-outline btn-sm'});
   pdfUnitBtn.innerHTML = '\uD83D\uDCC4 PDF Contagem';
-  // PDF geral bloqueado até confirmação do gerente (para unidades)
-  if (!isCPD() && !generalState) {
+  // Libera assim que a unidade confirmar a primeira categoria do dia — não
+  // precisa mais esperar a Confirmação Geral completa (pedido de quem usa
+  // o PDF pra conferência parcial, não só o relatório final do dia).
+  if (!isCPD() && !hasAnyCategoryConfirmed(activeUnit, ustock)) {
     pdfUnitBtn.classList.add('cat-pdf-btn-blocked');
-    pdfUnitBtn.title = 'Confirme todas as categorias e a contagem geral para gerar o PDF';
+    pdfUnitBtn.title = 'Confirme ao menos uma categoria para gerar o PDF';
   } else {
     pdfUnitBtn.addEventListener('click', () => openPdfCategoriesModal(activeUnit, ustock, getUnitCatalog(activeUnit).categories));
   }
