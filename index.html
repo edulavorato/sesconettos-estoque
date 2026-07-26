@@ -1700,7 +1700,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.4.1'; // 26/07: corrige PDF/confirmação com dado desatualizado (ver histórico)
+    const APP_VERSION = '1.4.2'; // 26/07: adiciona confirmação visual "PDF gerado!" no PDF de contagem
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -7020,6 +7020,10 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
     : '';
   const fname = `contagem-${unitLabel.toLowerCase().replace(/\s+/g,'-')}${catSlug}-${now.toISOString().slice(0,10)}.pdf`;
   _baixarPdfString(pdf, fname);
+  // Sem esse aviso, o download acontece silenciosamente — principalmente no
+  // celular, onde não aparece nenhuma notificação visível — e dá a impressão
+  // de que "não aconteceu nada" mesmo quando o PDF foi gerado com sucesso.
+  if (typeof toast === 'function') toast('✓ PDF gerado! Confira nos downloads do seu aparelho.');
 }
 
 
