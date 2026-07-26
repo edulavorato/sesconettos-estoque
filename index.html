@@ -1700,7 +1700,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.4.0';
+    const APP_VERSION = '1.4.1'; // 26/07: corrige PDF/confirmação com dado desatualizado (ver histórico)
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -4931,7 +4931,15 @@ function _checkDailyReset() {
 }
 
 // Salvar confirmação de categoria
+// Mesma proteção aplicada ao PDF: se `stockObj` foi capturado num render
+// anterior ao carregamento completo do Firebase, ele pode estar desatualizado
+// (congelado vazio) mesmo com a tela já mostrando os números certos. Buscar
+// de novo aqui garante que a quantidade GRAVADA na confirmação é sempre a
+// mais atual, e não uma foto velha que o operador nem viu.
 function confirmCategory(unitName, cat, respName, stockObj) {
+  if (unitName !== 'CPD' && typeof unitStock !== 'undefined' && unitStock[unitName]) {
+    stockObj = unitStock[unitName];
+  }
   const slug = unitSlug(unitName);
   if (!catConfirmations[slug]) catConfirmations[slug] = {};
   const qtys = {};
@@ -4949,6 +4957,9 @@ function confirmCategory(unitName, cat, respName, stockObj) {
 // Retorna: 'none' | 'confirmed' | 'needs-reconfirm'
 function getCatConfirmState(unitName, cat, stockObj) {
   _checkDailyReset();
+  if (unitName !== 'CPD' && typeof unitStock !== 'undefined' && unitStock[unitName]) {
+    stockObj = unitStock[unitName];
+  }
   const slug = unitSlug(unitName);
   const conf = catConfirmations[slug] && catConfirmations[slug][cat];
   if (!conf) return 'none';
@@ -5569,19 +5580,24 @@ function windowKey() {
 }
 
 // Marcar/desmarcar item como confirmado na janela atual
+// Sempre grava pela chave slug (ex: "asa_sul"), igual ao pizza_units — evita o
+// mesmo tipo de divergência maiúscula/minúscula que ocorreu no estoque, e permite
+// cruzar pizza_counted com pizza_units por item (contado vs. zero real).
 function setConfirmed(unit, itemId, val) {
-  if (!countedMap[unit]) countedMap[unit] = {};
+  const key = unitSlug(unit);
+  if (!countedMap[key]) countedMap[key] = {};
   const wk = windowKey();
-  if (!countedMap[unit][wk]) countedMap[unit][wk] = {};
-  if (val) countedMap[unit][wk][itemId] = true;
-  else delete countedMap[unit][wk][itemId];
+  if (!countedMap[key][wk]) countedMap[key][wk] = {};
+  if (val) countedMap[key][wk][itemId] = true;
+  else delete countedMap[key][wk][itemId];
   save('pizza_counted', countedMap);
 }
 
 // Verificar se item está confirmado na janela atual
 function isConfirmed(unit, itemId) {
+  const key = unitSlug(unit);
   const wk = windowKey();
-  return !!(countedMap[unit] && countedMap[unit][wk] && countedMap[unit][wk][itemId]);
+  return !!(countedMap[key] && countedMap[key][wk] && countedMap[key][wk][itemId]);
 }
 
 // Limpar janelas antigas (manter apenas últimas 4) para não inflar o Firebase
@@ -6391,11 +6407,9 @@ function el(tag, attrs={}, ...children) {
           });
           catWrap.appendChild(confBtn);
 
-          // PDF da categoria: só libera se confirmada
-          if (confState !== 'confirmed') {
-            catPdfBtn.classList.add('cat-pdf-btn-blocked');
-            catPdfBtn.title = 'Confirme a categoria para gerar o PDF';
-          }
+          // PDF da categoria liberado independente de confirmação — a
+          // confirmação é um controle de processo (quem contou, quando),
+          // não deve impedir tirar uma conferência em PDF a qualquer momento.
         }
 
         catWrap.appendChild(catPdfBtn);
@@ -6680,6 +6694,18 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
   const dateStr = now.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
   const timeStr = now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
   const user = session?.name || '';
+
+  // Sempre buscar o estoque mais atual de unitStock[] na hora de gerar, em vez
+  // de confiar só no `stockObj` recebido por parâmetro. Motivo: os botões de
+  // PDF capturam `ustock` no momento do render(); se os dados do Firebase
+  // ainda não tinham chegado nesse momento, esse objeto fica "congelado"
+  // vazio — e como updates seguintes só repintam a tabela na tela
+  // (patchStockValues), sem recriar o botão, o PDF podia sair zerado mesmo
+  // com a tela mostrando os números certos. Buscando de novo aqui garante
+  // que o PDF sempre reflete o estado mais recente em memória.
+  if (unitLabel !== 'CPD' && typeof unitStock !== 'undefined' && unitStock[unitLabel]) {
+    stockObj = unitStock[unitLabel];
+  }
 
   // Group items by category — TODOS os itens, inclusive zerados e sem mínimo
   // PDF: usar catálogo específico da unidade
@@ -7365,15 +7391,10 @@ function viewUnits() {
 
   const pdfUnitBtn = el('button', {cls:'btn btn-outline btn-sm'});
   pdfUnitBtn.innerHTML = '\uD83D\uDCC4 PDF Contagem';
-  // Libera assim que a unidade confirmar a primeira categoria do dia — não
-  // precisa mais esperar a Confirmação Geral completa (pedido de quem usa
-  // o PDF pra conferência parcial, não só o relatório final do dia).
-  if (!isCPD() && !hasAnyCategoryConfirmed(activeUnit, ustock)) {
-    pdfUnitBtn.classList.add('cat-pdf-btn-blocked');
-    pdfUnitBtn.title = 'Confirme ao menos uma categoria para gerar o PDF';
-  } else {
-    pdfUnitBtn.addEventListener('click', () => openPdfCategoriesModal(activeUnit, ustock, getUnitCatalog(activeUnit).categories));
-  }
+  // Sem exigência de confirmação (nem de categoria, nem geral) para gerar o
+  // PDF — a confirmação é um controle de processo separado, não deve
+  // impedir tirar uma conferência a qualquer momento do dia.
+  pdfUnitBtn.addEventListener('click', () => openPdfCategoriesModal(activeUnit, unitStock[activeUnit] || ustock, getUnitCatalog(activeUnit).categories));
   pdfWrapUnit.appendChild(pdfUnitBtn);
   const inner = el('div', {style:'padding:14px 18px 18px'});
   // Only the unit's own logged-in user can edit their stock panel
