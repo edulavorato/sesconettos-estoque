@@ -1700,7 +1700,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.4.4'; // 26/07 (teste): unidade pula modal de categorias no PDF Contagem
+    const APP_VERSION = '1.4.5'; // 26/07: corrige tela branca do PDF no Safari/iPhone (abertura em 1 etapa)
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -6691,11 +6691,12 @@ function _baixarPdfString(pdfBinaryStr, fname) {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS se identifica como Mac
   if (isIOS) {
-    const win = window.open();
-    if (win) {
-      win.location.href = dataUri;
-    } else {
-      // Pop-up bloqueado — como último recurso, tenta navegar a própria aba.
+    // Importante: abrir a janela já direto no data: URI, numa única chamada.
+    // Abrir uma janela em branco e só DEPOIS mandar ela navegar pro PDF (duas
+    // etapas) fica com a tela branca no Safari — testado e confirmado.
+    const win = window.open(dataUri, '_blank');
+    if (!win) {
+      // Pop-up bloqueado — como último recurso, navega a própria aba pro PDF.
       if (typeof toast === 'function') toast('Permita pop-ups para ver o PDF, ou tente novamente.');
       window.location.href = dataUri;
     }
