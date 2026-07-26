@@ -1700,7 +1700,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.4.5'; // 26/07: corrige tela branca do PDF no Safari/iPhone (abertura em 1 etapa)
+    const APP_VERSION = '1.4.6'; // 26/07: corrige PDF quase vazio (só mostrava categorias já confirmadas)
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -6891,26 +6891,16 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
     return o + ')';
   }
 
-  // Para unidades: filtrar apenas categorias confirmadas
-  const _printSlug = (unitLabel !== 'CPD') ? unitSlug(unitLabel) : null;
-  const _printConfs = _printSlug ? (catConfirmations[_printSlug] || {}) : null;
-  const _confirmedCats = _printConfs
-    ? Object.keys(byCategory).filter(cat => {
-        const c = _printConfs[cat];
-        if (!c) return false;
-        // Verificar se ainda está válida (quantidades não mudaram)
-        const items = Object.keys(byCategory[cat] ? byCategory[cat].reduce((acc,i) => { acc[i.id]=i; return acc; }, {}) : {});
-        return true; // se existe a confirmação, imprimir
-      })
-    : Object.keys(byCategory);
-
-  // PDF geral de unidade: só categorias confirmadas (regra de negócio)
-  // PDF de categoria específica (onlyCategory): sempre mostra aquela categoria
-  // PDF gerado pelo CPD de uma unidade: mostra tudo (CPD tem visão completa)
-  const _isCPDViewing = (typeof isCPD === 'function' && isCPD());
-  const _catsToPrint = (unitLabel === 'CPD' || _isCPDViewing || onlyCategory)
-    ? Object.keys(byCategory)
-    : _confirmedCats;
+  // Mostrar SEMPRE todas as categorias que têm item cadastrado, contadas ou
+  // não, confirmadas ou não. Achado em 26/07: existia uma regra antiga aqui
+  // que restringia o PDF geral da unidade só às categorias já CONFIRMADAS —
+  // isso fazia o PDF sair praticamente vazio (só cabeçalho + assinatura)
+  // sempre que a unidade gerava o PDF antes de confirmar qualquer categoria.
+  // O modal de seleção de categorias mascarava isso (sempre manda uma lista,
+  // contornando a regra sem querer) — só ficou visível ao testar o botão
+  // direto, sem o modal. Confirmação é controle de processo (fechamento do
+  // dia), nunca deve decidir o que aparece impresso no PDF.
+  const _catsToPrint = Object.keys(byCategory);
 
   newPage();
   _catsToPrint.forEach(cat => {
@@ -7420,12 +7410,9 @@ function viewUnits() {
   // Sem exigência de confirmação (nem de categoria, nem geral) para gerar o
   // PDF — a confirmação é um controle de processo separado, não deve
   // impedir tirar uma conferência a qualquer momento do dia.
-  // TESTE TEMPORÁRIO (26/07): tirado o modal de seleção de categorias do
-  // login de unidade — vai direto pra printStockPdf com todas as categorias,
-  // pra isolar se o modal era a causa do erro relatado no iPhone. Reverter
-  // pra openPdfCategoriesModal(activeUnit, unitStock[activeUnit] || ustock,
-  // getUnitCatalog(activeUnit).categories) assim que confirmarmos a causa.
-  pdfUnitBtn.addEventListener('click', () => printStockPdf(activeUnit, unitStock[activeUnit] || ustock, null));
+  // (26/07: testamos temporariamente pular esse modal pra isolar um bug —
+  // já achado e corrigido em printStockPdf/_catsToPrint — modal restaurado.)
+  pdfUnitBtn.addEventListener('click', () => openPdfCategoriesModal(activeUnit, unitStock[activeUnit] || ustock, getUnitCatalog(activeUnit).categories));
   pdfWrapUnit.appendChild(pdfUnitBtn);
   const inner = el('div', {style:'padding:14px 18px 18px'});
   // Only the unit's own logged-in user can edit their stock panel
