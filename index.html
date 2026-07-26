@@ -1700,7 +1700,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.4.2'; // 26/07: adiciona confirmação visual "PDF gerado!" no PDF de contagem
+    const APP_VERSION = '1.4.4'; // 26/07 (teste): unidade pula modal de categorias no PDF Contagem
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -6681,8 +6681,29 @@ function _baixarPdfString(pdfBinaryStr, fname) {
     console.warn('[PDF] Caractere inválido no conteúdo, substituindo por "?":', e);
     base64 = btoa(pdfBinaryStr.replace(/[^\x00-\xFF]/g, '?'));
   }
+  const dataUri = 'data:application/pdf;base64,' + base64;
+
+  // Safari no iPhone/iPad não respeita o atributo "download" de um <a> —
+  // o clique simplesmente não faz nada visível, sem erro nenhum (foi o que
+  // aconteceu no teste do iPhone). Nesses aparelhos, o jeito que funciona de
+  // verdade é abrir o PDF numa aba nova: o Safari mostra o PDF com um botão
+  // de compartilhar/salvar no canto, que é o fluxo padrão do iOS.
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS se identifica como Mac
+  if (isIOS) {
+    const win = window.open();
+    if (win) {
+      win.location.href = dataUri;
+    } else {
+      // Pop-up bloqueado — como último recurso, tenta navegar a própria aba.
+      if (typeof toast === 'function') toast('Permita pop-ups para ver o PDF, ou tente novamente.');
+      window.location.href = dataUri;
+    }
+    return;
+  }
+
   const a = document.createElement('a');
-  a.href = 'data:application/pdf;base64,' + base64;
+  a.href = dataUri;
   a.download = fname;
   document.body.appendChild(a);
   a.click();
@@ -7398,7 +7419,12 @@ function viewUnits() {
   // Sem exigência de confirmação (nem de categoria, nem geral) para gerar o
   // PDF — a confirmação é um controle de processo separado, não deve
   // impedir tirar uma conferência a qualquer momento do dia.
-  pdfUnitBtn.addEventListener('click', () => openPdfCategoriesModal(activeUnit, unitStock[activeUnit] || ustock, getUnitCatalog(activeUnit).categories));
+  // TESTE TEMPORÁRIO (26/07): tirado o modal de seleção de categorias do
+  // login de unidade — vai direto pra printStockPdf com todas as categorias,
+  // pra isolar se o modal era a causa do erro relatado no iPhone. Reverter
+  // pra openPdfCategoriesModal(activeUnit, unitStock[activeUnit] || ustock,
+  // getUnitCatalog(activeUnit).categories) assim que confirmarmos a causa.
+  pdfUnitBtn.addEventListener('click', () => printStockPdf(activeUnit, unitStock[activeUnit] || ustock, null));
   pdfWrapUnit.appendChild(pdfUnitBtn);
   const inner = el('div', {style:'padding:14px 18px 18px'});
   // Only the unit's own logged-in user can edit their stock panel
