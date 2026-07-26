@@ -1700,7 +1700,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.4.6'; // 26/07: corrige PDF quase vazio (só mostrava categorias já confirmadas)
+    const APP_VERSION = '1.4.7'; // 26/07: troca data-URI por Blob no Safari/iPhone (tela preta persistia)
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -6683,22 +6683,32 @@ function _baixarPdfString(pdfBinaryStr, fname) {
   }
   const dataUri = 'data:application/pdf;base64,' + base64;
 
-  // Safari no iPhone/iPad não respeita o atributo "download" de um <a> —
-  // o clique simplesmente não faz nada visível, sem erro nenhum (foi o que
-  // aconteceu no teste do iPhone). Nesses aparelhos, o jeito que funciona de
-  // verdade é abrir o PDF numa aba nova: o Safari mostra o PDF com um botão
-  // de compartilhar/salvar no canto, que é o fluxo padrão do iOS.
+  // Safari no iPhone/iPad não respeita o atributo "download" de um <a>, e
+  // testamos que abrir o data: URI direto numa aba nova (window.open) também
+  // não funciona de forma confiável — fica tela preta. O jeito mais robusto
+  // conhecido pro Safari é montar um Blob real (não base64 puro) e abrir a
+  // URL de objeto gerada a partir dele — funciona melhor com arquivos
+  // maiores e é o padrão mais usado pra isso no Safari.
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS se identifica como Mac
   if (isIOS) {
-    // Importante: abrir a janela já direto no data: URI, numa única chamada.
-    // Abrir uma janela em branco e só DEPOIS mandar ela navegar pro PDF (duas
-    // etapas) fica com a tela branca no Safari — testado e confirmado.
-    const win = window.open(dataUri, '_blank');
-    if (!win) {
-      // Pop-up bloqueado — como último recurso, navega a própria aba pro PDF.
-      if (typeof toast === 'function') toast('Permita pop-ups para ver o PDF, ou tente novamente.');
-      window.location.href = dataUri;
+    try {
+      const bytes = new Uint8Array(pdfBinaryStr.length);
+      for (let i = 0; i < pdfBinaryStr.length; i++) bytes[i] = pdfBinaryStr.charCodeAt(i) & 0xFF;
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+      const win = window.open(blobUrl, '_blank');
+      if (!win) {
+        if (typeof toast === 'function') toast('Permita pop-ups para ver o PDF, ou tente novamente.');
+        window.location.href = blobUrl;
+      }
+      // Não revoga o blobUrl logo em seguida de propósito — a aba nova
+      // ainda precisa carregar o conteúdo; o navegador libera a memória
+      // sozinho quando a aba/documento que a usa é fechado.
+    } catch (e) {
+      console.warn('[PDF] Falha ao gerar Blob no iOS, tentando data URI como último recurso:', e);
+      const win = window.open(dataUri, '_blank');
+      if (!win) window.location.href = dataUri;
     }
     return;
   }
