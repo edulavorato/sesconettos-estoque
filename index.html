@@ -859,6 +859,7 @@
   .envios-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; white-space: nowrap; }
   .envios-badge.ok    { background: rgba(26,82,41,.12); color: #1A5229; }
   .envios-badge.falta { background: rgba(160,58,58,.12);  color: #A03A3A; }
+  .envios-badge.pendente { background: rgba(232,160,32,.14); color: #B8740D; }
   .envios-summary-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
   .envios-summary-card { flex: 1; min-width: 110px; padding: 12px 16px; background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); text-align: center; }
   .envios-summary-card .e-lbl { font-size: 11px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
@@ -1700,7 +1701,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.4.9'; // 26/07: erro de rede não sobrescreve mais o estoque inteiro da unidade
+    const APP_VERSION = '1.5.6'; // 27/07: botão "Atualizar agora" do aviso de nova versão agora força buscar a página de novo (cache de 10min do GitHub Pages fazia precisar recarregar várias vezes)
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -1773,7 +1774,16 @@ auth.onAuthStateChanged(user => {
         const banner = document.createElement('div');
         banner.id = 'update-banner';
         banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#1a3a2a;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;font-family:DM Sans,sans-serif;font-size:14px;box-shadow:0 -4px 20px rgba(0,0,0,.3)';
-        banner.innerHTML = '<span>\uD83D\uDD04 Nova vers\u00E3o dispon\u00EDvel (' + remoteVer + '). Recarregue para atualizar.</span><button onclick="location.reload(true)" style="background:#1A5229;border:none;color:#fff;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-left:12px">Atualizar agora</button>';
+        // OBS (27/07): "location.reload(true)" N\u00C3O for\u00E7a mais buscar do
+        // servidor em nenhum navegador moderno \u2014 esse par\u00E2metro foi removido
+        // do padr\u00E3o h\u00E1 anos e \u00E9 ignorado silenciosamente. Como o GitHub Pages
+        // serve o index.html com cache de 10 minutos (cache-control: max-age=600),
+        // um reload comum muitas vezes reaproveitava a c\u00F3pia antiga j\u00E1 em cache
+        // do navegador, mostrando o MESMO aviso de novo \u2014 da\u00ED a sensa\u00E7\u00E3o de
+        // precisar recarregar v\u00E1rias vezes at\u00E9 "pegar". Trocamos por navegar
+        // para uma URL com um par\u00E2metro \u00FAnico a cada clique: como \u00E9 uma URL
+        // diferente, o navegador n\u00E3o tem escolha a n\u00E3o ser buscar de novo.
+        banner.innerHTML = '<span>\uD83D\uDD04 Nova vers\u00E3o dispon\u00EDvel (' + remoteVer + '). Recarregue para atualizar.</span><button onclick="location.href = location.pathname + \'?v=\' + Date.now();" style="background:#1A5229;border:none;color:#fff;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-left:12px">Atualizar agora</button>';
         document.body.appendChild(banner);
       }
     }
@@ -4591,6 +4601,36 @@ function getMinPerDay(unitName) {
 
 // Calcula quantidade a enviar para um item específico
 // = max(0, Mínimo do Dia de Entrega - Estoque Atual)
+// Um item é considerado "contado" na janela atual se:
+//  - a quantidade for > 0 (alguém digitou algo, mesmo sem clicar em confirmar), OU
+//  - foi confirmado explicitamente pelo botão ✓ (cobre o caso de contagem real = 0)
+// Sem isso, "não contei ainda" e "contei e acabou" ficam indistinguíveis (os dois
+// gravam como 0), e o cálculo de "A Enviar" trata os dois casos como estoque zerado
+// de verdade — o que pode disparar pedido de reposição de um item que ninguém
+// checou ainda. CPD não tem esse conceito de janela de contagem por unidade, então
+// itens do CPD são sempre tratados como "contados".
+function itemFoiContado(unitName, itemId, qty) {
+  if ((qty || 0) > 0) return true;
+  if (!unitName || unitName === 'CPD') return true;
+  return typeof isConfirmed === 'function' ? isConfirmed(unitName, itemId) : true;
+}
+
+// Um mesmo produto (mesma item.key) pode estar cadastrado em categorias
+// diferentes em cada catálogo de unidade (ex: "Coca-Cola 1,5L" é "Salão" na
+// Asa Sul, "Bar" na Vicente Pires, "Delivery" no SIG/Delivery/CPD) — cada
+// unidade organiza sua contagem física do jeito que faz sentido pra ela.
+// Isso é normal e não deve mudar. O problema é só nas telas do CPD que juntam
+// a necessidade de TODAS as unidades num único item (Tabela de Envios, Lista
+// de Produção/Compras): sem essa função, a categoria exibida era a da
+// primeira unidade encontrada na iteração (sempre Asa Sul), mesmo quando a
+// necessidade real vinha de outra unidade com categoria diferente. Usamos o
+// catálogo do CPD como referência única e estável pra essas telas agregadas.
+function categoriaCanonica(itemKey, categoriaFallback) {
+  const cpdItem = (typeof catalog !== 'undefined' && Array.isArray(catalog))
+    ? catalog.find(c => c.key === itemKey) : null;
+  return cpdItem ? cpdItem.category : categoriaFallback;
+}
+
 function calcAEnviar(unitName, itemKeyOrName, estoqueAtual, dayCode) {
   const minMap = getMinPerDay(unitName);
   // Preferência: item.key (fixo, não muda quando o nome exibido é renomeado).
@@ -4607,11 +4647,23 @@ function calcAEnviar(unitName, itemKeyOrName, estoqueAtual, dayCode) {
   return Math.max(0, minDia - (estoqueAtual || 0));
 }
 
+// Horário de corte: depois desse horário no próprio dia de entrega, a aba
+// "Envios do Dia" já considera que aquele envio passou e calcula pro PRÓXIMO
+// dia de entrega, em vez de continuar mostrando um cálculo de um envio que já
+// aconteceu. Antes disso não existia corte nenhum — o dia só virava à meia-
+// noite, então às 20h de uma segunda-feira (bem depois do envio das 14h/15h)
+// o sistema ainda calculava "hoje", podendo levar a produção/compra pro dia
+// errado. Decidido com o Eduardo em 27/07: corte às 15h.
+const HORA_CORTE_ENVIO_DIA = 15;
+
 // Detecta o próximo dia de entrega (SEG/QUA/SEX)
 function nextEnviarDay() {
-  const dow = new Date().getDay();
+  const now = new Date();
+  const dow = now.getDay();
+  const passouCorte = now.getHours() >= HORA_CORTE_ENVIO_DIA;
   const dmap = {1:'SEG', 3:'QUA', 5:'SEX'};
   for (let d = 0; d <= 6; d++) {
+    if (d === 0 && passouCorte) continue; // envio de hoje já passou do horário de corte
     const dd = (dow + d) % 7;
     if (dmap[dd]) return dmap[dd];
   }
@@ -4623,8 +4675,10 @@ function nextEnviarDay() {
 function nextEnviarDate() {
   const now = new Date();
   const dow = now.getDay();
+  const passouCorte = now.getHours() >= HORA_CORTE_ENVIO_DIA;
   const dmap = {1:'SEG', 3:'QUA', 5:'SEX'};
   for (let d = 0; d <= 6; d++) {
+    if (d === 0 && passouCorte) continue; // envio de hoje já passou do horário de corte
     const dd = (dow + d) % 7;
     if (dmap[dd]) {
       const dt = new Date(now);
@@ -5508,20 +5562,39 @@ function _migrarEstruturaPizzaUnits() {
       _gateStep('migrate', 'Dados prontos!');
       return;
     }
-    // Verificar conexão antes de escrever (evita sobrescrever com dados offline)
+    // Chegou até aqui = detectou nó(s) com nome "cru" (ex: 'Asa Sul') em pizza_units.
+    // Isso NÃO deveria mais acontecer em uso normal — os nós antigos foram removidos
+    // manualmente em 27/07 após confirmação de que o slug já tinha todos os dados.
+    // Por segurança, NUNCA sobrescrevemos um slug que já tem dados: migração automática
+    // usando .set() já causou perda de dados em outro ponto do sistema (ver saveUnit),
+    // então aqui só copiamos para o slug se ele ainda estiver vazio. Se o slug já tem
+    // dados, apenas avisamos no console — não tocamos em nada automaticamente.
+    console.warn('[Migração] Nó(s) com nome antigo encontrado(s) em pizza_units:', keys.filter(k => UNIT_NAMES.includes(k)), '— isso não deveria mais ocorrer. Verifique manualmente no Firebase Console.');
+
     db.ref('.info/connected').once('value').then(connSnap => {
       if (!connSnap.val()) {
-        console.warn('[Migração] Abortada — sem conexão. Tentará novamente em 5s');
+        console.warn('[Migração] Adiada — sem conexão. Tentará novamente em 5s');
         window._migrandoUnits = false;
         setTimeout(_migrarEstruturaPizzaUnits, 5000);
         return;
       }
-      console.log('[Migração] Migrando pizza_units para estrutura granular...');
-      const writes = keys
-        .filter(k => UNIT_NAMES.includes(k))
-        .map(unitName => db.ref('dados/pizza_units/' + unitSlug(unitName)).set(val[unitName]));
-      Promise.all(writes).then(() => {
-      console.log('[Migração] Estrutura de unidades migrada!', keys.length, 'unidades');
+      const unitsAntigas = keys.filter(k => UNIT_NAMES.includes(k));
+      // Para cada unidade antiga encontrada, checar se o slug já tem dados antes de escrever
+      const checks = unitsAntigas.map(unitName => {
+        const slug = unitSlug(unitName);
+        return db.ref('dados/pizza_units/' + slug).once('value').then(slugSnap => {
+          const slugVal = slugSnap.val();
+          const slugTemDados = slugVal && typeof slugVal === 'object' && Object.keys(slugVal).length > 0;
+          if (slugTemDados) {
+            console.warn(`[Migração] Ignorado: '${unitName}' -> '${slug}' já tem dados (${Object.keys(slugVal).length} itens). Não sobrescrevendo. Se '${unitName}' tiver dados úteis, faça a checagem manual antes de apagar.`);
+            return null;
+          }
+          console.log(`[Migração] '${slug}' está vazio — copiando dados de '${unitName}' para lá.`);
+          return db.ref('dados/pizza_units/' + slug).set(val[unitName]);
+        });
+      });
+      Promise.all(checks).then(() => {
+        console.log('[Migração] Verificação concluída.', unitsAntigas.length, 'nó(s) antigo(s) checado(s).');
         window._migrandoUnits = false;
         window._migrationConfirmed = true;
         _gateStep('migrate', 'Dados prontos!');
@@ -5749,17 +5822,26 @@ function proximaJanela(cat) {
   return 'a definir';
 }
 
-const PASS_TO_UNIT = {
-  'Sesco@CPD':      { unit: 'cpd',          role: 'Equipe' },
-  'SescoAsaSul@':   { unit: 'Asa Sul',       role: 'Equipe' },
-  'Sesco#VP':       { unit: 'Vicente Pires', role: 'Equipe' },
-  'SescoSIG#':      { unit: 'SIG',           role: 'Equipe' },
-  'SescoDlv#':      { unit: 'Delivery',      role: 'Equipe' },
-  'SescoDelivery%': { unit: 'Delivery',      role: 'Equipe' },
+// Senhas armazenadas como hash SHA-256, não em texto puro, para que abrir o
+// código-fonte da página não exponha diretamente as senhas de login.
+// Gerado com: crypto.createHash('sha256').update(senha, 'utf8').digest('hex')
+const PASS_HASH_TO_UNIT = {
+  '6f1b423a81334cc40a36329efafc85b48417342f09f8ed90d3cfff61591ccd0a': { unit: 'cpd',          role: 'Equipe' }, // Sesco@CPD
+  'e38359a738a91205115ec44ddcf87dc51763acffbe9860a36bd834317120bfa4': { unit: 'Asa Sul',       role: 'Equipe' }, // SescoAsaSul@
+  '27f08604dafb13627c8939a04a2133116da34f2a2e7deed0db57aa05f7fc6c4c': { unit: 'Vicente Pires', role: 'Equipe' }, // Sesco#VP
+  '853d0be61e7c3b0915a07b2588e0382ca187f272424f996ca48071d637bab7c3': { unit: 'SIG',           role: 'Equipe' }, // SescoSIG#
+  '2de3188ea2f34eff5d967216ae375d3d75732fc25a084e68d21eb111efe5e64c': { unit: 'Delivery',      role: 'Equipe' }, // SescoDlv#
+  '298a6186d0e48834dd294747963c3796d35efe1666db086213638efe98dc979c': { unit: 'Delivery',      role: 'Equipe' }, // SescoDelivery%
 };
 
+async function _sha256Hex(str) {
+  const enc = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // LOGIN/LOGOUT
-function doLogin() {
+async function doLogin() {
   const name   = (document.getElementById('login-name').value || '').trim();
   const pass   = (document.getElementById('login-pass').value || '');
   const errDiv = document.getElementById('login-error');
@@ -5770,7 +5852,17 @@ function doLogin() {
     return;
   }
 
-  const match = PASS_TO_UNIT[pass];
+  let match = null;
+  try {
+    const hash = await _sha256Hex(pass);
+    match = PASS_HASH_TO_UNIT[hash] || null;
+  } catch (e) {
+    console.error('[Login] Erro ao verificar senha:', e);
+    errDiv.textContent = 'Erro ao verificar a senha. Tente novamente.';
+    errDiv.style.display = 'block';
+    return;
+  }
+
   if (!match) {
     errDiv.textContent = 'Senha incorreta. Verifique com o responsável.';
     errDiv.style.display = 'block';
@@ -6224,9 +6316,16 @@ function el(tag, attrs={}, ...children) {
             const _qty    = parseInt((qtyCell && qtyCell.textContent) || '0') || (stockObj[itemId] || 0);
             const _unitD  = opts.unitForDisplay || opts.pdfLabel || opts.unitName || '';
             const _day    = nextEnviarDay();
-            const _aEnv   = calcAEnviar(_unitD, itemKey, _qty, _day);
-            envCell.textContent = _aEnv > 0 ? String(_aEnv) : '\u2014';
-            envCell.style.color = _aEnv > 0 ? 'var(--accent-dark,#1A5229)' : 'var(--text-3)';
+            if (!itemFoiContado(_unitD, itemId, _qty)) {
+              envCell.textContent = 'NC';
+              envCell.title = 'Item ainda n\u00e3o contado nesta janela \u2014 contagem necess\u00e1ria antes de calcular o quanto enviar.';
+              envCell.style.color = '#E8A020';
+            } else {
+              const _aEnv   = calcAEnviar(_unitD, itemKey, _qty, _day);
+              envCell.textContent = _aEnv > 0 ? String(_aEnv) : '\u2014';
+              envCell.style.color = _aEnv > 0 ? 'var(--accent-dark,#1A5229)' : 'var(--text-3)';
+              envCell.title = '';
+            }
           }
         }
       });
@@ -6591,16 +6690,19 @@ function el(tag, attrs={}, ...children) {
             // Prioridade: unitForDisplay (aba de unidade) > pdfLabel > unitName
             const _unitDisp = opts.unitForDisplay || opts.pdfLabel || opts.unitName || '';
             const _day = nextEnviarDay();
-            const aEnviar = calcAEnviar(_unitDisp, item.key, qty, _day);
-            const envTd = el('td', {style:'text-align:right;font-weight:700;color:' + (aEnviar > 0 ? 'var(--accent-dark,#1A5229)' : 'var(--text-3)')});
+            const _contado = itemFoiContado(_unitDisp, item.id, qty);
+            const aEnviar = _contado ? calcAEnviar(_unitDisp, item.key, qty, _day) : 0;
+            const envTd = el('td', {style:'text-align:right;font-weight:700;color:' + (!_contado ? '#E8A020' : (aEnviar > 0 ? 'var(--accent-dark,#1A5229)' : 'var(--text-3)'))});
             envTd.setAttribute('data-aenviar-cell', item.id);
-            envTd.textContent = aEnviar > 0 ? String(aEnviar) : '\u2014';
+            envTd.textContent = !_contado ? 'NC' : (aEnviar > 0 ? String(aEnviar) : '\u2014');
             // item.key é fixo (não muda com rename), então a busca aqui é
             // direta — sem precisar normalizar nome nenhum.
             const _minMap = getMinPerDay(_unitDisp);
             const _minEntry = _minMap[item.key];
             const _minDia = _minEntry ? (_minEntry[_day] || 0) : 0;
-            envTd.title = 'M\u00EDn (' + _day + '): ' + _minDia + ' | Estoque: ' + qty + ' | A Enviar: ' + aEnviar;
+            envTd.title = !_contado
+              ? 'Item ainda n\u00E3o contado nesta janela \u2014 contagem necess\u00E1ria antes de calcular o quanto enviar.'
+              : ('M\u00EDn (' + _day + '): ' + _minDia + ' | Estoque: ' + qty + ' | A Enviar: ' + aEnviar);
             tr.appendChild(envTd);
           }
           tr.appendChild(el('td', {cls:'muted col-unit'}, item.unit));
@@ -6975,12 +7077,14 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
         ops.push(`0.1 0.45 0.2 rg`);
         ops.push(`BT /F1 9 Tf ${colX[2]+3} ${y+1} Td (${item.qty !== undefined ? item.qty : '-'}) Tj ET`);
         // A ENVIAR: max(0, Mínimo do Dia de Entrega − Estoque Atual)
+        // Se o item não foi contado nesta janela, não calculamos "a enviar" a
+        // partir de um zero falso — mostramos "NC" (não contado) em vez de número.
         const _estoqueAtual = item.qty || 0;
-        const _aEnviar = calcAEnviar(unitLabel, item.key, _estoqueAtual, _enviarDay);
-        ops.push(`0.1 0.25 0.65 rg`);
-        ops.push(`BT /F1 9 Tf ${colX[3]+3} ${y+1} Td (${_aEnviar > 0 ? _aEnviar : '-'}) Tj ET`);
+        const _aEnviar = itemConfirmed ? calcAEnviar(unitLabel, item.key, _estoqueAtual, _enviarDay) : 0;
+        ops.push(itemConfirmed ? `0.1 0.25 0.65 rg` : `0.7 0.45 0.05 rg`);
+        ops.push(`BT /F1 9 Tf ${colX[3]+3} ${y+1} Td ${itemConfirmed ? ('(' + (_aEnviar > 0 ? _aEnviar : '-') + ')') : '(NC)'} Tj ET`);
         // Fundo azul claro na célula A ENVIAR se tiver valor
-        if (_aEnviar > 0) {
+        if (itemConfirmed && _aEnviar > 0) {
           const envX = colX[3]; const colWEnv = colW[3];
           ops.splice(ops.length - 1, 0,
             `0.88 0.93 0.98 rg ${envX} ${y-2} ${colWEnv} 13 re f 0 0 0 rg`,
@@ -7501,6 +7605,7 @@ function gerarPdfEnvios(tipo) {
   // Coletar itens com falta no CPD filtrados por tipo
   const linhas = [];
   const relevantPairs = new Set();
+  const naoContados = []; // itens com estoque 0 e não contados nesta janela — não entram no cálculo, mas são avisados
   UNIT_NAMES.forEach(unitName => {
     const ucat   = getUnitCatalog(unitName).catalog;
     const ustock = unitStock[unitName] || {};
@@ -7508,6 +7613,15 @@ function gerarPdfEnvios(tipo) {
     ucat.forEach(item => {
       if (classificarItem(item.name) !== tipo) return;
       const estUnit = ustock[item.id] || 0;
+      // Item com estoque 0 e ainda não contado nesta janela: não sabemos o
+      // valor real, então não tratamos como "zero de verdade" no cálculo —
+      // só avisamos, em vez de silenciosamente considerar que a unidade tem 0.
+      if (!itemFoiContado(unitName, item.id, estUnit)) {
+        const minEntry = minMap[item.key];
+        const minDia = minEntry ? (minEntry[day] || 0) : 0;
+        if (minDia > 0) naoContados.push(unitName + ' - ' + item.name);
+        return;
+      }
       const aEnviar = calcAEnviar(unitName, item.key, estUnit, day);
       if (aEnviar === 0) return; // sem mínimo ou unidade já tem
       relevantPairs.add(unitName + '|' + item.category);
@@ -7521,7 +7635,7 @@ function gerarPdfEnvios(tipo) {
         existing.detalhe += ', ' + unitName + ' (' + aEnviar + ')';
       } else {
         linhas.push({ name: item.name, key: item.key, unit: item.unit, falta,
-                      category: item.category, detalhe: unitName + ' (' + aEnviar + ')' });
+                      category: categoriaCanonica(item.key, item.category), detalhe: unitName + ' (' + aEnviar + ')' });
       }
     });
   });
@@ -7536,14 +7650,25 @@ function gerarPdfEnvios(tipo) {
         : ' (' + st.days + (st.days === 1 ? ' dia' : ' dias') + ' atr\u00E1s)'));
     }
   });
+  // Itens com m\u00EDnimo pro dia mas ainda n\u00E3o contados nesta janela \u2014 n\u00E3o entraram
+  // no c\u00E1lculo acima porque n\u00E3o sabemos se s\u00E3o zero de verdade, mas \u00E9 importante
+  // avisar: podem estar faltando sem aparecer na lista.
+  if (naoContados.length > 0) {
+    staleEntries.push('N\u00C3O CONTADOS (podem estar faltando e n\u00E3o aparecem na lista): ' + naoContados.join(', '));
+  }
 
   if (linhas.length === 0) {
-    toast((tipo === 'produzido' ? 'Nenhum item de producao' : 'Nenhum item de compra') + ' faltando para ' + dayFull);
+    if (naoContados.length > 0) {
+      toast('Nenhum item calculado, mas há ' + naoContados.length + ' item(ns) ainda não contado(s) que podem estar faltando. Confira as unidades antes de assumir que está tudo certo.');
+    } else {
+      toast((tipo === 'produzido' ? 'Nenhum item de producao' : 'Nenhum item de compra') + ' faltando para ' + dayFull);
+    }
     return;
   }
 
-  // Ordenar por categoria depois posição
-  const refCats = getUnitCatalog('Asa Sul').categories;
+  // Ordenar por categoria depois posição — usa a ordem oficial do CPD (CATEGORIES),
+  // já que a categoria de cada linha agora também vem do catálogo do CPD.
+  const refCats = CATEGORIES;
   linhas.sort((a, b) => {
     const ia = refCats.indexOf(a.category), ib = refCats.indexOf(b.category);
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
@@ -7673,7 +7798,7 @@ function gerarPdfEnvios(tipo) {
 // verticais mais fortes entre as unidades para facilitar a leitura.
 // Recebe as linhas já filtradas/buscadas como aparecem na tela no momento
 // do clique.
-function gerarPdfEnviosTabela(rows, dayFull) {
+function gerarPdfEnviosTabela(rows, dayFull, staleEntries) {
   if (!rows || rows.length === 0) {
     toast('Nenhum item para gerar o PDF com os filtros atuais.');
     return;
@@ -7692,20 +7817,56 @@ function gerarPdfEnviosTabela(rows, dayFull) {
   const rowH = 16, MARGIN_BOT = 50;
   const SEP_CLR = rgb(184,146,42); // dourado — mesmo tom do separador entre unidades na tela
 
+  // Este PDF é impresso e circula fora da tela — sem o aviso de "não contado"/
+  // "contagem desatualizada" que aparece no topo da aba, quem só lê o papel não
+  // tem como saber que um "—" pode ser um item que ninguém contou ainda, e não
+  // um item que realmente está com estoque suficiente. Montamos o mesmo aviso
+  // usado na tela e imprimimos no topo de cada página do PDF.
+  function wrapText(text, maxChars) {
+    const words = text.split(', '); const lines = []; let cur = '';
+    words.forEach(w => {
+      const test = cur ? cur+', '+w : w;
+      if (test.length > maxChars && cur) { lines.push(cur); cur = w; } else cur = test;
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+  const naoContados = [];
+  rows.forEach(row => {
+    UNIT_NAMES.forEach(u => {
+      const pu = row.perUnit ? row.perUnit[u] : null;
+      if (pu && pu.contado === false) naoContados.push(u + ' - ' + row.name);
+    });
+  });
+  const warnMsgs = [];
+  if (naoContados.length > 0) {
+    warnMsgs.push('NÃO CONTADOS (aparecem como "NC", não some da lista): ' + naoContados.join(', '));
+  }
+  if (staleEntries && staleEntries.length > 0) {
+    warnMsgs.push('Contagem desatualizada usada no cálculo: ' + staleEntries.join('; '));
+  }
+  const warnLinesFixed = warnMsgs.length > 0
+    ? wrapText(warnMsgs.join('  |  '), 100)
+    : [];
+
   const pages = [];
   let cmds = [];
   const c = (...p) => cmds.push(p.join(' '));
 
   function newPage() {
     cmds = [];
-    c(rgb(12,26,15)+' rg', ml+' '+(H-50)+' '+(W-80)+' 40 re f');
+    const extraH = warnLinesFixed.length * 11;
+    c(rgb(12,26,15)+' rg', ml+' '+(H-50-extraH)+' '+(W-80)+' '+(40+extraH)+' re f');
     c('BT /F1 13 Tf '+rgb(240,237,224)+' rg '+(ml+8)+' '+(H-34)+' Td '+pdfStr('Tabela de Envios - '+dayFull)+' Tj ET');
     c('BT /F2 8 Tf '+rgb(168,196,174)+' rg '+(W-mr-80)+' '+(H-34)+' Td '+pdfStr(genDate)+' Tj ET');
     c('BT /F2 9 Tf '+rgb(168,196,174)+' rg '+(ml+8)+' '+(H-48)+' Td '+pdfStr(rows.length+' itens')+' Tj ET');
-    c(SEP_CLR+' RG 0.8 w '+ml+' '+(H-58)+' m '+(W-mr)+' '+(H-58)+' l S');
+    warnLinesFixed.forEach((wl, wi) => {
+      c('BT /F1 8 Tf '+rgb(255,214,120)+' rg '+(ml+8)+' '+(H-48-12-wi*11)+' Td '+pdfStr(wl)+' Tj ET');
+    });
+    c(SEP_CLR+' RG 0.8 w '+ml+' '+(H-58-extraH)+' m '+(W-mr)+' '+(H-58-extraH)+' l S');
 
     // Linha 1 do cabeçalho: nome da unidade (fundo verde escuro, texto branco)
-    const hdr1Top = H-58, hdr1H = 16;
+    const hdr1Top = H-58-extraH, hdr1H = 16;
     c(rgb(38,116,62)+' rg '+ml+' '+(hdr1Top-hdr1H)+' '+(W-ml-mr)+' '+hdr1H+' re f');
     c('BT /F1 8 Tf 1 1 1 rg '+(ml+4)+' '+(hdr1Top-hdr1H+5)+' Td '+pdfStr('ITEM')+' Tj ET');
 
@@ -7771,11 +7932,12 @@ function gerarPdfEnviosTabela(rows, dayFull) {
 
       const pu    = row.perUnit ? row.perUnit[u] : null;
       const hasPu = !!pu;
-      const hasEnv = hasPu && pu.aEnviar > 0;
+      const naoContado = hasPu && pu.contado === false;
+      const hasEnv = hasPu && !naoContado && pu.aEnviar > 0;
       const estVal = hasPu ? String(pu.est) : '-';
-      const envVal = hasEnv ? String(pu.aEnviar) : '-';
+      const envVal = naoContado ? 'NC' : (hasEnv ? String(pu.aEnviar) : '-');
       const estClr = hasPu ? rgb(70,68,58) : rgb(160,158,140);
-      const envClr = hasEnv ? rgb(26,82,41) : rgb(160,158,140);
+      const envClr = naoContado ? rgb(184,116,13) : (hasEnv ? rgb(26,82,41) : rgb(160,158,140));
       c('BT /F2 8.5 Tf '+estClr+' rg '+(gx+3)+' '+midY+' Td '+pdfStr(estVal)+' Tj ET');
       c('BT /F1 8.5 Tf '+envClr+' rg '+(gx+3+subW)+' '+midY+' Td '+pdfStr(envVal)+' Tj ET');
     });
@@ -7842,7 +8004,7 @@ function viewEnviosDia() {
   const btnTabela = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:12px;display:flex;align-items:center;gap:5px'});
   btnTabela.innerHTML = '📄 PDF Tabela';
   btnTabela.title = 'Imprime a tabela de envios (item + estoque e quantidade a enviar de cada unidade), sem Est. CPD e sem Situação';
-  btnTabela.addEventListener('click', () => gerarPdfEnviosTabela(currentFilteredRows, dayFull));
+  btnTabela.addEventListener('click', () => gerarPdfEnviosTabela(currentFilteredRows, dayFull, staleEntries));
   pdfWrap.appendChild(btnProd);
   pdfWrap.appendChild(btnComp);
   pdfWrap.appendChild(btnTabela);
@@ -7886,21 +8048,50 @@ function viewEnviosDia() {
       const minDia = minEntry ? (minEntry[day] || 0) : 0;
       if (minDia === 0) return; // sem mínimo para este dia — não é relevante
 
-      const aEnviar = calcAEnviar(unitName, item.key, estSoma, day);
+      // Se o item está com estoque 0 e ainda não foi contado nesta janela, não
+      // sabemos se é zero de verdade — não calculamos aEnviar a partir disso,
+      // só marcamos como "não contado" pra exibir na tabela em vez de um número.
+      const contado = itemFoiContado(unitName, item.id, estSoma);
+      const aEnviar = contado ? calcAEnviar(unitName, item.key, estSoma, day) : 0;
       if (aEnviar > 0) relevantPairs.add(unitName + '|' + item.category);
 
       if (!itemMap.has(item.key)) {
         const cpdItem = catalog.find(c => c.key === item.key);
         itemMap.set(item.key, {
-          name, key: item.key, unit: item.unit, category: item.category,
+          name, key: item.key, unit: item.unit, category: cpdItem ? cpdItem.category : item.category,
           estCPD: cpdItem ? (cpd[cpdItem.id] || 0) : 0,
           perUnit: {}
         });
       }
-      // Sempre registrar: estoque e aEnviar (pode ser 0 se unidade já tem suficiente)
-      itemMap.get(item.key).perUnit[unitName] = { est: estSoma, aEnviar };
+      // Sempre registrar: estoque, aEnviar (pode ser 0 se unidade já tem suficiente
+      // ou se ainda não contado) e a flag "contado" para diferenciar os dois casos.
+      itemMap.get(item.key).perUnit[unitName] = { est: estSoma, aEnviar, contado };
     });
   });
+
+  // ── Aviso de itens ainda não contados nesta janela ──────────────────────────
+  // Esses itens não entram no cálculo de A Enviar (não sabemos se é zero de
+  // verdade) — aparecem como "NC" em cada célula da tabela, mas sem um resumo
+  // no topo é fácil não perceber que ainda faltam ser contados antes de confiar
+  // na coluna Situação.
+  const naoContadosDia = [];
+  itemMap.forEach(row => {
+    UNIT_NAMES.forEach(u => {
+      const pu = row.perUnit[u];
+      if (pu && pu.contado === false) naoContadosDia.push(u + ' - ' + row.name);
+    });
+  });
+  if (naoContadosDia.length > 0) {
+    const ncBanner = el('div', {cls:'alert-banner warn', style:'margin-bottom:14px'});
+    const ncIcon = el('span', {cls:'alert-banner-icon'}, '❓');
+    const ncBody = el('div', {cls:'alert-banner-body'});
+    ncBody.appendChild(el('div', {cls:'alert-banner-title'}, naoContadosDia.length + ' item(ns) ainda não contado(s) nesta janela'));
+    ncBody.appendChild(el('div', {cls:'alert-banner-items'},
+      naoContadosDia.join(' · ') + '. Esses itens aparecem como "NC" nas células — o cálculo de A Enviar não considera o estoque zero até a unidade confirmar a contagem.'));
+    ncBanner.appendChild(ncIcon);
+    ncBanner.appendChild(ncBody);
+    frag.appendChild(ncBanner);
+  }
 
   // ── Aviso de contagem desatualizada usada neste cálculo ────────────────────
   const staleEntries = [];
@@ -7930,21 +8121,36 @@ function viewEnviosDia() {
   itemMap.forEach(row => {
     const totalAEnviar = UNIT_NAMES.reduce((s, u) => s + (row.perUnit[u] ? row.perUnit[u].aEnviar : 0), 0);
     const falta   = Math.max(0, totalAEnviar - row.estCPD);
+    // Se alguma unidade ainda não contou este item, totalAEnviar pode estar
+    // subestimado (a contribuição dela entrou como 0). Marcamos "pendente"
+    // pra não deixar a badge "✓ OK" passar confiança que os dados não têm —
+    // ver o resumo no topo, mas cada linha também precisa avisar sozinha,
+    // já que a pessoa pode filtrar/rolar e não ver o resumo.
+    const pendente = UNIT_NAMES.some(u => row.perUnit[u] && row.perUnit[u].contado === false);
     row.totalAEnviar = totalAEnviar;
     row.falta    = falta;
+    row.pendente = pendente;
     row.situacao = falta > 0 ? 'falta' : 'ok';
     rows.push(row);
   });
 
   // Ordenar pela posição exata no catálogo das unidades (ordem de produção)
-  // Usa a posição da primeira unidade que tiver o item (Asa Sul → SIG → VP → Delivery)
+  // A CATEGORIA usada aqui é sempre a do catálogo do CPD (categoriaCanonica) —
+  // um mesmo produto pode estar em categorias diferentes em cada catálogo de
+  // unidade (ex: "Coca-Cola 1,5L" é "Salão" na Asa Sul mas "Delivery" no SIG),
+  // e usar "a primeira unidade que tiver o item" fazia essa tabela agrupada
+  // (que soma a necessidade de TODAS as unidades) mostrar um item embaixo de
+  // uma categoria que não bate com a real origem da necessidade. A posição
+  // (pos, só usada pra ordenar dentro da categoria) ainda usa a primeira
+  // unidade encontrada — isso é só estética, não afeta o agrupamento.
   const _getUnitCatalogPos = (itemKey) => {
+    const cat = categoriaCanonica(itemKey, '');
     for (const u of UNIT_NAMES) {
       const uc = getUnitCatalog(u).catalog;
       const idx = uc.findIndex(c => c.key === itemKey);
-      if (idx > -1) return { cat: uc[idx].category, pos: idx };
+      if (idx > -1) return { cat: cat || uc[idx].category, pos: idx };
     }
-    return { cat: '', pos: 99999 };
+    return { cat, pos: 99999 };
   };
   rows.forEach(r => {
     const pos = _getUnitCatalogPos(r.key);
@@ -7952,18 +8158,14 @@ function viewEnviosDia() {
     r._pos = pos.pos;
   });
   rows.sort((a, b) => {
-    // Primeiro ordenar por categoria (pela ordem em que aparece no catálogo)
+    // Primeiro ordenar por categoria, pela ordem oficial do CPD (CATEGORIES)
     const catA = a._catOrder, catB = b._catOrder;
     if (catA !== catB) {
-      // Usar a ordem da primeira unidade que tiver ambas as categorias
-      for (const u of UNIT_NAMES) {
-        const cats = getUnitCatalog(u).categories;
-        const ia = cats.indexOf(catA);
-        const ib = cats.indexOf(catB);
-        if (ia > -1 && ib > -1) return ia - ib;
-        if (ia > -1) return -1;
-        if (ib > -1) return 1;
-      }
+      const ia = CATEGORIES.indexOf(catA);
+      const ib = CATEGORIES.indexOf(catB);
+      if (ia > -1 && ib > -1) return ia - ib;
+      if (ia > -1) return -1;
+      if (ib > -1) return 1;
     }
     // Dentro da mesma categoria, pela posição no catálogo
     return a._pos - b._pos;
@@ -8094,9 +8296,16 @@ function viewEnviosDia() {
         const tdEst = el('td', {cls:'u-sep'});
         const tdEnv = el('td');
         if (pu) {
-          // Mostrar estoque sempre; A Enviar: valor se > 0, '—' se 0 (unidade já tem suficiente)
+          // Mostrar estoque sempre; A Enviar: valor se > 0, '—' se 0 (unidade já tem
+          // suficiente), 'NC' se ainda não contado nesta janela (não sabemos se é zero
+          // de verdade — não mostramos como se a unidade já tivesse o suficiente)
           tdEst.textContent = String(pu.est);
-          if (pu.aEnviar > 0) {
+          if (pu.contado === false) {
+            tdEnv.textContent = 'NC';
+            tdEnv.className = 'val-dash';
+            tdEnv.style.color = '#E8A020';
+            tdEnv.title = 'Item ainda não contado nesta janela';
+          } else if (pu.aEnviar > 0) {
             tdEnv.textContent = String(pu.aEnviar);
             tdEnv.className = 'val-env';
           } else {
@@ -8115,8 +8324,10 @@ function viewEnviosDia() {
       });
       // Situação
       const tdSit = el('td', {cls:'u-sep'});
-      const badge = el('span', {cls:'envios-badge ' + row.situacao});
-      badge.textContent = row.situacao === 'ok' ? '\u2705 OK' : '\u26A0\uFE0F Falta ' + row.falta;
+      const badgeCls = row.pendente ? 'pendente' : row.situacao;
+      const badge = el('span', {cls:'envios-badge ' + badgeCls});
+      badge.textContent = row.pendente ? '❓ Pendente' : (row.situacao === 'ok' ? '\u2705 OK' : '\u26A0\uFE0F Falta ' + row.falta);
+      if (row.pendente) badge.title = 'Alguma unidade ainda não contou este item — o cálculo pode estar incompleto.';
       tdSit.appendChild(badge);
       tr.appendChild(tdSit);
       tbody.appendChild(tr);
@@ -8135,15 +8346,17 @@ function viewEnviosDia() {
         cardsWrap.appendChild(el('div', {cls:'envios-card-cat-header'}, rowCat));
       }
 
-      const isOpen = row.situacao === 'falta';
+      const isOpen = row.situacao === 'falta' || row.pendente;
       const card = el('div', {cls:'envios-card' + (row.situacao === 'falta' ? ' falta' : '') + (isOpen ? ' open' : '')});
 
       const summary = el('div', {cls:'envios-card-summary envios-card-header'});
       summary.appendChild(el('div', {cls:'envios-card-name'}, row.name));
       const rightWrap = el('div', {style:'display:flex;align-items:center;gap:10px'});
       rightWrap.appendChild(el('span', {style:'font-size:11px;color:var(--text-3)'}, 'CPD: ' + row.estCPD));
-      const badge = el('span', {cls:'envios-badge ' + row.situacao});
-      badge.textContent = row.situacao === 'ok' ? '\u2705 OK' : '\u26A0\uFE0F Falta ' + row.falta;
+      const badgeCls = row.pendente ? 'pendente' : row.situacao;
+      const badge = el('span', {cls:'envios-badge ' + badgeCls});
+      badge.textContent = row.pendente ? '❓ Pendente' : (row.situacao === 'ok' ? '\u2705 OK' : '\u26A0\uFE0F Falta ' + row.falta);
+      if (row.pendente) badge.title = 'Alguma unidade ainda não contou este item — o cálculo pode estar incompleto.';
       rightWrap.appendChild(badge);
       rightWrap.appendChild(el('span', {cls:'envios-card-chevron'}, '\u25BE'));
       summary.appendChild(rightWrap);
@@ -8163,8 +8376,13 @@ function viewEnviosDia() {
         const vals = el('div', {cls:'envios-card-unit-vals'});
         if (pu) {
           vals.appendChild(el('span', {cls:'est'}, 'Est. ' + pu.est));
-          vals.appendChild(el('span', {cls:'env' + (pu.aEnviar > 0 ? '' : ' dash')},
-            pu.aEnviar > 0 ? String(pu.aEnviar) : '\u2014'));
+          if (pu.contado === false) {
+            const ncSpan = el('span', {cls:'env dash', style:'color:#E8A020', title:'Item ainda n\u00e3o contado nesta janela'}, 'NC');
+            vals.appendChild(ncSpan);
+          } else {
+            vals.appendChild(el('span', {cls:'env' + (pu.aEnviar > 0 ? '' : ' dash')},
+              pu.aEnviar > 0 ? String(pu.aEnviar) : '\u2014'));
+          }
         } else {
           vals.appendChild(el('span', {cls:'est'}, '\u2014'));
           vals.appendChild(el('span', {cls:'env dash'}, '\u2014'));
@@ -8668,18 +8886,26 @@ function viewQuadroProducao() {
     const _norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
     // Buscar item no catálogo CPD pelo cpdId
     const cpdItem = (catalog || []).find(c => c.id === ft.cpdId);
-    if (!cpdItem) return { lotes:0, aEnviarTotal:0, estCPD:0 };
+    if (!cpdItem) return { lotes:0, aEnviarTotal:0, estCPD:0, pendente:false };
     const estCPD = cpd[cpdItem.id] || 0;
     // Somar A Enviar de todas as unidades
     let aEnviarTotal = 0;
+    let pendente = false; // true se alguma unidade ainda não contou este item nesta janela
     const dayCode = qpDayCode(activeDay);
-    if (!dayCode) return { lotes:0, aEnviarTotal:0, estCPD };
+    if (!dayCode) return { lotes:0, aEnviarTotal:0, estCPD, pendente };
     UNIT_NAMES.forEach(unitName => {
       const ucat   = getUnitCatalog(unitName).catalog;
       const ustock = unitStock[unitName] || {};
       // Somar estoques de todos os IDs do mesmo item nessa unidade
       const matchItems = ucat.filter(i => i.key === cpdItem.key);
       const estUnit = matchItems.reduce((s,i) => s + (ustock[i.id] || 0), 0);
+      // Se a unidade ainda não contou este item (estoque 0 sem confirmação),
+      // não sabemos o valor real — não somamos ao total, só sinalizamos.
+      const _repItem = matchItems[0];
+      if (_repItem && !itemFoiContado(unitName, _repItem.id, estUnit)) {
+        pendente = true;
+        return;
+      }
       const aEnv = calcAEnviar(unitName, cpdItem.key, estUnit, dayCode);
       aEnviarTotal += aEnv;
     });
@@ -8687,7 +8913,7 @@ function viewQuadroProducao() {
     const necessidade = aEnviarTotal * cobertura;
     const deficit = Math.max(0, necessidade - estCPD);
     const lotes = deficit > 0 ? Math.ceil(deficit / ft.rendFichas) : 0;
-    return { lotes, aEnviarTotal, estCPD };
+    return { lotes, aEnviarTotal, estCPD, pendente };
   }
 
   // Dia de entrega correspondente ao dia selecionado
@@ -8732,12 +8958,12 @@ function viewQuadroProducao() {
 
     FT_LIBRARY.forEach(ft => {
       const cobertura = parseInt(qpGet(`cob_${ft.id}`, ft.coberturaDefault)) || 1;
-      const { lotes, aEnviarTotal, estCPD } = calcLotesSugeridos(ft, cobertura);
+      const { lotes, aEnviarTotal, estCPD, pendente } = calcLotesSugeridos(ft, cobertura);
       // Quantidade SEMPRE zero — responsavel decide aceitar a sugestao
       const lotesManuais = qpGet(`qty_${dayIdx}_${ft.id}`, 0);
       const lotesEfetivos = lotesManuais;
       const liberado = qpGet(`lib_${dayIdx}_${ft.id}`, false);
-      ftPorArea[ft.area].push({ ft, lotes, aEnviarTotal, estCPD, cobertura, lotesEfetivos, liberado });
+      ftPorArea[ft.area].push({ ft, lotes, aEnviarTotal, estCPD, cobertura, lotesEfetivos, liberado, pendente });
       if (lotesEfetivos > 0) totalLotes++;
       if (liberado) totalLiberados++;
     });
@@ -8883,7 +9109,7 @@ function viewQuadroProducao() {
         return;
       }
 
-      items.forEach(({ ft, lotes, aEnviarTotal, estCPD, cobertura, lotesEfetivos, liberado }) => {
+      items.forEach(({ ft, lotes, aEnviarTotal, estCPD, cobertura, lotesEfetivos, liberado, pendente }) => {
         const tr = el('tr', {cls: (lotes > 0 && dayCode) ? 'qp-precisa' : ''});
 
         // Nome + rendimento
@@ -8892,6 +9118,12 @@ function viewQuadroProducao() {
         nameSpan.textContent = ft.nome;
         if (lotes === 0 && dayCode) {
           nameSpan.appendChild(el('span', {cls:'qp-sem-necessidade'}, '✓ Estoque OK'));
+        }
+        if (pendente && dayCode) {
+          nameSpan.appendChild(el('span', {
+            style:'display:inline-block;margin-left:6px;font-size:10px;font-weight:700;color:#B8740D;background:rgba(232,160,32,.12);padding:1px 6px;border-radius:8px',
+            title:'Alguma unidade ainda não contou este item nesta janela — a sugestão abaixo pode estar subestimada.'
+          }, '⚠ NÃO CONTADO EM ALGUMA UNIDADE'));
         }
         tdNome.appendChild(nameSpan);
         tdNome.appendChild(el('div', {cls:'qp-rendimento'}, ft.rendimento));
