@@ -1700,7 +1700,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.4.8'; // 26/07: desativa zeragem automática por inatividade (apagava contagem real)
+    const APP_VERSION = '1.4.9'; // 26/07: erro de rede não sobrescreve mais o estoque inteiro da unidade
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -7461,8 +7461,17 @@ function viewUnits() {
         .catch(e => {
           console.warn('[Firebase] Erro ao salvar item', itemId, e);
           window._fb.localWrite = false;
-          // Fallback: salvar objeto completo
-          saveUnit(activeUnit, unitStock[activeUnit]);
+          // NÃO usar saveUnit() (sobrescreve o objeto inteiro) aqui — é
+          // exatamente o que o comentário acima diz pra evitar: se este
+          // aparelho não tiver em memória algum item que outro dispositivo
+          // já salvou (rede lenta, aba com dado desatualizado), um "set"
+          // do objeto completo apaga esse item de outra pessoa do Firebase,
+          // mesmo já confirmado. Reenfileira só este item pro mecanismo de
+          // retry (mesmo usado no modo offline) em vez de sobrescrever tudo.
+          window._fb.pendingWrites = window._fb.pendingWrites || [];
+          window._fb.pendingWrites.push({ key: 'pizza_units/' + _slug + '/' + itemId, data: qty });
+          if (typeof _updatePendingBadge === 'function') _updatePendingBadge(window._fb.pendingWrites.length);
+          if (typeof _flushPendingWrites === 'function') setTimeout(_flushPendingWrites, 3000);
         });
     } else {
       window._fb = window._fb || { ready: false, pendingWrites: [] };
