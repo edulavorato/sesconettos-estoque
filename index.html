@@ -1701,7 +1701,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.9'; // 27/07: URGENTE — Envios do Dia volta a usar o catálogo da Asa Sul como referência de categoria/ordenação (não mais o do CPD)
+    const APP_VERSION = '1.5.10'; // 27/07: Remove 7 mínimos de SEG cadastrados por engano em itens da categoria Salão (Açúcar Refinado, Isqueiro, Coca-Cola/Guaraná 1,5L) — corrige a categoria 'Salão' aparecendo indevidamente às segundas
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -3714,7 +3714,7 @@ const MIN_PER_DAY_ASA_SUL = {
   'alcool em gel p/forno':{'SEG':6,'SEX':6},
   'palmito de pupunha 1kg':{'SEG':4,'SEX':5},
   'adaptador de isqueiro':{'SEG':1},
-  'isqueiro':{'QUA':2,'SEG':1},
+  'isqueiro':{'QUA':2},
   'vodka absolut':{'SEG':2,'SEX':2},
   'gin beg':{'SEG':1,'SEX':1},
   'rum':{'SEG':1,'SEX':1},
@@ -3789,7 +3789,7 @@ const MIN_PER_DAY_ASA_SUL = {
   'heineken normal':{'SEG':24,'SEX':24},
   'goiabada':{'SEG':1},
   'biscoito lottus ou tostines':{'SEG':2},
-  'acucar refinado':{'SEG':3,'QUA':1},
+  'acucar refinado':{'QUA':1},
   'capsula cafe leggero':{'SEG':20},
   'capsula cafe decafeinatto':{'SEG':20},
   'guardanapo sache cx-2000':{'QUA':8},
@@ -4087,7 +4087,6 @@ const MIN_PER_DAY_SIG = {
   'heineken normal':{'SEX':24,'SEG':24},
   'goiabada':{'SEG':1},
   'biscoito lottus ou tostines':{'SEG':1},
-  'acucar refinado':{'SEG':3},
   'capsula cafe leggero':{'SEG':20},
   'capsula cafe decafeinatto':{'SEG':20},
   'acqua perfumante 400ml':{'QUA':3},
@@ -4321,10 +4320,6 @@ const MIN_PER_DAY_VICENTE_PIRES = {
   'eisenbahn':{'SEX':26,'SEG':15},
   'fanta laranja lata':{'SEX':8,'SEG':8},
   'heineken normal':{'SEX':92,'SEG':92},
-  'coca-cola zero 1,5l':{'SEG':6},
-  'coca-cola 1,5l':{'SEG':6},
-  'guarana 1,5l':{'SEG':6},
-  'guarana zero 1,5l':{'SEG':6},
   'guardanapo sache cx-2000':{'QUA':10},
   'bobina termica fiscal 80x40':{'QUA':20},
   'bobina termica cartao 57mm':{'QUA':20},
