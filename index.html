@@ -1701,7 +1701,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.6'; // 27/07: botão "Atualizar agora" do aviso de nova versão agora força buscar a página de novo (cache de 10min do GitHub Pages fazia precisar recarregar várias vezes)
+    const APP_VERSION = '1.5.7'; // 27/07: aviso de itens não contados na aba Envios do Dia virou botão "Ver lista" (modal agrupado por unidade) em vez de listar tudo no banner
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -7979,6 +7979,49 @@ function gerarPdfEnviosTabela(rows, dayFull, staleEntries) {
   toast('PDF da tabela de envios gerado!');
 }
 
+// Modal com a lista de itens ainda não contados nesta janela, agrupada por
+// unidade — usado pelo botão "Ver lista" do aviso na aba Envios do Dia.
+// items: [{ unit, name }]
+function openNaoContadosModal(items) {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+  const overlay = el('div', {cls:'modal-overlay'});
+  const box = el('div', {cls:'modal-box', style:'max-width:480px'});
+
+  const header = el('div', {cls:'modal-header'});
+  header.appendChild(el('div', {cls:'modal-title'}, 'Itens não contados (' + items.length + ')'));
+  header.appendChild(el('button', {cls:'modal-close', onclick:()=>overlay.remove()}, '×'));
+  box.appendChild(header);
+
+  const body = el('div', {cls:'modal-body', style:'max-height:70vh'});
+  body.appendChild(el('p', {style:'padding:2px 20px 12px;color:var(--text-3);font-size:13px'},
+    'Esses itens não entram no cálculo de A Enviar até a unidade confirmar a contagem (mesmo que a contagem real seja zero).'));
+
+  const byUnit = {};
+  items.forEach(({unit, name}) => {
+    if (!byUnit[unit]) byUnit[unit] = [];
+    byUnit[unit].push(name);
+  });
+  UNIT_NAMES.forEach(u => {
+    const list = byUnit[u];
+    if (!list || !list.length) return;
+    body.appendChild(el('div', {cls:'dash-section-head'}, u + ' (' + list.length + ')'));
+    list.forEach(name => {
+      const row = el('div', {cls:'dash-detail-row'});
+      row.appendChild(el('span', {cls:'dash-detail-name'}, name));
+      body.appendChild(row);
+    });
+  });
+  box.appendChild(body);
+
+  const footer = el('div', {cls:'modal-footer'});
+  footer.appendChild(el('button', {cls:'btn btn-outline', onclick:()=>overlay.remove()}, 'Fechar'));
+  box.appendChild(footer);
+
+  overlay.appendChild(box);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 // ═══ ENVIOS DO DIA ═══════════════════════════════════════════════════════════
 function viewEnviosDia() {
   const frag = document.createDocumentFragment();
@@ -8071,23 +8114,28 @@ function viewEnviosDia() {
 
   // ── Aviso de itens ainda não contados nesta janela ──────────────────────────
   // Esses itens não entram no cálculo de A Enviar (não sabemos se é zero de
-  // verdade) — aparecem como "NC" em cada célula da tabela, mas sem um resumo
-  // no topo é fácil não perceber que ainda faltam ser contados antes de confiar
-  // na coluna Situação.
+  // verdade) — aparecem como "NC" em cada célula da tabela. O aviso fica só
+  // com a contagem e um botão "Ver lista" (abre modal agrupado por unidade) —
+  // listar tudo direto no banner virava uma parede de texto ilegível quando
+  // havia muitos itens pendentes.
   const naoContadosDia = [];
   itemMap.forEach(row => {
     UNIT_NAMES.forEach(u => {
       const pu = row.perUnit[u];
-      if (pu && pu.contado === false) naoContadosDia.push(u + ' - ' + row.name);
+      if (pu && pu.contado === false) naoContadosDia.push({ unit: u, name: row.name });
     });
   });
   if (naoContadosDia.length > 0) {
-    const ncBanner = el('div', {cls:'alert-banner warn', style:'margin-bottom:14px'});
+    const ncBanner = el('div', {cls:'alert-banner warn', style:'margin-bottom:14px;align-items:center'});
     const ncIcon = el('span', {cls:'alert-banner-icon'}, '❓');
-    const ncBody = el('div', {cls:'alert-banner-body'});
-    ncBody.appendChild(el('div', {cls:'alert-banner-title'}, naoContadosDia.length + ' item(ns) ainda não contado(s) nesta janela'));
-    ncBody.appendChild(el('div', {cls:'alert-banner-items'},
-      naoContadosDia.join(' · ') + '. Esses itens aparecem como "NC" nas células — o cálculo de A Enviar não considera o estoque zero até a unidade confirmar a contagem.'));
+    const ncBody = el('div', {cls:'alert-banner-body', style:'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%'});
+    const ncText = el('div', {});
+    ncText.appendChild(el('div', {cls:'alert-banner-title'}, naoContadosDia.length + ' item(ns) ainda não contado(s) nesta janela'));
+    ncText.appendChild(el('div', {cls:'alert-banner-items'}, 'Não entram no cálculo de A Enviar até a unidade confirmar a contagem.'));
+    ncBody.appendChild(ncText);
+    const ncBtn = el('button', {cls:'btn btn-outline btn-sm', style:'flex-shrink:0'}, 'Ver lista');
+    ncBtn.addEventListener('click', () => openNaoContadosModal(naoContadosDia));
+    ncBody.appendChild(ncBtn);
     ncBanner.appendChild(ncIcon);
     ncBanner.appendChild(ncBody);
     frag.appendChild(ncBanner);
