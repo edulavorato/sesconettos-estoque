@@ -1714,7 +1714,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.13'; // 27/07: Corrige comparação de versão (era string ">" — "1.5.12" > "1.5.9" dava FALSO por ordem lexicográfica, então nenhuma versão 1.5.10+ conseguia se publicar em dados/pizza_app_version, e o aviso "Nova versão disponível" ficava travado em 1.5.9 pra sempre). Agora usa comparação numérica por partes (_compareVersions)
+    const APP_VERSION = '1.5.14'; // 27/07: Move 12 itens de Delivery (Coca-Cola, Guaraná, caixas, forros, bobina plástica, lacre) da categoria 'Salão' para 'Delivery' no catálogo-seed da Asa Sul, e 10 itens equivalentes de 'Bar'/'Salão' para 'Delivery' em Vicente Pires — corrige categoriaCanonica() jogando esses itens pra fora da seção Delivery na Tabela de Envios/Envios do Dia. Adiciona 'Delivery' em ASA_SUL_CATEGORIES e VICENTE_PIRES_CATEGORIES. Correção equivalente precisa ser aplicada no catálogo AO VIVO do Firebase (script à parte)
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -2544,7 +2544,7 @@ const SEED_CATALOG = [
 
 // ═══ CATÁLOGOS INDEPENDENTES POR UNIDADE (IDs compatíveis com Firebase) ═══
 
-const ASA_SUL_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Bar', 'Salão', 'Vinhos', 'Limpeza'];
+const ASA_SUL_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Bar', 'Salão', 'Vinhos', 'Delivery', 'Limpeza'];
 const ASA_SUL_CATALOG = [
   {id:'ur01',name:'Massa de pizza',key:'massa de pizza',category:'Refrigerados',unit:'Un'},
   {id:'ur02',name:'Muçarela 20kg',key:'mucarela 20kg',category:'Refrigerados',unit:'Caixa'},
@@ -2719,19 +2719,19 @@ const ASA_SUL_CATALOG = [
   {id:'us17',name:'Fita adesiva durex',key:'fita adesiva durex',category:'Salão',unit:'Un'},
   {id:'us19',name:'Molho de Pimenta',key:'molho de pimenta',category:'Salão',unit:'UN'},
   {id:'us20',name:'Pimenta Calabresa 250g',key:'pimenta calabresa 250g',category:'Salão',unit:'PCT'},
-  {id:'us21',name:'Coca-Cola zero 1,5L',key:'coca-cola zero 1,5l',category:'Salão',unit:'Un'},
-  {id:'us22',name:'Coca-Cola 1,5L',key:'coca-cola 1,5l',category:'Salão',unit:'Un'},
-  {id:'us23',name:'Guaraná 1,5L',key:'guarana 1,5l',category:'Salão',unit:'Un'},
-  {id:'us24',name:'Guaraná zero 1,5L',key:'guarana zero 1,5l',category:'Salão',unit:'Un'},
-  {id:'us25',name:'Caixa de pizza pequena',key:'caixa de pizza pequena',category:'Salão',unit:'PCT'},
-  {id:'us26',name:'Caixa de pizza grande',key:'caixa de pizza grande',category:'Salão',unit:'PCT'},
-  {id:'us27',name:'Caixa fatia de pizza',key:'caixa fatia de pizza',category:'Salão',unit:'Cx'},
-  {id:'us28',name:'Forro caixa pequena',key:'forro caixa pequena',category:'Salão',unit:'PCT'},
-  {id:'us29',name:'Forro caixa grande',key:'forro caixa grande',category:'Salão',unit:'PCT'},
+  {id:'us21',name:'Coca-Cola zero 1,5L',key:'coca-cola zero 1,5l',category:'Delivery',unit:'Un'},
+  {id:'us22',name:'Coca-Cola 1,5L',key:'coca-cola 1,5l',category:'Delivery',unit:'Un'},
+  {id:'us23',name:'Guaraná 1,5L',key:'guarana 1,5l',category:'Delivery',unit:'Un'},
+  {id:'us24',name:'Guaraná zero 1,5L',key:'guarana zero 1,5l',category:'Delivery',unit:'Un'},
+  {id:'us25',name:'Caixa de pizza pequena',key:'caixa de pizza pequena',category:'Delivery',unit:'PCT'},
+  {id:'us26',name:'Caixa de pizza grande',key:'caixa de pizza grande',category:'Delivery',unit:'PCT'},
+  {id:'us27',name:'Caixa fatia de pizza',key:'caixa fatia de pizza',category:'Delivery',unit:'Cx'},
+  {id:'us28',name:'Forro caixa pequena',key:'forro caixa pequena',category:'Delivery',unit:'PCT'},
+  {id:'us29',name:'Forro caixa grande',key:'forro caixa grande',category:'Delivery',unit:'PCT'},
   {id:'us30',name:'Forro de caixa fatia',key:'forro de caixa fatia',category:'Salão',unit:'PCT'},
-  {id:'us31',name:'Bobina plástica 20x30',key:'bobina plastica 20x30',category:'Salão',unit:'Un'},
-  {id:'us32',name:'Bobina plástica 30x40',key:'bobina plastica 30x40',category:'Salão',unit:'Un'},
-  {id:'us33',name:'Lacre de caixa de pizza',key:'lacre de caixa de pizza',category:'Salão',unit:'PCT'},
+  {id:'us31',name:'Bobina plástica 20x30',key:'bobina plastica 20x30',category:'Delivery',unit:'Un'},
+  {id:'us32',name:'Bobina plástica 30x40',key:'bobina plastica 30x40',category:'Delivery',unit:'Un'},
+  {id:'us33',name:'Lacre de caixa de pizza',key:'lacre de caixa de pizza',category:'Delivery',unit:'PCT'},
   {id:'us34',name:'Desenho para Crianças pintar',key:'desenho para criancas pintar',category:'Salão',unit:'PCT'},
   {id:'us35',name:'Lápis de cor',key:'lapis de cor',category:'Salão',unit:'UN'},
   {id:'us36',name:'Galheteiro',key:'galheteiro',category:'Salão',unit:'un'},
@@ -3085,7 +3085,7 @@ const SIG_CATALOG = [
   {id:'ul29',name:'Poliflor',key:'poliflor',category:'Limpeza',unit:'Un'},
 ];
 
-const VICENTE_PIRES_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Bar', 'Salão', 'Vinhos', 'Limpeza'];
+const VICENTE_PIRES_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Bar', 'Salão', 'Vinhos', 'Delivery', 'Limpeza'];
 const VICENTE_PIRES_CATALOG = [
   {id:'ur01',name:'Massa de pizza',key:'massa de pizza',category:'Refrigerados',unit:'Un'},
   {id:'ur02',name:'Muçarela 20kg',key:'mucarela 20kg',category:'Refrigerados',unit:'Caixa'},
@@ -3233,10 +3233,10 @@ const VICENTE_PIRES_CATALOG = [
   {id:'ub68',name:'Eisenbahn',key:'eisenbahn',category:'Bar',unit:'Un'},
   {id:'ub69',name:'Fanta laranja lata',key:'fanta laranja lata',category:'Bar',unit:'Un'},
   {id:'ub70',name:'Heineken normal',key:'heineken normal',category:'Bar',unit:'Un'},
-  {id:'ub71',name:'Coca-Cola zero 1,5L',key:'coca-cola zero 1,5l',category:'Bar',unit:'Un'},
-  {id:'ub72',name:'Coca-Cola 1,5L',key:'coca-cola 1,5l',category:'Bar',unit:'Un'},
-  {id:'ub73',name:'Guaraná 1,5L',key:'guarana 1,5l',category:'Bar',unit:'Un'},
-  {id:'ub74',name:'Guaraná zero 1,5L',key:'guarana zero 1,5l',category:'Bar',unit:'Un'},
+  {id:'ub71',name:'Coca-Cola zero 1,5L',key:'coca-cola zero 1,5l',category:'Delivery',unit:'Un'},
+  {id:'ub72',name:'Coca-Cola 1,5L',key:'coca-cola 1,5l',category:'Delivery',unit:'Un'},
+  {id:'ub73',name:'Guaraná 1,5L',key:'guarana 1,5l',category:'Delivery',unit:'Un'},
+  {id:'ub74',name:'Guaraná zero 1,5L',key:'guarana zero 1,5l',category:'Delivery',unit:'Un'},
   {id:'us01',name:'Guardanapo sachê cx-2000',key:'guardanapo sache cx-2000',category:'Salão',unit:'PCT'},
   {id:'us02',name:'Bobina térmica fiscal 80x40',key:'bobina termica fiscal 80x40',category:'Salão',unit:'Un'},
   {id:'us03',name:'Bobina térmica cartão 57mm',key:'bobina termica cartao 57mm',category:'Salão',unit:'Cx'},
@@ -3259,13 +3259,13 @@ const VICENTE_PIRES_CATALOG = [
   {id:'us20',name:'Marca texto',key:'marca texto',category:'Salão',unit:'Un'},
   {id:'us21',name:'Molho de Pimenta',key:'molho de pimenta',category:'Salão',unit:'UN'},
   {id:'us22',name:'Pimenta Calabresa 250g',key:'pimenta calabresa 250g',category:'Salão',unit:'PCT'},
-  {id:'us23',name:'Caixa de pizza pequena',key:'caixa de pizza pequena',category:'Salão',unit:'PCT'},
-  {id:'us24',name:'Caixa de pizza grande',key:'caixa de pizza grande',category:'Salão',unit:'PCT'},
-  {id:'us25',name:'Caixa fatia de pizza',key:'caixa fatia de pizza',category:'Salão',unit:'Cx'},
-  {id:'us26',name:'Forro caixa pequena',key:'forro caixa pequena',category:'Salão',unit:'PCT'},
-  {id:'us27',name:'Forro caixa grande',key:'forro caixa grande',category:'Salão',unit:'PCT'},
+  {id:'us23',name:'Caixa de pizza pequena',key:'caixa de pizza pequena',category:'Delivery',unit:'PCT'},
+  {id:'us24',name:'Caixa de pizza grande',key:'caixa de pizza grande',category:'Delivery',unit:'PCT'},
+  {id:'us25',name:'Caixa fatia de pizza',key:'caixa fatia de pizza',category:'Delivery',unit:'Cx'},
+  {id:'us26',name:'Forro caixa pequena',key:'forro caixa pequena',category:'Delivery',unit:'PCT'},
+  {id:'us27',name:'Forro caixa grande',key:'forro caixa grande',category:'Delivery',unit:'PCT'},
   {id:'us28',name:'Forro de caixa fatia',key:'forro de caixa fatia',category:'Salão',unit:'PCT'},
-  {id:'us29',name:'Lacre de caixa de pizza',key:'lacre de caixa de pizza',category:'Salão',unit:'PCT'},
+  {id:'us29',name:'Lacre de caixa de pizza',key:'lacre de caixa de pizza',category:'Delivery',unit:'PCT'},
   {id:'us30',name:'Desenho para Crianças pintar',key:'desenho para criancas pintar',category:'Salão',unit:'PCT'},
   {id:'us31',name:'Lápis de cor',key:'lapis de cor',category:'Salão',unit:'UN'},
   {id:'us32',name:'Galheteiro',key:'galheteiro',category:'Salão',unit:'un'},
