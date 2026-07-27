@@ -1652,12 +1652,25 @@ auth.onAuthStateChanged(user => {
     }
   });
 
+  // Compara versões tipo "1.5.12" numericamente por partes (evita bug de comparação
+  // de string, onde "1.5.12" > "1.5.9" dá FALSO porque '1' < '9' no 3º caractere)
+  function _compareVersions(a, b) {
+    const pa = String(a).split('.').map(n => parseInt(n, 10) || 0);
+    const pb = String(b).split('.').map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const diff = (pa[i] || 0) - (pb[i] || 0);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  }
+  window._compareVersions = _compareVersions;
+
   // Publicar versão do app — qualquer dispositivo com versão mais recente atualiza
   setTimeout(() => {
     if (!window._APP_VERSION) return;
     db.ref('dados/pizza_app_version').once('value').then(snap => {
       const stored = snap.val();
-      if (!stored || window._APP_VERSION > stored) {
+      if (!stored || _compareVersions(window._APP_VERSION, stored) > 0) {
         db.ref('dados/pizza_app_version').set(window._APP_VERSION)
           .then(() => console.log('[App] Versão ' + window._APP_VERSION + ' publicada'))
           .catch(e => console.warn('[App] Erro ao publicar versão:', e));
@@ -1701,7 +1714,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.11'; // 27/07: Aviso ao sair (logout e fechar aba) quando qualquer categoria tem contagem digitada mas não confirmada — antes só cobria as categorias obrigatórias do dia
+    const APP_VERSION = '1.5.13'; // 27/07: Corrige comparação de versão (era string ">" — "1.5.12" > "1.5.9" dava FALSO por ordem lexicográfica, então nenhuma versão 1.5.10+ conseguia se publicar em dados/pizza_app_version, e o aviso "Nova versão disponível" ficava travado em 1.5.9 pra sempre). Agora usa comparação numérica por partes (_compareVersions)
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -1768,7 +1781,7 @@ auth.onAuthStateChanged(user => {
   // ── 3. VERSÃO DO APP ────────────────────────────────────────────────────────
   db.ref('dados/pizza_app_version').on('value', snap => {
     const remoteVer = snap.val();
-    if (remoteVer && remoteVer !== window._APP_VERSION && !window._updateBannerShown) {
+    if (remoteVer && _compareVersions(remoteVer, window._APP_VERSION) > 0 && !window._updateBannerShown) {
       window._updateBannerShown = true;
       if (!document.getElementById('update-banner')) {
         const banner = document.createElement('div');
@@ -2611,7 +2624,6 @@ const ASA_SUL_CATALOG = [
   {id:'ue21',name:'Álcool em gel p/forno',key:'alcool em gel p/forno',category:'Estoque Seco',unit:'Un'},
   {id:'ue22',name:'Palmito de pupunha 1kg',key:'palmito de pupunha 1kg',category:'Estoque Seco',unit:'PCT 1kg'},
   {id:'ue23',name:'Adaptador de isqueiro',key:'adaptador de isqueiro',category:'Estoque Seco',unit:'UN'},
-  {id:'ue24',name:'Isqueiro',key:'isqueiro',category:'Estoque Seco',unit:'UN'},
   {id:'ub01',name:'Vodka Absolut',key:'vodka absolut',category:'Bar',unit:'Un'},
   {id:'ub02',name:'Gin BEG',key:'gin beg',category:'Bar',unit:'Un'},
   {id:'ub03',name:'Rum',key:'rum',category:'Bar',unit:'Un'},
@@ -2665,7 +2677,6 @@ const ASA_SUL_CATALOG = [
   {id:'ub51',name:'Canudo sachê colorido',key:'canudo sache colorido',category:'Bar',unit:'Un'},
   {id:'ub52',name:'Laranja Bahia',key:'laranja bahia',category:'Bar',unit:'Un'},
   {id:'ub53',name:'Laranja suco saco 20kg',key:'laranja suco saco 20kg',category:'Bar',unit:'Saco'},
-  {id:'ub54',name:'Morango 400g',key:'morango 400g',category:'Bar',unit:'Bandeja'},
   {id:'ub55',name:'Limão',key:'limao',category:'Bar',unit:'Saco'},
   {id:'ub56',name:'Limão siciliano',key:'limao siciliano',category:'Bar',unit:'Un'},
   {id:'ub57',name:'Maracujá',key:'maracuja',category:'Bar',unit:'Kg'},
@@ -2687,7 +2698,6 @@ const ASA_SUL_CATALOG = [
   {id:'ub73',name:'Heineken normal',key:'heineken normal',category:'Bar',unit:'Un'},
   {id:'ub74',name:'Goiabada',key:'goiabada',category:'Bar',unit:'un'},
   {id:'ub75',name:'Biscoito lottus ou Tostines',key:'biscoito lottus ou tostines',category:'Bar',unit:'PCT'},
-  {id:'ub76',name:'Açucar refinado',key:'acucar refinado',category:'Bar',unit:'un'},
   {id:'ub77',name:'Cápsula café Leggero',key:'capsula cafe leggero',category:'Bar',unit:'un'},
   {id:'ub78',name:'Cápsula Café Decafeinatto',key:'capsula cafe decafeinatto',category:'Bar',unit:'un'},
   {id:'us01',name:'Guardanapo sachê cx-2000',key:'guardanapo sache cx-2000',category:'Salão',unit:'PCT'},
@@ -2707,7 +2717,6 @@ const ASA_SUL_CATALOG = [
   {id:'us15',name:'Açucar Refinado',key:'acucar refinado',category:'Salão',unit:'Un'},
   {id:'us16',name:'Adocante',key:'adocante',category:'Salão',unit:'Un'},
   {id:'us17',name:'Fita adesiva durex',key:'fita adesiva durex',category:'Salão',unit:'Un'},
-  {id:'us18',name:'Caneta',key:'caneta',category:'Salão',unit:'Un'},
   {id:'us19',name:'Molho de Pimenta',key:'molho de pimenta',category:'Salão',unit:'UN'},
   {id:'us20',name:'Pimenta Calabresa 250g',key:'pimenta calabresa 250g',category:'Salão',unit:'PCT'},
   {id:'us21',name:'Coca-Cola zero 1,5L',key:'coca-cola zero 1,5l',category:'Salão',unit:'Un'},
@@ -2972,7 +2981,6 @@ const SIG_CATALOG = [
   {id:'ub51',name:'Canudo sachê colorido',key:'canudo sache colorido',category:'Bar',unit:'Un'},
   {id:'ub52',name:'Laranja Bahia',key:'laranja bahia',category:'Bar',unit:'Saco'},
   {id:'ub53',name:'Laranja suco saco 20kg',key:'laranja suco saco 20kg',category:'Bar',unit:'Bandeja'},
-  {id:'ub54',name:'Morango 400g',key:'morango 400g',category:'Bar',unit:'Saco'},
   {id:'ub55',name:'Limão',key:'limao',category:'Bar',unit:'Un'},
   {id:'ub56',name:'Limão siciliano',key:'limao siciliano',category:'Bar',unit:'Kg'},
   {id:'ub57',name:'Maracujá',key:'maracuja',category:'Bar',unit:'UN'},
@@ -3072,7 +3080,6 @@ const SIG_CATALOG = [
   {id:'ul23',name:'Pano de prato xadrez 100un',key:'pano de prato xadrez 100un',category:'Limpeza',unit:'Un'},
   {id:'ul24',name:'Luva amarela',key:'luva amarela',category:'Limpeza',unit:'PCT'},
   {id:'ul25',name:'Bombril',key:'bombril',category:'Limpeza',unit:'PCT'},
-  {id:'ul26',name:'Acqua perfumante 400ml',key:'acqua perfumante 400ml',category:'Limpeza',unit:'Un'},
   {id:'ul27',name:'Inseticida',key:'inseticida',category:'Limpeza',unit:'Un'},
   {id:'ul28',name:'Borrifador de álcool',key:'borrifador de alcool',category:'Limpeza',unit:'Un'},
   {id:'ul29',name:'Poliflor',key:'poliflor',category:'Limpeza',unit:'Un'},
@@ -3209,7 +3216,6 @@ const VICENTE_PIRES_CATALOG = [
   {id:'ub50',name:'Canudo sachê colorido',key:'canudo sache colorido',category:'Bar',unit:'Un'},
   {id:'ub51',name:'Laranja Bahia',key:'laranja bahia',category:'Bar',unit:'Un'},
   {id:'ub52',name:'Laranja suco saco 20kg',key:'laranja suco saco 20kg',category:'Bar',unit:'Saco'},
-  {id:'ub53',name:'Morango 400g',key:'morango 400g',category:'Bar',unit:'Bandeja'},
   {id:'ub54',name:'Limão',key:'limao',category:'Bar',unit:'Saco'},
   {id:'ub55',name:'Limão siciliano',key:'limao siciliano',category:'Bar',unit:'Un'},
   {id:'ub56',name:'Maracujá',key:'maracuja',category:'Bar',unit:'Kg'},
@@ -3378,10 +3384,8 @@ const VICENTE_PIRES_CATALOG = [
   {id:'ul32',name:'Borrifador de álcool',key:'borrifador de alcool',category:'Limpeza',unit:'Un'},
   {id:'ul33',name:'Propé pacote de 100',key:'prope pacote de 100',category:'Limpeza',unit:'PCT'},
   {id:'ul34',name:'Poliflor',key:'poliflor',category:'Limpeza',unit:'Un'},
-  {id:'ul35',name:'Acqua perfumante 400ml',key:'acqua perfumante 400ml',category:'Limpeza',unit:'Un'},
   {id:'ul36',name:'Óleo de peroba 100ml',key:'oleo de peroba 100ml',category:'Limpeza',unit:'Un'},
   {id:'ul37',name:'Limpa alumínio politriz',key:'limpa aluminio politriz',category:'Limpeza',unit:'Un'},
-  {id:'ul38',name:'Inseticida',key:'inseticida',category:'Limpeza',unit:'Un'},
 ];
 
 const DELIVERY_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Salão', 'Delivery', 'Limpeza'];
