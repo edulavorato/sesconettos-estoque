@@ -1701,7 +1701,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.8'; // 27/07: removido o aviso de texto (não contados/desatualizado) do topo do PDF Tabela de Envios — mantém só "NC" discreto por célula
+    const APP_VERSION = '1.5.9'; // 27/07: URGENTE — Envios do Dia volta a usar o catálogo da Asa Sul como referência de categoria/ordenação (não mais o do CPD)
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -4619,16 +4619,15 @@ function itemFoiContado(unitName, itemId, qty) {
 // diferentes em cada catálogo de unidade (ex: "Coca-Cola 1,5L" é "Salão" na
 // Asa Sul, "Bar" na Vicente Pires, "Delivery" no SIG/Delivery/CPD) — cada
 // unidade organiza sua contagem física do jeito que faz sentido pra ela.
-// Isso é normal e não deve mudar. O problema é só nas telas do CPD que juntam
-// a necessidade de TODAS as unidades num único item (Tabela de Envios, Lista
-// de Produção/Compras): sem essa função, a categoria exibida era a da
-// primeira unidade encontrada na iteração (sempre Asa Sul), mesmo quando a
-// necessidade real vinha de outra unidade com categoria diferente. Usamos o
-// catálogo do CPD como referência única e estável pra essas telas agregadas.
+// Nas telas do CPD que juntam a necessidade de TODAS as unidades num único
+// item (Tabela de Envios, Lista de Produção/Compras), o formato de referência
+// é sempre o catálogo da Asa Sul — corrigido em 27/07 a pedido do Eduardo
+// (uma correção anterior usava o catálogo do CPD como referência, o que não
+// é o formato correto para essas telas).
 function categoriaCanonica(itemKey, categoriaFallback) {
-  const cpdItem = (typeof catalog !== 'undefined' && Array.isArray(catalog))
-    ? catalog.find(c => c.key === itemKey) : null;
-  return cpdItem ? cpdItem.category : categoriaFallback;
+  const asaSulItem = (typeof getUnitCatalog === 'function')
+    ? getUnitCatalog('Asa Sul').catalog.find(c => c.key === itemKey) : null;
+  return asaSulItem ? asaSulItem.category : categoriaFallback;
 }
 
 function calcAEnviar(unitName, itemKeyOrName, estoqueAtual, dayCode) {
@@ -7666,9 +7665,9 @@ function gerarPdfEnvios(tipo) {
     return;
   }
 
-  // Ordenar por categoria depois posição — usa a ordem oficial do CPD (CATEGORIES),
-  // já que a categoria de cada linha agora também vem do catálogo do CPD.
-  const refCats = CATEGORIES;
+  // Ordenar por categoria depois posição — usa a ordem do catálogo da Asa Sul,
+  // que é o formato de referência para estas telas agregadas do CPD.
+  const refCats = getUnitCatalog('Asa Sul').categories;
   linhas.sort((a, b) => {
     const ia = refCats.indexOf(a.category), ib = refCats.indexOf(b.category);
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
@@ -8071,7 +8070,7 @@ function viewEnviosDia() {
       if (!itemMap.has(item.key)) {
         const cpdItem = catalog.find(c => c.key === item.key);
         itemMap.set(item.key, {
-          name, key: item.key, unit: item.unit, category: cpdItem ? cpdItem.category : item.category,
+          name, key: item.key, unit: item.unit, category: categoriaCanonica(item.key, item.category),
           estCPD: cpdItem ? (cpd[cpdItem.id] || 0) : 0,
           perUnit: {}
         });
@@ -8153,14 +8152,12 @@ function viewEnviosDia() {
   });
 
   // Ordenar pela posição exata no catálogo das unidades (ordem de produção)
-  // A CATEGORIA usada aqui é sempre a do catálogo do CPD (categoriaCanonica) —
-  // um mesmo produto pode estar em categorias diferentes em cada catálogo de
-  // unidade (ex: "Coca-Cola 1,5L" é "Salão" na Asa Sul mas "Delivery" no SIG),
-  // e usar "a primeira unidade que tiver o item" fazia essa tabela agrupada
-  // (que soma a necessidade de TODAS as unidades) mostrar um item embaixo de
-  // uma categoria que não bate com a real origem da necessidade. A posição
-  // (pos, só usada pra ordenar dentro da categoria) ainda usa a primeira
-  // unidade encontrada — isso é só estética, não afeta o agrupamento.
+  // A CATEGORIA usada aqui é sempre a do catálogo da Asa Sul (categoriaCanonica)
+  // — formato de referência para as telas agregadas do CPD, corrigido em 27/07
+  // a pedido do Eduardo (uma correção anterior usava o catálogo do CPD como
+  // referência, o que não é o formato correto para estas telas). A posição
+  // (pos, só usada pra ordenar dentro da categoria) usa a primeira unidade
+  // encontrada — isso é só estética, não afeta o agrupamento.
   const _getUnitCatalogPos = (itemKey) => {
     const cat = categoriaCanonica(itemKey, '');
     for (const u of UNIT_NAMES) {
@@ -8176,11 +8173,12 @@ function viewEnviosDia() {
     r._pos = pos.pos;
   });
   rows.sort((a, b) => {
-    // Primeiro ordenar por categoria, pela ordem oficial do CPD (CATEGORIES)
+    // Primeiro ordenar por categoria, pela ordem do catálogo da Asa Sul
     const catA = a._catOrder, catB = b._catOrder;
     if (catA !== catB) {
-      const ia = CATEGORIES.indexOf(catA);
-      const ib = CATEGORIES.indexOf(catB);
+      const _refCatsRow = getUnitCatalog('Asa Sul').categories;
+      const ia = _refCatsRow.indexOf(catA);
+      const ib = _refCatsRow.indexOf(catB);
       if (ia > -1 && ib > -1) return ia - ib;
       if (ia > -1) return -1;
       if (ib > -1) return 1;
