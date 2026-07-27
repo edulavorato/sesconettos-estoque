@@ -1701,7 +1701,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.7'; // 27/07: aviso de itens não contados na aba Envios do Dia virou botão "Ver lista" (modal agrupado por unidade) em vez de listar tudo no banner
+    const APP_VERSION = '1.5.8'; // 27/07: removido o aviso de texto (não contados/desatualizado) do topo do PDF Tabela de Envios — mantém só "NC" discreto por célula
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -7817,37 +7817,11 @@ function gerarPdfEnviosTabela(rows, dayFull, staleEntries) {
   const rowH = 16, MARGIN_BOT = 50;
   const SEP_CLR = rgb(184,146,42); // dourado — mesmo tom do separador entre unidades na tela
 
-  // Este PDF é impresso e circula fora da tela — sem o aviso de "não contado"/
-  // "contagem desatualizada" que aparece no topo da aba, quem só lê o papel não
-  // tem como saber que um "—" pode ser um item que ninguém contou ainda, e não
-  // um item que realmente está com estoque suficiente. Montamos o mesmo aviso
-  // usado na tela e imprimimos no topo de cada página do PDF.
-  function wrapText(text, maxChars) {
-    const words = text.split(', '); const lines = []; let cur = '';
-    words.forEach(w => {
-      const test = cur ? cur+', '+w : w;
-      if (test.length > maxChars && cur) { lines.push(cur); cur = w; } else cur = test;
-    });
-    if (cur) lines.push(cur);
-    return lines;
-  }
-  const naoContados = [];
-  rows.forEach(row => {
-    UNIT_NAMES.forEach(u => {
-      const pu = row.perUnit ? row.perUnit[u] : null;
-      if (pu && pu.contado === false) naoContados.push(u + ' - ' + row.name);
-    });
-  });
-  const warnMsgs = [];
-  if (naoContados.length > 0) {
-    warnMsgs.push('NÃO CONTADOS (aparecem como "NC", não some da lista): ' + naoContados.join(', '));
-  }
-  if (staleEntries && staleEntries.length > 0) {
-    warnMsgs.push('Contagem desatualizada usada no cálculo: ' + staleEntries.join('; '));
-  }
-  const warnLinesFixed = warnMsgs.length > 0
-    ? wrapText(warnMsgs.join('  |  '), 100)
-    : [];
+  // Aviso de "não contado"/"contagem desatualizada" removido do topo do PDF —
+  // era ilegível quando havia muitos itens pendentes (virava uma parede de
+  // texto cobrindo várias linhas). Quem quiser essa lista, consulta pelo botão
+  // "Ver lista" na tela (Envios do Dia), que abre um pop-up organizado por
+  // unidade. O PDF mantém só o "NC" discreto em cada célula do item pendente.
 
   const pages = [];
   let cmds = [];
@@ -7855,18 +7829,14 @@ function gerarPdfEnviosTabela(rows, dayFull, staleEntries) {
 
   function newPage() {
     cmds = [];
-    const extraH = warnLinesFixed.length * 11;
-    c(rgb(12,26,15)+' rg', ml+' '+(H-50-extraH)+' '+(W-80)+' '+(40+extraH)+' re f');
+    c(rgb(12,26,15)+' rg', ml+' '+(H-50)+' '+(W-80)+' 40 re f');
     c('BT /F1 13 Tf '+rgb(240,237,224)+' rg '+(ml+8)+' '+(H-34)+' Td '+pdfStr('Tabela de Envios - '+dayFull)+' Tj ET');
     c('BT /F2 8 Tf '+rgb(168,196,174)+' rg '+(W-mr-80)+' '+(H-34)+' Td '+pdfStr(genDate)+' Tj ET');
     c('BT /F2 9 Tf '+rgb(168,196,174)+' rg '+(ml+8)+' '+(H-48)+' Td '+pdfStr(rows.length+' itens')+' Tj ET');
-    warnLinesFixed.forEach((wl, wi) => {
-      c('BT /F1 8 Tf '+rgb(255,214,120)+' rg '+(ml+8)+' '+(H-48-12-wi*11)+' Td '+pdfStr(wl)+' Tj ET');
-    });
-    c(SEP_CLR+' RG 0.8 w '+ml+' '+(H-58-extraH)+' m '+(W-mr)+' '+(H-58-extraH)+' l S');
+    c(SEP_CLR+' RG 0.8 w '+ml+' '+(H-58)+' m '+(W-mr)+' '+(H-58)+' l S');
 
     // Linha 1 do cabeçalho: nome da unidade (fundo verde escuro, texto branco)
-    const hdr1Top = H-58-extraH, hdr1H = 16;
+    const hdr1Top = H-58, hdr1H = 16;
     c(rgb(38,116,62)+' rg '+ml+' '+(hdr1Top-hdr1H)+' '+(W-ml-mr)+' '+hdr1H+' re f');
     c('BT /F1 8 Tf 1 1 1 rg '+(ml+4)+' '+(hdr1Top-hdr1H+5)+' Td '+pdfStr('ITEM')+' Tj ET');
 
