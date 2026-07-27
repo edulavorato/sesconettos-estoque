@@ -1714,7 +1714,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.14'; // 27/07: Move 12 itens de Delivery (Coca-Cola, Guaraná, caixas, forros, bobina plástica, lacre) da categoria 'Salão' para 'Delivery' no catálogo-seed da Asa Sul, e 10 itens equivalentes de 'Bar'/'Salão' para 'Delivery' em Vicente Pires — corrige categoriaCanonica() jogando esses itens pra fora da seção Delivery na Tabela de Envios/Envios do Dia. Adiciona 'Delivery' em ASA_SUL_CATEGORIES e VICENTE_PIRES_CATEGORIES. Correção equivalente precisa ser aplicada no catálogo AO VIVO do Firebase (script à parte)
+    const APP_VERSION = '1.5.15'; // 27/07: Diagnóstico geral — corrige 3 mismatches de categoriaCanonica encontrados: SIG 'Açucar refinado' Bar->Salão e 'Acqua perfumante 400ml' Salão->Limpeza (alinha com a Asa Sul, canônica), Delivery 'Geleia abacaxi c/pimenta 500g' Estoque Seco->Refrigerados. Correção equivalente precisa ser aplicada no catálogo AO VIVO do Firebase (script à parte)
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -2998,10 +2998,10 @@ const SIG_CATALOG = [
   {id:'ub69',name:'Heineken normal',key:'heineken normal',category:'Bar',unit:'Un'},
   {id:'ub70',name:'Goiabada',key:'goiabada',category:'Bar',unit:'Un'},
   {id:'ub71',name:'Biscoito lottus ou Tostines',key:'biscoito lottus ou tostines',category:'Bar',unit:'Un'},
-  {id:'ub72',name:'Açucar refinado',key:'acucar refinado',category:'Bar',unit:'Un'},
+  {id:'ub72',name:'Açucar refinado',key:'acucar refinado',category:'Salão',unit:'Un'},
   {id:'ub73',name:'Cápsula café Leggero',key:'capsula cafe leggero',category:'Bar',unit:'Un'},
   {id:'ub74',name:'Cápsula Café Decafeinatto',key:'capsula cafe decafeinatto',category:'Bar',unit:'Un'},
-  {id:'us01',name:'Acqua perfumante 400ml',key:'acqua perfumante 400ml',category:'Salão',unit:'Un'},
+  {id:'us01',name:'Acqua perfumante 400ml',key:'acqua perfumante 400ml',category:'Limpeza',unit:'Un'},
   {id:'us02',name:'Óleo de peroba 100ml',key:'oleo de peroba 100ml',category:'Salão',unit:'Un'},
   {id:'us03',name:'Limpa alumínio politriz',key:'limpa aluminio politriz',category:'Salão',unit:'Un'},
   {id:'us04',name:'Guardanapo sachê cx-2000',key:'guardanapo sache cx-2000',category:'Salão',unit:'PCT'},
@@ -3428,7 +3428,7 @@ const DELIVERY_CATALOG = [
   {id:'ue04',name:'Creme de leite cx 200ml',key:'creme de leite cx 200ml',category:'Estoque Seco',unit:'Un'},
   {id:'ue05',name:'Azeitona preta 2kg',key:'azeitona preta 2kg',category:'Estoque Seco',unit:'Balde'},
   {id:'ue06',name:'Leite condensado 400ml',key:'leite condensado 400ml',category:'Estoque Seco',unit:'Un'},
-  {id:'ue07',name:'Geleia abacaxi c/pimenta 500g',key:'geleia abacaxi c/pimenta 500g',category:'Estoque Seco',unit:'Pote'},
+  {id:'ue07',name:'Geleia abacaxi c/pimenta 500g',key:'geleia abacaxi c/pimenta 500g',category:'Refrigerados',unit:'Pote'},
   {id:'ue08',name:'Mel 1,1kg',key:'mel 1,1kg',category:'Estoque Seco',unit:'Pote'},
   {id:'ue09',name:'Ovos',key:'ovos',category:'Estoque Seco',unit:'Caixa'},
   {id:'ue10',name:'Bobina seg plast 30x40',key:'bobina seg plast 30x40',category:'Estoque Seco',unit:'Un'},
