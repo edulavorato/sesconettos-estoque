@@ -1701,7 +1701,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.10'; // 27/07: Remove 7 mínimos de SEG cadastrados por engano em itens da categoria Salão (Açúcar Refinado, Isqueiro, Coca-Cola/Guaraná 1,5L) — corrige a categoria 'Salão' aparecendo indevidamente às segundas
+    const APP_VERSION = '1.5.11'; // 27/07: Aviso ao sair (logout e fechar aba) quando qualquer categoria tem contagem digitada mas não confirmada — antes só cobria as categorias obrigatórias do dia
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -5290,6 +5290,26 @@ function deconfirmCategory(unitName, cat) {
   }
 }
 
+// Categorias com número digitado (qty > 0 em algum item) mas ainda sem
+// "Confirmar categoria" — não importa se é obrigatória do dia ou não. É o
+// mesmo risco do item 4 (não contei vs contei zero), agora no nível de
+// categoria: se a pessoa sai da tela sem confirmar, quem lê o relatório
+// depois não distingue contagem real pendente de revisão de um zero de
+// verdade. Usado no gate de saída (logout) e no aviso de beforeunload.
+function getUnconfirmedCategoriesWithData(unitName) {
+  const ustock = unitStock[unitName] || {};
+  const ucat = getUnitCatalog(unitName);
+  const pendentes = [];
+  ucat.categories.forEach(cat => {
+    const state = getCatConfirmState(unitName, cat, ustock);
+    if (state === 'confirmed') return;
+    const catItems = ucat.catalog.filter(i => i.category === cat);
+    const hasAnyQty = catItems.some(i => (ustock[i.id] || 0) > 0);
+    if (hasAnyQty) pendentes.push(cat);
+  });
+  return pendentes;
+}
+
 function saveUnitCatalog(unitName, catalogData) {
   const slug = unitSlug(unitName);
   // 1. Atualizar cache em memória
@@ -5514,7 +5534,9 @@ window.addEventListener('beforeunload', (e) => {
   try {
     if (session && !isCPD()) {
       const ustock = unitStock[session.unit] || {};
-      if (dailyRequiredCatsConfirmed(session.unit, ustock) && !getGeneralConfirmState(session.unit)) {
+      const dailyGateOpen = dailyRequiredCatsConfirmed(session.unit, ustock) && !getGeneralConfirmState(session.unit);
+      const temCategoriaPendente = getUnconfirmedCategoriesWithData(session.unit).length > 0;
+      if (dailyGateOpen || temCategoriaPendente) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -5883,6 +5905,14 @@ function logout() {
     if (dailyRequiredCatsConfirmed(session.unit, ustock) && !getGeneralConfirmState(session.unit)) {
       _openExitDecisionModal(session.unit);
       return;
+    }
+    // Gate mais leve: categorias que NÃO são obrigatórias do dia (ou já
+    // passaram da Confirmação Geral) também podem ter número digitado sem
+    // confirmar — avisa antes de sair para não virar zero fantasma no relatório.
+    const pendentes = getUnconfirmedCategoriesWithData(session.unit);
+    if (pendentes.length > 0) {
+      const lista = formatCategoryList(pendentes);
+      if (!confirm(`Atenção: ${lista} tem contagem digitada mas não confirmada (sem clicar em \u2713). Se sair agora, esses números podem ser lidos como "não contado" no relatório. Sair mesmo assim?`)) return;
     }
   }
   if (!confirm(`Sair da conta de ${session?.name || 'usu\u00E1rio'}?`)) return;
