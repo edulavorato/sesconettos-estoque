@@ -1700,7 +1700,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.4.7'; // 26/07: troca data-URI por Blob no Safari/iPhone (tela preta persistia)
+    const APP_VERSION = '1.4.8'; // 26/07: desativa zeragem automática por inatividade (apagava contagem real)
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -5161,8 +5161,17 @@ function openConfirmModal(title, subtitle, onConfirm) {
 }
 
 // Zeragem automática: categorias não confirmadas modificadas há mais de 1h
+// DESATIVADA em 26/07 — confirmado que esse mecanismo estava apagando
+// contagens reais (ex: Refrigerados da Vicente Pires, e outros relatos no
+// mesmo dia). O risco de perder contagem de verdade feita por alguém que
+// esqueceu de clicar em "Confirmar" é pior do que o problema que isso
+// tentava resolver (contagem antiga esquecida sem confirmar). Se quiser
+// reativar essa proteção no futuro, o certo é primeiro dar um jeito de
+// AVISAR a pessoa antes de apagar (nunca apagar sozinho sem chance de
+// reação), e não achar 1h um prazo seguro pra ninguém notar.
 let _zeroCheckTimer = null;
 function _startZeroCheck() {
+  return; // desativado — ver comentário acima
   if (_zeroCheckTimer) return;
   _zeroCheckTimer = setInterval(() => {
     if (!session || isCPD()) return;
