@@ -1714,7 +1714,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.20'; // 28/07: "Envios do Dia" ganha um seletor de dias (SEG/QUA/SEX, múltipla escolha, chips + botão "Semana (3 dias)") pra somar os mínimos de quantos dias quiser — pra ideia geral ou compra semanal. Por padrão continua só no dia automático de hoje (nada muda se ninguém mexer). O PDF "Tabela de Envios" acompanha a seleção feita na tela, com aviso claro de que é uma visão de planejamento, não o envio operacional do dia
+    const APP_VERSION = '1.5.24'; // 28/07: unifica o nome/chave de "Banana Nanica" em todos os catálogos (CPD + 4 unidades) e nas tabelas de mínimo por dia (SIG/VP/Delivery usavam a chave "banana nanica 27kg", diferente da Asa Sul/"banana nanica" — isso fazia o item virar duas linhas diferentes em vez de uma só). Isso corrige só os seeds/código; os registros já gravados no Firebase precisam do script de correção em relatorio/
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -2191,7 +2191,7 @@ const SEED_CATALOG = [
   {id:'rf20',name:'Sorvete de creme 10L',key:'sorvete de creme 10l',category:'Refrigerados',unit:'Caixa'},
   {id:'rf21',name:'Morango 400g',key:'morango 400g',category:'Refrigerados',unit:'Bandeja'},
   {id:'rf22',name:'Uva verde 500g',key:'uva verde 500g',category:'Refrigerados',unit:'Bandeja'},
-  {id:'rf23',name:'Banana nanica 27kg',key:'banana nanica 27kg',category:'Refrigerados',unit:'Kg'},
+  {id:'rf23',name:'Banana Nanica',key:'banana nanica',category:'Refrigerados',unit:'Kg'},
   {id:'rf24',name:'Figo',key:'figo',category:'Refrigerados',unit:'Kg'},
   {id:'rf25',name:'Pêra',key:'pera',category:'Refrigerados',unit:'Kg'},
   {id:'rf26',name:'Abobrinha italiana',key:'abobrinha italiana',category:'Refrigerados',unit:'Kg'},
@@ -2575,7 +2575,7 @@ const ASA_SUL_CATALOG = [
   {id:'ur39',name:'Sorvete de creme 10L',key:'sorvete de creme 10l',category:'Refrigerados',unit:'Caixa'},
   {id:'ur40',name:'Morango 400g',key:'morango 400g',category:'Refrigerados',unit:'Bandeja'},
   {id:'ur41',name:'Uva verde 500g',key:'uva verde 500g',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ur42',name:'Banana nanica',key:'banana nanica',category:'Refrigerados',unit:'Kg'},
+  {id:'ur42',name:'Banana Nanica',key:'banana nanica',category:'Refrigerados',unit:'Kg'},
   {id:'ur43',name:'Figo',key:'figo',category:'Refrigerados',unit:'Kg'},
   {id:'ur44',name:'Pêra',key:'pera',category:'Refrigerados',unit:'Kg'},
   {id:'ur45',name:'Abobrinha italiana',key:'abobrinha italiana',category:'Refrigerados',unit:'Kg'},
@@ -2931,7 +2931,7 @@ const SIG_CATALOG = [
   {id:'ur39',name:'Sorvete de creme 10L',key:'sorvete de creme 10l',category:'Refrigerados',unit:'Caixa'},
   {id:'ur40',name:'Morango 400g',key:'morango 400g',category:'Refrigerados',unit:'Bandeja'},
   {id:'ur41',name:'Uva verde 500g',key:'uva verde 500g',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ur42',name:'Banana nanica 27kg',key:'banana nanica 27kg',category:'Refrigerados',unit:'Kg'},
+  {id:'ur42',name:'Banana Nanica',key:'banana nanica',category:'Refrigerados',unit:'Kg'},
   {id:'ur43',name:'Figo',key:'figo',category:'Refrigerados',unit:'Kg'},
   {id:'ur44',name:'Pêra',key:'pera',category:'Refrigerados',unit:'Kg'},
   {id:'ur45',name:'Abobrinha italiana',key:'abobrinha italiana',category:'Refrigerados',unit:'Kg'},
@@ -3218,7 +3218,7 @@ const VICENTE_PIRES_CATALOG = [
   {id:'ur39',name:'Sorvete de creme 10L',key:'sorvete de creme 10l',category:'Refrigerados',unit:'Caixa'},
   {id:'ur40',name:'Morango 400g',key:'morango 400g',category:'Refrigerados',unit:'Bandeja'},
   {id:'ur41',name:'Uva verde 500g',key:'uva verde 500g',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ur42',name:'Banana nanica 27kg',key:'banana nanica 27kg',category:'Refrigerados',unit:'Kg'},
+  {id:'ur42',name:'Banana Nanica',key:'banana nanica',category:'Refrigerados',unit:'Kg'},
   {id:'ur43',name:'Figo',key:'figo',category:'Refrigerados',unit:'Bandeja'},
   {id:'ur44',name:'Pêra',key:'pera',category:'Refrigerados',unit:'UN'},
   {id:'ur45',name:'Abobrinha italiana',key:'abobrinha italiana',category:'Refrigerados',unit:'Kg'},
@@ -3555,7 +3555,7 @@ const DELIVERY_CATALOG = [
   {id:'ur22',name:'Molho pesto bisnaga',key:'molho pesto bisnaga',category:'Refrigerados',unit:'Galão'},
   {id:'ur23',name:'Chocolate ao leite ralado',key:'chocolate ao leite ralado',category:'Refrigerados',unit:'PCT'},
   {id:'ur24',name:'Morango 400g',key:'morango 400g',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ur25',name:'Banana nanica 27kg',key:'banana nanica 27kg',category:'Refrigerados',unit:'Un'},
+  {id:'ur25',name:'Banana Nanica',key:'banana nanica',category:'Refrigerados',unit:'Un'},
   {id:'ur26',name:'Manjericão',key:'manjericao',category:'Refrigerados',unit:'Maço'},
   {id:'ur27',name:'Cebola roxa',key:'cebola roxa',category:'Refrigerados',unit:'Kg'},
   {id:'ur28',name:'Rúcula',key:'rucula',category:'Refrigerados',unit:'Maço'},
@@ -4176,7 +4176,7 @@ const MIN_PER_DAY_SIG = {
   'salva borda doce de leite':{'QUA':1,'SEG':1,'SEX':1},
   'morango 400g':{'QUA':9,'SEG':9,'SEX':10},
   'uva verde 500g':{'QUA':1,'SEG':1,'SEX':1},
-  'banana nanica 27kg':{'QUA':1,'SEG':1,'SEX':1},
+  'banana nanica':{'QUA':1,'SEG':1,'SEX':1},
   'figo':{'QUA':1,'SEG':1,'SEX':2},
   'pera':{'QUA':4,'SEG':4,'SEX':6},
   'abobrinha italiana':{'QUA':3,'SEG':3,'SEX':4},
@@ -4410,7 +4410,7 @@ const MIN_PER_DAY_VICENTE_PIRES = {
   'salva borda doce de leite':{'QUA':1,'SEG':1,'SEX':2},
   'morango 400g':{'QUA':18,'SEG':18,'SEX':20},
   'uva verde 500g':{'QUA':1,'SEG':1,'SEX':2},
-  'banana nanica 27kg':{'QUA':10,'SEG':10,'SEX':20},
+  'banana nanica':{'QUA':10,'SEG':10,'SEX':20},
   'figo':{'QUA':1,'SEG':1,'SEX':3},
   'pera':{'QUA':6,'SEG':6,'SEX':10},
   'abobrinha italiana':{'QUA':5,'SEG':5,'SEX':6},
@@ -4692,7 +4692,7 @@ const MIN_PER_DAY_DELIVERY = {
   'molho pesto bisnaga':{'SEG':1,'SEX':1},
   'chocolate ao leite ralado':{'QUA':2,'SEG':2,'SEX':3},
   'morango 400g':{'QUA':6,'SEG':6,'SEX':10},
-  'banana nanica 27kg':{'QUA':24,'SEG':24,'SEX':36},
+  'banana nanica':{'QUA':24,'SEG':24,'SEX':36},
   'manjericao':{'QUA':6,'SEG':6,'SEX':10},
   'cebola roxa':{'SEG':10,'SEX':10},
   'rucula':{'QUA':6,'SEG':6,'SEX':10},
@@ -5398,6 +5398,14 @@ function _buildBannerContent(el, icone, titulo, corpo, onClose) {
 function renderOpenCountBanner() {
   const el = document.getElementById('open-count-banner');
   if (!el || !session) return;
+  // 28/07: em "Envios do Dia" esse mesmo aviso (contagem em aberto → cálculo
+  // desatualizado) já aparece de forma curta dentro da própria tela — mostrar
+  // os dois juntos era excesso de aviso, a pedido do Eduardo.
+  if (currentView === 'envios-dia') {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
   const abertas = isCPD()
     ? getOpenCountUnits()
     : getOpenCountUnits().filter(u => u.unitName === session.unit);
@@ -7998,7 +8006,9 @@ function gerarPdfEnviosTabela(rows, dayFull, staleEntries) {
 
       const pu    = row.perUnit ? row.perUnit[u] : null;
       const hasPu = !!pu;
-      const naoContado = hasPu && pu.contado === false;
+      // 28/07: só é "NC" se a unidade também tem mínimo relevante pra esse
+      // dia — sem isso, não contar não muda nada no envio de hoje.
+      const naoContado = hasPu && pu.contado === false && pu.minDia > 0;
       const hasEnv = hasPu && !naoContado && pu.aEnviar > 0;
       const estVal = hasPu ? String(pu.est) : '-';
       const envVal = naoContado ? 'NC' : (hasEnv ? String(pu.aEnviar) : '-');
@@ -8198,50 +8208,75 @@ function viewEnviosDia() {
   }
 
   // ── Coletar todos os itens que precisam de envio ───────────────────────────
-  // Um item entra na tabela se ao menos uma unidade tiver A Enviar > 0 neste dia
-  // Estrutura: Map de itemKey → { unit, aEnviar, estoqueUnidade } por unidade
+  // 28/07: corrigido a pedido do Eduardo — antes, se uma unidade não tivesse
+  // mínimo cadastrado pra ESSA unidade no(s) dia(s) selecionado(s), o
+  // estoque real dela (Est.) simplesmente desaparecia da tabela (virava "-"),
+  // mesmo a unidade tendo o item contado normalmente. Isso é perigoso: quem
+  // olha "Est." pra decidir se precisa mandar algo pode achar que a unidade
+  // não tem o produto quando na verdade tem, só não tinha mínimo pro dia
+  // exibido. Agora: o item aparece na tabela se PELO MENOS UMA unidade
+  // precisar de envio nesse(s) dia(s) (mesmo critério de sempre), mas TODAS
+  // as unidades que têm o item no catálogo mostram o estoque real — só o "A
+  // Enviar" fica "-"/0 nas unidades sem mínimo pro dia, o "Est." nunca some.
   const itemMap = new Map(); // itemKey → { name, category, unit, cpdId, perUnit: {unitName: {est, aEnv}} }
   // Unidade+categoria cujo estoque atual (potencialmente desatualizado) entrou
   // no cálculo de A Enviar de hoje — usado para o aviso de dado desatualizado
   const relevantPairs = new Set();
 
+  // Passo 1: para cada unidade, somar estoque por item.key (cobre o caso de
+  // um mesmo produto cadastrado em categorias diferentes) e calcular, sem
+  // decidir ainda se o item "entra" na tabela — isso é feito só no Passo 2,
+  // olhando as 4 unidades juntas.
+  const porUnidade = {}; // unitName → { itemKey → { name, estSoma, item, minDia, contado, aEnviar } }
   UNIT_NAMES.forEach(unitName => {
     const ucat   = getUnitCatalog(unitName).catalog;
     const ustock = unitStock[unitName] || {};
     const minMap = getMinPerDay(unitName);
 
-    // Processar cada item do catálogo
     // Itens com mesmo produto em categorias diferentes (ex: Morango em Refrig + Bar):
     // → SOMAR estoques de todos os IDs (agrupados por item.key, fixo mesmo se renomeado)
-    // → calcAEnviar já usa MIN_PER_DAY consolidado (soma de todas as categorias)
+    // → calcAEnviarDias já usa MIN_PER_DAY consolidado (soma de todas as categorias)
     const _seenInUnit = {}; // item.key → { name, estSoma, item }
-
     ucat.forEach(item => {
       const key = item.key;
       const est = ustock[item.id] || 0;
       if (!_seenInUnit[key]) {
         _seenInUnit[key] = { name: item.name, estSoma: est, item };
       } else {
-        // Mesmo item em outra categoria: SOMAR estoques
         _seenInUnit[key].estSoma += est;
       }
     });
 
+    const resultado = {};
     Object.values(_seenInUnit).forEach(({ name, estSoma, item }) => {
-      // Incluir item se tem mínimo para este dia (independente de aEnviar)
-      // Isso garante que todos os itens relevantes aparecem na tabela
       const minEntry = minMap[item.key];
       // 28/07: soma os mínimos de TODOS os dias selecionados no seletor (por
       // padrão só o dia de hoje, mesmo comportamento de sempre) — ver
       // window._enviosDiaDias / somaMinDias / calcAEnviarDias.
       const minDia = somaMinDias(minEntry, diasSel);
-      if (minDia === 0) return; // sem mínimo nos dias selecionados — não é relevante
-
-      // Se o item está com estoque 0 e ainda não foi contado nesta janela, não
-      // sabemos se é zero de verdade — não calculamos aEnviar a partir disso,
-      // só marcamos como "não contado" pra exibir na tabela em vez de um número.
       const contado = itemFoiContado(unitName, item.id, estSoma);
-      const aEnviar = contado ? calcAEnviarDias(unitName, item.key, estSoma, diasSel) : 0;
+      const aEnviar = (contado && minDia > 0) ? calcAEnviarDias(unitName, item.key, estSoma, diasSel) : 0;
+      resultado[item.key] = { name, estSoma, item, minDia, contado, aEnviar };
+    });
+    porUnidade[unitName] = resultado;
+  });
+
+  // Passo 2: um item vira LINHA na tabela se pelo menos uma unidade precisa
+  // dele nesse(s) dia(s) (mesmo critério de sempre — não lista o catálogo
+  // inteiro). Mas ao virar linha, TODAS as unidades que têm o item no
+  // catálogo entram no perUnit com o estoque real, mesmo as que não tinham
+  // mínimo pro dia selecionado.
+  const todasAsKeys = new Set();
+  UNIT_NAMES.forEach(u => Object.keys(porUnidade[u]).forEach(k => todasAsKeys.add(k)));
+
+  todasAsKeys.forEach(itemKey => {
+    const algumaUnidadePrecisa = UNIT_NAMES.some(u => porUnidade[u][itemKey] && porUnidade[u][itemKey].minDia > 0);
+    if (!algumaUnidadePrecisa) return; // nenhuma unidade tem mínimo pra esse item nesse(s) dia(s) — não é relevante
+
+    UNIT_NAMES.forEach(unitName => {
+      const dados = porUnidade[unitName][itemKey];
+      if (!dados) return; // essa unidade nem tem esse item no catálogo — fica "-" mesmo (correto)
+      const { name, estSoma, item, aEnviar, contado, minDia } = dados;
       if (aEnviar > 0) relevantPairs.add(unitName + '|' + item.category);
 
       if (!itemMap.has(item.key)) {
@@ -8254,7 +8289,10 @@ function viewEnviosDia() {
       }
       // Sempre registrar: estoque, aEnviar (pode ser 0 se unidade já tem suficiente
       // ou se ainda não contado) e a flag "contado" para diferenciar os dois casos.
-      itemMap.get(item.key).perUnit[unitName] = { est: estSoma, aEnviar, contado };
+      // minDia também vai junto — precisa pra "pendente" (linha 8348-ish) não
+      // acusar falta de contagem numa unidade que nem tem mínimo pra esse
+      // item nesse dia (não contar não muda o total de qualquer forma).
+      itemMap.get(item.key).perUnit[unitName] = { est: estSoma, aEnviar, contado, minDia };
     });
   });
 
@@ -8268,7 +8306,10 @@ function viewEnviosDia() {
   itemMap.forEach(row => {
     UNIT_NAMES.forEach(u => {
       const pu = row.perUnit[u];
-      if (pu && pu.contado === false) naoContadosDia.push({ unit: u, name: row.name });
+      // 28/07: só entra no aviso se a unidade tiver mínimo relevante pra
+      // esse dia — não contar um item que a unidade nem precisa enviar
+      // hoje não é motivo de alerta.
+      if (pu && pu.contado === false && pu.minDia > 0) naoContadosDia.push({ unit: u, name: row.name });
     });
   });
   if (naoContadosDia.length > 0) {
@@ -8284,10 +8325,20 @@ function viewEnviosDia() {
     ncBody.appendChild(ncBtn);
     ncBanner.appendChild(ncIcon);
     ncBanner.appendChild(ncBody);
-    frag.appendChild(ncBanner);
+    // 28/07: acima de toda a estrutura da tabela (cabeçalho, botões de PDF,
+    // seletor de dias) a pedido do Eduardo — mesmo tratamento dado ao aviso
+    // de contagem em aberto/desatualizada.
+    frag.insertBefore(ncBanner, frag.firstChild);
   }
 
   // ── Aviso de contagem desatualizada usada neste cálculo ────────────────────
+  // 28/07: a versão anterior listava unidade+categoria+"há quantos dias" pra
+  // cada par desatualizado — virava uma parede de texto somada ao banner
+  // global "Contagem em aberto" já visível no topo da tela. A pedido do
+  // Eduardo, isso vira UM aviso só, curto, sem lista detalhada — colocado
+  // acima de toda a estrutura da tabela (antes do cabeçalho "Envios do
+  // Dia"). O banner global (renderOpenCountBanner) fica escondido nesta
+  // tela pra não duplicar a mesma informação.
   const staleEntries = [];
   relevantPairs.forEach(pair => {
     const [unitName, cat] = pair.split('|');
@@ -8302,12 +8353,12 @@ function viewEnviosDia() {
     const staleBanner = el('div', {cls:'alert-banner warn', style:'margin-bottom:14px'});
     const icon = el('span', {cls:'alert-banner-icon'}, '\u26A0\uFE0F');
     const body = el('div', {cls:'alert-banner-body'});
-    body.appendChild(el('div', {cls:'alert-banner-title'}, 'Este cálculo usa contagem desatualizada'));
+    body.appendChild(el('div', {cls:'alert-banner-title'}, 'Contagem em aberto \u2014 c\u00E1lculo desatualizado'));
     body.appendChild(el('div', {cls:'alert-banner-items'},
-      staleEntries.join(' \u00B7 ') + '. O valor de A Enviar usa o último estoque registrado, não uma contagem de hoje.'));
+      'Uma ou mais unidades ainda n\u00E3o confirmaram a contagem de hoje. O valor de A Enviar usa o \u00FAltimo estoque registrado, n\u00E3o uma contagem atual.'));
     staleBanner.appendChild(icon);
     staleBanner.appendChild(body);
-    frag.appendChild(staleBanner);
+    frag.insertBefore(staleBanner, frag.firstChild);
   }
 
   // Enriquecer com totais e situação
@@ -8320,7 +8371,11 @@ function viewEnviosDia() {
     // pra não deixar a badge "✓ OK" passar confiança que os dados não têm —
     // ver o resumo no topo, mas cada linha também precisa avisar sozinha,
     // já que a pessoa pode filtrar/rolar e não ver o resumo.
-    const pendente = UNIT_NAMES.some(u => row.perUnit[u] && row.perUnit[u].contado === false);
+    // 28/07: só marca "pendente" se a unidade que não contou TAMBÉM tem
+    // mínimo relevante pra esse dia (minDia > 0) — uma unidade sem mínimo
+    // pro dia selecionado nunca entra no total de qualquer forma, então não
+    // contar não deixa o total mais incerto.
+    const pendente = UNIT_NAMES.some(u => row.perUnit[u] && row.perUnit[u].contado === false && row.perUnit[u].minDia > 0);
     row.totalAEnviar = totalAEnviar;
     row.falta    = falta;
     row.pendente = pendente;
@@ -8493,7 +8548,10 @@ function viewEnviosDia() {
           // suficiente), 'NC' se ainda não contado nesta janela (não sabemos se é zero
           // de verdade — não mostramos como se a unidade já tivesse o suficiente)
           tdEst.textContent = String(pu.est);
-          if (pu.contado === false) {
+          // 28/07: só mostra "NC" se a unidade também tem mínimo relevante
+          // pra esse dia — se ela não precisa enviar nada hoje de qualquer
+          // forma (minDia 0), não contar não é motivo de alerta.
+          if (pu.contado === false && pu.minDia > 0) {
             tdEnv.textContent = 'NC';
             tdEnv.className = 'val-dash';
             tdEnv.style.color = '#E8A020';
@@ -8569,7 +8627,7 @@ function viewEnviosDia() {
         const vals = el('div', {cls:'envios-card-unit-vals'});
         if (pu) {
           vals.appendChild(el('span', {cls:'est'}, 'Est. ' + pu.est));
-          if (pu.contado === false) {
+          if (pu.contado === false && pu.minDia > 0) {
             const ncSpan = el('span', {cls:'env dash', style:'color:#E8A020', title:'Item ainda n\u00e3o contado nesta janela'}, 'NC');
             vals.appendChild(ncSpan);
           } else {
