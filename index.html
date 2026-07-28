@@ -1714,7 +1714,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.19'; // 28/07: "Envios do Dia" (CPD) passa a considerar um item como contado quando a UNIDADE confirma a categoria inteira (não só o ✓ individual por item, que era o único sinal aceito antes e raramente é usado na prática) — corrige a divergência entre a tela da unidade (tudo confirmado) e a tela do CPD (muita coisa "NC"). Adicionado indicador "✓ ind. X/Y" por categoria, visível só pro CPD, para monitorar se os funcionários também estão confirmando item a item, como orientado
+    const APP_VERSION = '1.5.20'; // 28/07: "Envios do Dia" ganha um seletor de dias (SEG/QUA/SEX, múltipla escolha, chips + botão "Semana (3 dias)") pra somar os mínimos de quantos dias quiser — pra ideia geral ou compra semanal. Por padrão continua só no dia automático de hoje (nada muda se ninguém mexer). O PDF "Tabela de Envios" acompanha a seleção feita na tela, com aviso claro de que é uma visão de planejamento, não o envio operacional do dia
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -4849,20 +4849,46 @@ function categoriaCanonica(itemKey, categoriaFallback) {
   return asaSulItem ? asaSulItem.category : categoriaFallback;
 }
 
-function calcAEnviar(unitName, itemKeyOrName, estoqueAtual, dayCode) {
-  const minMap = getMinPerDay(unitName);
-  // Preferência: item.key (fixo, não muda quando o nome exibido é renomeado).
-  // Fallback: nome normalizado, só por segurança pra qualquer chamada antiga
-  // que ainda não tenha sido migrada pra passar a key.
+// Acha a entrada de mínimos de um item no MIN_PER_DAY da unidade.
+// Preferência: item.key (fixo, não muda quando o nome exibido é renomeado).
+// Fallback: nome normalizado, só por segurança pra qualquer chamada antiga
+// que ainda não tenha sido migrada pra passar a key.
+function _acharMinEntry(minMap, itemKeyOrName) {
   let entry = minMap[itemKeyOrName];
   if (!entry) {
     const _norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
     const k = Object.keys(minMap).find(k => _norm(k) === _norm(itemKeyOrName));
     entry = k ? minMap[k] : null;
   }
+  return entry;
+}
+
+function calcAEnviar(unitName, itemKeyOrName, estoqueAtual, dayCode) {
+  const minMap = getMinPerDay(unitName);
+  const entry = _acharMinEntry(minMap, itemKeyOrName);
   if (!entry) return 0;
   const minDia = entry[dayCode] || 0;
   return Math.max(0, minDia - (estoqueAtual || 0));
+}
+
+// 28/07: a pedido do Eduardo — "Envios do Dia" ganha um seletor de dias
+// (SEG/QUA/SEX, múltipla escolha) pra somar os mínimos de quantos dias
+// quiser (ex.: só quarta+sexta, ou os 3 juntos, pra ter uma ideia geral ou
+// programar uma compra semanal), em vez de só o dia automático de hoje. Por
+// padrão a tela continua vindo só com o dia de hoje marcado — nada muda no
+// comportamento normal se ninguém mexer no seletor. Ver window._enviosDiaDias
+// e o seletor de chips dentro de viewEnviosDia().
+function somaMinDias(entry, dayCodes) {
+  if (!entry) return 0;
+  return (dayCodes || []).reduce((s, d) => s + (entry[d] || 0), 0);
+}
+
+function calcAEnviarDias(unitName, itemKeyOrName, estoqueAtual, dayCodes) {
+  const minMap = getMinPerDay(unitName);
+  const entry = _acharMinEntry(minMap, itemKeyOrName);
+  if (!entry) return 0;
+  const minAlvo = somaMinDias(entry, dayCodes);
+  return Math.max(0, minAlvo - (estoqueAtual || 0));
 }
 
 // Horário de corte: depois desse horário no próprio dia de entrega, a aba
@@ -8014,7 +8040,17 @@ function gerarPdfEnviosTabela(rows, dayFull, staleEntries) {
   offsets.forEach(o => { out += String(o).padStart(10,'0')+' 00000 n '+String.fromCharCode(10); });
   out += 'trailer'+String.fromCharCode(10)+'<< /Size '+(objs.length+1)+' /Root '+catId+' 0 R >>'+String.fromCharCode(10)+'startxref'+String.fromCharCode(10)+xrefOff+String.fromCharCode(10)+'%%EOF';
 
-  const fname = 'Tabela_Envios_' + (typeof nextEnviarDay === 'function' ? nextEnviarDay() : Date.now()) + '.pdf';
+  // 28/07: nome do arquivo reflete os dias somados (ex.: "QUA", "QUA-SEX",
+  // "SEG-QUA-SEX"), pra não ficar um PDF chamado "Tabela_Envios_QUA" com
+  // dado de quarta+sexta somado dentro. dayFull chega como "Quarta-feira"
+  // (um dia só) ou "SEG + QUA (soma)" (mais de um dia) — em ambos os casos
+  // dá pra extrair os códigos SEG/QUA/SEX direto do texto.
+  const _codigosNoTexto = (dayFull || '').match(/SEG|QUA|SEX|Segunda|Quarta|Sexta/g) || [];
+  const _diasSlug = _codigosNoTexto
+    .map(s => ({SEG:'SEG', QUA:'QUA', SEX:'SEX', Segunda:'SEG', Quarta:'QUA', Sexta:'SEX'}[s] || ''))
+    .filter(Boolean)
+    .join('-') || (typeof nextEnviarDay === 'function' ? nextEnviarDay() : Date.now());
+  const fname = 'Tabela_Envios_' + _diasSlug + '.pdf';
   _baixarPdfString(out, fname);
   toast('PDF da tabela de envios gerado!');
 }
@@ -8069,8 +8105,29 @@ function viewEnviosDia() {
   const dayFull = {SEG:'Segunda-feira', QUA:'Quarta-feira', SEX:'Sexta-feira'}[day] || day;
   const _norm   = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
+  // ── Seletor de dias a somar (SEG/QUA/SEX) ───────────────────────────────────
+  // Por padrão, só o dia automático de hoje (comportamento de sempre). O
+  // usuário pode marcar mais de um dia pra ver a soma dos mínimos — útil pra
+  // ter uma ideia geral da semana ou programar uma compra que cubra vários
+  // dias de uma vez. window._enviosDiaDias persiste entre renders (igual a
+  // openCats), então a seleção não se perde ao digitar na busca etc.
+  const DIA_LABEL_CURTO = {SEG:'Segunda', QUA:'Quarta', SEX:'Sexta'};
+  const DIA_LABEL_FULL  = {SEG:'Segunda-feira', QUA:'Quarta-feira', SEX:'Sexta-feira'};
+  const DIAS_ORDEM = ['SEG','QUA','SEX'];
+  if (!window._enviosDiaDias || window._enviosDiaDias.length === 0) {
+    window._enviosDiaDias = [day];
+  }
+  const diasSel = DIAS_ORDEM.filter(d => window._enviosDiaDias.includes(d));
+  const ehSelecaoPadrao = diasSel.length === 1 && diasSel[0] === day;
+  const diasSelFullTexto = diasSel.map(d => DIA_LABEL_FULL[d]).join(' + ');
+  // Título mais curto pro cabeçalho do PDF quando tem mais de um dia somado
+  // (evita estourar a largura da página com "Segunda-feira + Quarta-feira + Sexta-feira").
+  const diasSelTituloPdf = diasSel.length === 1
+    ? DIA_LABEL_FULL[diasSel[0]]
+    : diasSel.join(' + ') + ' (soma)';
+
   // ── Cabeçalho ──────────────────────────────────────────────────────────────
-  const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px'});
+  const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px'});
   hdrWrap.appendChild(el('h2', {cls:'table-title'}, 'Envios do Dia'));
   const dayBadge = el('span', {cls:'envios-dia-day-badge'}, '\uD83D\uDE9A ' + dayFull);
   hdrWrap.appendChild(dayBadge);
@@ -8087,12 +8144,58 @@ function viewEnviosDia() {
   const btnTabela = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:12px;display:flex;align-items:center;gap:5px'});
   btnTabela.innerHTML = '📄 PDF Tabela';
   btnTabela.title = 'Imprime a tabela de envios (item + estoque e quantidade a enviar de cada unidade), sem Est. CPD e sem Situação';
-  btnTabela.addEventListener('click', () => gerarPdfEnviosTabela(currentFilteredRows, dayFull, staleEntries));
+  btnTabela.addEventListener('click', () => gerarPdfEnviosTabela(currentFilteredRows, diasSelTituloPdf, staleEntries));
   pdfWrap.appendChild(btnProd);
   pdfWrap.appendChild(btnComp);
   pdfWrap.appendChild(btnTabela);
   hdrWrap.appendChild(pdfWrap);
   frag.appendChild(hdrWrap);
+
+  // ── Chips de seleção de dias ─────────────────────────────────────────────
+  const diasWrap = el('div', {style:'display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px'});
+  diasWrap.appendChild(el('span', {style:'font-size:11px;color:var(--text-3);font-weight:600'}, 'Somar dias:'));
+  DIAS_ORDEM.forEach(d => {
+    const ativo = diasSel.includes(d);
+    const chip = el('button', {
+      cls: 'btn btn-sm' + (ativo ? '' : ' btn-outline'),
+      style: 'font-size:11px;padding:4px 12px;' + (ativo ? 'background:var(--accent,#1A5229);color:#fff;border-color:var(--accent,#1A5229);' : '')
+    }, DIA_LABEL_CURTO[d]);
+    chip.title = ativo ? 'Clique para remover ' + DIA_LABEL_CURTO[d] + ' da soma' : 'Clique para somar ' + DIA_LABEL_CURTO[d];
+    chip.addEventListener('click', () => {
+      const idx = window._enviosDiaDias.indexOf(d);
+      if (idx >= 0) {
+        if (window._enviosDiaDias.length > 1) window._enviosDiaDias.splice(idx, 1); // nunca deixar vazio
+      } else {
+        window._enviosDiaDias.push(d);
+      }
+      render();
+    });
+    diasWrap.appendChild(chip);
+  });
+  const btnTodos = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:11px;padding:4px 12px'}, 'Semana (3 dias)');
+  btnTodos.title = 'Somar segunda + quarta + sexta — visão geral pra compra semanal';
+  btnTodos.addEventListener('click', () => { window._enviosDiaDias = DIAS_ORDEM.slice(); render(); });
+  diasWrap.appendChild(btnTodos);
+  if (!ehSelecaoPadrao) {
+    const btnReset = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:11px;padding:4px 12px'}, '\u21BB Voltar pra hoje');
+    btnReset.title = 'Voltar a mostrar só o envio automático de hoje (' + dayFull + ')';
+    btnReset.addEventListener('click', () => { window._enviosDiaDias = [day]; render(); });
+    diasWrap.appendChild(btnReset);
+  }
+  frag.appendChild(diasWrap);
+
+  // ── Aviso: visualização de planejamento, não é o envio operacional ──────────
+  if (!ehSelecaoPadrao) {
+    const vizBanner = el('div', {cls:'alert-banner', style:'margin-bottom:14px;align-items:center;background:var(--accent-bg,#EAF6EF);border:1.5px solid var(--accent,#1A5229)'});
+    const vizIcon = el('span', {cls:'alert-banner-icon'}, '\uD83D\uDCCA');
+    const vizBody = el('div', {cls:'alert-banner-body'});
+    vizBody.appendChild(el('div', {cls:'alert-banner-title'}, 'Visualizando: ' + diasSelFullTexto));
+    vizBody.appendChild(el('div', {cls:'alert-banner-items'},
+      'Isso é uma projeção pra planejamento (compra semanal, visão geral) — não substitui o envio operacional de hoje (' + dayFull + ').'));
+    vizBanner.appendChild(vizIcon);
+    vizBanner.appendChild(vizBody);
+    frag.appendChild(vizBanner);
+  }
 
   // ── Coletar todos os itens que precisam de envio ───────────────────────────
   // Um item entra na tabela se ao menos uma unidade tiver A Enviar > 0 neste dia
@@ -8128,14 +8231,17 @@ function viewEnviosDia() {
       // Incluir item se tem mínimo para este dia (independente de aEnviar)
       // Isso garante que todos os itens relevantes aparecem na tabela
       const minEntry = minMap[item.key];
-      const minDia = minEntry ? (minEntry[day] || 0) : 0;
-      if (minDia === 0) return; // sem mínimo para este dia — não é relevante
+      // 28/07: soma os mínimos de TODOS os dias selecionados no seletor (por
+      // padrão só o dia de hoje, mesmo comportamento de sempre) — ver
+      // window._enviosDiaDias / somaMinDias / calcAEnviarDias.
+      const minDia = somaMinDias(minEntry, diasSel);
+      if (minDia === 0) return; // sem mínimo nos dias selecionados — não é relevante
 
       // Se o item está com estoque 0 e ainda não foi contado nesta janela, não
       // sabemos se é zero de verdade — não calculamos aEnviar a partir disso,
       // só marcamos como "não contado" pra exibir na tabela em vez de um número.
       const contado = itemFoiContado(unitName, item.id, estSoma);
-      const aEnviar = contado ? calcAEnviar(unitName, item.key, estSoma, day) : 0;
+      const aEnviar = contado ? calcAEnviarDias(unitName, item.key, estSoma, diasSel) : 0;
       if (aEnviar > 0) relevantPairs.add(unitName + '|' + item.category);
 
       if (!itemMap.has(item.key)) {
@@ -8276,7 +8382,7 @@ function viewEnviosDia() {
 
   if (rows.length === 0) {
     const empty = el('div', {cls:'table-wrap', style:'padding:32px;text-align:center;color:var(--success);font-weight:600'});
-    empty.textContent = '\u2705 Nenhum item a enviar para ' + dayFull + '. Todas as unidades t\u00EAm estoque suficiente.';
+    empty.textContent = '\u2705 Nenhum item a enviar para ' + diasSelFullTexto + '. Todas as unidades t\u00EAm estoque suficiente.';
     frag.appendChild(empty);
     return frag;
   }
