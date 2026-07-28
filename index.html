@@ -738,7 +738,7 @@
   .hist-actions { display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
   .hist-empty { padding:32px; text-align:center; color:var(--text-3); font-size:13px; }
 
-  /* ── Modal genérico (Dashboard e outros) ───────────────────────────────── */
+  /* ── Modal genérico ─────────────────────────────────────────────────────── */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 3000;
     background: rgba(0,0,0,.48);
@@ -1714,7 +1714,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.15'; // 27/07: Diagnóstico geral — corrige 3 mismatches de categoriaCanonica encontrados: SIG 'Açucar refinado' Bar->Salão e 'Acqua perfumante 400ml' Salão->Limpeza (alinha com a Asa Sul, canônica), Delivery 'Geleia abacaxi c/pimenta 500g' Estoque Seco->Refrigerados. Correção equivalente precisa ser aplicada no catálogo AO VIVO do Firebase (script à parte)
+    const APP_VERSION = '1.5.19'; // 28/07: "Envios do Dia" (CPD) passa a considerar um item como contado quando a UNIDADE confirma a categoria inteira (não só o ✓ individual por item, que era o único sinal aceito antes e raramente é usado na prática) — corrige a divergência entre a tela da unidade (tudo confirmado) e a tela do CPD (muita coisa "NC"). Adicionado indicador "✓ ind. X/Y" por categoria, visível só pro CPD, para monitorar se os funcionários também estão confirmando item a item, como orientado
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -1987,14 +1987,6 @@ auth.onAuthStateChanged(user => {
   </div>
 
   <div class="nav-section">
-    <span class="nav-label">Visão geral</span>
-    <button class="nav-item" data-view="dashboard" onclick="setView('dashboard')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
-      Dashboard
-    </button>
-  </div>
-
-  <div class="nav-section">
     <span class="nav-label">Contagem</span>
     <button class="nav-item" data-view="cpd" onclick="setView('cpd')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -2114,10 +2106,6 @@ auth.onAuthStateChanged(user => {
   <button class="bnav-btn active" data-view="cpd" onclick="setView('cpd')">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
     CPD
-  </button>
-  <button class="bnav-btn" data-view="dashboard" onclick="setView('dashboard')">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
-    Dash
   </button>
   <button class="bnav-btn" data-view="units" onclick="setView('units')">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/></svg>
@@ -2544,7 +2532,7 @@ const SEED_CATALOG = [
 
 // ═══ CATÁLOGOS INDEPENDENTES POR UNIDADE (IDs compatíveis com Firebase) ═══
 
-const ASA_SUL_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Bar', 'Salão', 'Vinhos', 'Delivery', 'Limpeza'];
+const ASA_SUL_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Bar', 'Salão', 'Vinhos', 'Delivery', 'Limpeza', 'Alimentação dos Funcionários'];
 const ASA_SUL_CATALOG = [
   {id:'ur01',name:'Massa de pizza',key:'massa de pizza',category:'Refrigerados',unit:'Un'},
   {id:'ur02',name:'Muçarela 20kg',key:'mucarela 20kg',category:'Refrigerados',unit:'Caixa'},
@@ -2847,9 +2835,60 @@ const ASA_SUL_CATALOG = [
   {id:'ul29',name:'Propé pacote de 100',key:'prope pacote de 100',category:'Limpeza',unit:'PCT'},
   {id:'ul30',name:'Poliflor',key:'poliflor',category:'Limpeza',unit:'Un'},
   {id:'ul31',name:'Inseticida',key:'inseticida',category:'Limpeza',unit:'Un'},
+  {id:'uf01',name:'Acém moído',key:'acem moido',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf02',name:'Paleta/Acém',key:'paleta/acem',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf03',name:'Contrafilé',key:'contrafile',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf04',name:'Filé de frango',key:'file de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf05',name:'Iscas de frango',key:'iscas de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf06',name:'Coxa e sobrecoxa de frango',key:'coxa e sobrecoxa de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf07',name:'Linguiça de frango',key:'linguica de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf08',name:'Bacon/Toucinho',key:'bacon/toucinho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf09',name:'Alface',key:'alface',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf10',name:'Alho',key:'alho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf11',name:'Banana',key:'banana',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf12',name:'Batata Inglesa',key:'batata inglesa',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf13',name:'Beterraba',key:'beterraba',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf14',name:'Cenoura',key:'cenoura',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf15',name:'Cebola',key:'cebola',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf16',name:'Cheiro-verde',key:'cheiro-verde',category:'Alimentação dos Funcionários',unit:'Maço'},
+  {id:'uf17',name:'Chuchu',key:'chuchu',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf18',name:'Ervas (alecrim/orégano)',key:'ervas (alecrim/oregano)',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf19',name:'Ervilha',key:'ervilha',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf20',name:'Laranja',key:'laranja',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf21',name:'Limão',key:'limao_func',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf22',name:'Maçã',key:'maca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf23',name:'Milho verde',key:'milho verde',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf24',name:'Pimentão verde',key:'pimentao verde_func',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf25',name:'Rúcula',key:'rucula_func',category:'Alimentação dos Funcionários',unit:'Maço'},
+  {id:'uf26',name:'Tomate',key:'tomate',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf27',name:'Vagem',key:'vagem',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf28',name:'Açafrão/Cúrcuma',key:'acafrao/curcuma',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf29',name:'Arroz',key:'arroz',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf30',name:'Feijão carioca',key:'feijao carioca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf31',name:'Feijão fradinho',key:'feijao fradinho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf32',name:'Batata palha',key:'batata palha',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf33',name:'Extrato de tomate',key:'extrato de tomate',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf34',name:'Farinha de mandioca',key:'farinha de mandioca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf35',name:'Flocão de milho',key:'flocao de milho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf36',name:'Ketchup',key:'ketchup_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf37',name:'Macarrão espaguete',key:'macarrao espaguete',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf38',name:'Macarrão parafuso',key:'macarrao parafuso',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf39',name:'Maionese',key:'maionese_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf40',name:'Margarina',key:'margarina',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf41',name:'Mostarda',key:'mostarda_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf42',name:'Noz-moscada',key:'noz-moscada',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf43',name:'Óleo de soja',key:'oleo de soja',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf44',name:'Paçoca',key:'pacoca',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf45',name:'Pó para gelatina',key:'po para gelatina',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf46',name:'Sal',key:'sal',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf47',name:'Vinagre',key:'vinagre',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf48',name:'Açúcar Cristal 5kg',key:'acucar cristal 5kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf49',name:'Café export',key:'cafe export',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf50',name:'Leite integral',key:'leite integral',category:'Alimentação dos Funcionários',unit:'L'},
+  {id:'uf51',name:'Creme de leite 1L',key:'creme de leite 1l',category:'Alimentação dos Funcionários',unit:'Un'},
 ];
 
-const SIG_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Bar', 'Salão', 'Vinhos', 'Delivery', 'Limpeza'];
+const SIG_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Bar', 'Salão', 'Vinhos', 'Delivery', 'Limpeza', 'Alimentação dos Funcionários'];
 const SIG_CATALOG = [
   {id:'ur01',name:'Massa de pizza',key:'massa de pizza',category:'Refrigerados',unit:'Un'},
   {id:'ur02',name:'Muçarela 20kg',key:'mucarela 20kg',category:'Refrigerados',unit:'Caixa'},
@@ -3083,9 +3122,60 @@ const SIG_CATALOG = [
   {id:'ul27',name:'Inseticida',key:'inseticida',category:'Limpeza',unit:'Un'},
   {id:'ul28',name:'Borrifador de álcool',key:'borrifador de alcool',category:'Limpeza',unit:'Un'},
   {id:'ul29',name:'Poliflor',key:'poliflor',category:'Limpeza',unit:'Un'},
+  {id:'uf01',name:'Acém moído',key:'acem moido',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf02',name:'Paleta/Acém',key:'paleta/acem',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf03',name:'Contrafilé',key:'contrafile',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf04',name:'Filé de frango',key:'file de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf05',name:'Iscas de frango',key:'iscas de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf06',name:'Coxa e sobrecoxa de frango',key:'coxa e sobrecoxa de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf07',name:'Linguiça de frango',key:'linguica de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf08',name:'Bacon/Toucinho',key:'bacon/toucinho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf09',name:'Alface',key:'alface',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf10',name:'Alho',key:'alho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf11',name:'Banana',key:'banana',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf12',name:'Batata Inglesa',key:'batata inglesa',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf13',name:'Beterraba',key:'beterraba',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf14',name:'Cenoura',key:'cenoura',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf15',name:'Cebola',key:'cebola',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf16',name:'Cheiro-verde',key:'cheiro-verde',category:'Alimentação dos Funcionários',unit:'Maço'},
+  {id:'uf17',name:'Chuchu',key:'chuchu',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf18',name:'Ervas (alecrim/orégano)',key:'ervas (alecrim/oregano)',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf19',name:'Ervilha',key:'ervilha',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf20',name:'Laranja',key:'laranja',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf21',name:'Limão',key:'limao_func',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf22',name:'Maçã',key:'maca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf23',name:'Milho verde',key:'milho verde',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf24',name:'Pimentão verde',key:'pimentao verde_func',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf25',name:'Rúcula',key:'rucula_func',category:'Alimentação dos Funcionários',unit:'Maço'},
+  {id:'uf26',name:'Tomate',key:'tomate',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf27',name:'Vagem',key:'vagem',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf28',name:'Açafrão/Cúrcuma',key:'acafrao/curcuma',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf29',name:'Arroz',key:'arroz',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf30',name:'Feijão carioca',key:'feijao carioca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf31',name:'Feijão fradinho',key:'feijao fradinho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf32',name:'Batata palha',key:'batata palha',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf33',name:'Extrato de tomate',key:'extrato de tomate',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf34',name:'Farinha de mandioca',key:'farinha de mandioca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf35',name:'Flocão de milho',key:'flocao de milho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf36',name:'Ketchup',key:'ketchup_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf37',name:'Macarrão espaguete',key:'macarrao espaguete',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf38',name:'Macarrão parafuso',key:'macarrao parafuso',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf39',name:'Maionese',key:'maionese_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf40',name:'Margarina',key:'margarina',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf41',name:'Mostarda',key:'mostarda_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf42',name:'Noz-moscada',key:'noz-moscada',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf43',name:'Óleo de soja',key:'oleo de soja',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf44',name:'Paçoca',key:'pacoca',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf45',name:'Pó para gelatina',key:'po para gelatina',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf46',name:'Sal',key:'sal',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf47',name:'Vinagre',key:'vinagre',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf48',name:'Açúcar Cristal 5kg',key:'acucar cristal 5kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf49',name:'Café export',key:'cafe export',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf50',name:'Leite integral',key:'leite integral',category:'Alimentação dos Funcionários',unit:'L'},
+  {id:'uf51',name:'Creme de leite 1L',key:'creme de leite 1l',category:'Alimentação dos Funcionários',unit:'Un'},
 ];
 
-const VICENTE_PIRES_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Bar', 'Salão', 'Vinhos', 'Delivery', 'Limpeza'];
+const VICENTE_PIRES_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Bar', 'Salão', 'Vinhos', 'Delivery', 'Limpeza', 'Alimentação dos Funcionários'];
 const VICENTE_PIRES_CATALOG = [
   {id:'ur01',name:'Massa de pizza',key:'massa de pizza',category:'Refrigerados',unit:'Un'},
   {id:'ur02',name:'Muçarela 20kg',key:'mucarela 20kg',category:'Refrigerados',unit:'Caixa'},
@@ -3386,9 +3476,60 @@ const VICENTE_PIRES_CATALOG = [
   {id:'ul34',name:'Poliflor',key:'poliflor',category:'Limpeza',unit:'Un'},
   {id:'ul36',name:'Óleo de peroba 100ml',key:'oleo de peroba 100ml',category:'Limpeza',unit:'Un'},
   {id:'ul37',name:'Limpa alumínio politriz',key:'limpa aluminio politriz',category:'Limpeza',unit:'Un'},
+  {id:'uf01',name:'Acém moído',key:'acem moido',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf02',name:'Paleta/Acém',key:'paleta/acem',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf03',name:'Contrafilé',key:'contrafile',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf04',name:'Filé de frango',key:'file de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf05',name:'Iscas de frango',key:'iscas de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf06',name:'Coxa e sobrecoxa de frango',key:'coxa e sobrecoxa de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf07',name:'Linguiça de frango',key:'linguica de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf08',name:'Bacon/Toucinho',key:'bacon/toucinho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf09',name:'Alface',key:'alface',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf10',name:'Alho',key:'alho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf11',name:'Banana',key:'banana',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf12',name:'Batata Inglesa',key:'batata inglesa',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf13',name:'Beterraba',key:'beterraba',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf14',name:'Cenoura',key:'cenoura',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf15',name:'Cebola',key:'cebola',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf16',name:'Cheiro-verde',key:'cheiro-verde',category:'Alimentação dos Funcionários',unit:'Maço'},
+  {id:'uf17',name:'Chuchu',key:'chuchu',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf18',name:'Ervas (alecrim/orégano)',key:'ervas (alecrim/oregano)',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf19',name:'Ervilha',key:'ervilha',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf20',name:'Laranja',key:'laranja',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf21',name:'Limão',key:'limao_func',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf22',name:'Maçã',key:'maca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf23',name:'Milho verde',key:'milho verde',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf24',name:'Pimentão verde',key:'pimentao verde_func',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf25',name:'Rúcula',key:'rucula_func',category:'Alimentação dos Funcionários',unit:'Maço'},
+  {id:'uf26',name:'Tomate',key:'tomate',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf27',name:'Vagem',key:'vagem',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf28',name:'Açafrão/Cúrcuma',key:'acafrao/curcuma',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf29',name:'Arroz',key:'arroz',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf30',name:'Feijão carioca',key:'feijao carioca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf31',name:'Feijão fradinho',key:'feijao fradinho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf32',name:'Batata palha',key:'batata palha',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf33',name:'Extrato de tomate',key:'extrato de tomate',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf34',name:'Farinha de mandioca',key:'farinha de mandioca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf35',name:'Flocão de milho',key:'flocao de milho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf36',name:'Ketchup',key:'ketchup_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf37',name:'Macarrão espaguete',key:'macarrao espaguete',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf38',name:'Macarrão parafuso',key:'macarrao parafuso',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf39',name:'Maionese',key:'maionese_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf40',name:'Margarina',key:'margarina',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf41',name:'Mostarda',key:'mostarda_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf42',name:'Noz-moscada',key:'noz-moscada',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf43',name:'Óleo de soja',key:'oleo de soja',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf44',name:'Paçoca',key:'pacoca',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf45',name:'Pó para gelatina',key:'po para gelatina',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf46',name:'Sal',key:'sal',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf47',name:'Vinagre',key:'vinagre',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf48',name:'Açúcar Cristal 5kg',key:'acucar cristal 5kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf49',name:'Café export',key:'cafe export',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf50',name:'Leite integral',key:'leite integral',category:'Alimentação dos Funcionários',unit:'L'},
+  {id:'uf51',name:'Creme de leite 1L',key:'creme de leite 1l',category:'Alimentação dos Funcionários',unit:'Un'},
 ];
 
-const DELIVERY_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Salão', 'Delivery', 'Limpeza'];
+const DELIVERY_CATEGORIES = ['Refrigerados', 'Estoque Seco', 'Salão', 'Delivery', 'Limpeza', 'Alimentação dos Funcionários'];
 const DELIVERY_CATALOG = [
   {id:'ur01',name:'Massa de pizza',key:'massa de pizza',category:'Refrigerados',unit:'Un'},
   {id:'ur02',name:'Muçarela 20kg',key:'mucarela 20kg',category:'Refrigerados',unit:'Caixa'},
@@ -3499,6 +3640,57 @@ const DELIVERY_CATALOG = [
   {id:'ul26',name:'Inseticida',key:'inseticida',category:'Limpeza',unit:'Un'},
   {id:'ul27',name:'Borrifador de álcool',key:'borrifador de alcool',category:'Limpeza',unit:'Un'},
   {id:'ul28',name:'Poliflor',key:'poliflor',category:'Limpeza',unit:'Un'},
+  {id:'uf01',name:'Acém moído',key:'acem moido',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf02',name:'Paleta/Acém',key:'paleta/acem',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf03',name:'Contrafilé',key:'contrafile',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf04',name:'Filé de frango',key:'file de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf05',name:'Iscas de frango',key:'iscas de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf06',name:'Coxa e sobrecoxa de frango',key:'coxa e sobrecoxa de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf07',name:'Linguiça de frango',key:'linguica de frango',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf08',name:'Bacon/Toucinho',key:'bacon/toucinho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf09',name:'Alface',key:'alface',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf10',name:'Alho',key:'alho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf11',name:'Banana',key:'banana',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf12',name:'Batata Inglesa',key:'batata inglesa',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf13',name:'Beterraba',key:'beterraba',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf14',name:'Cenoura',key:'cenoura',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf15',name:'Cebola',key:'cebola',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf16',name:'Cheiro-verde',key:'cheiro-verde',category:'Alimentação dos Funcionários',unit:'Maço'},
+  {id:'uf17',name:'Chuchu',key:'chuchu',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf18',name:'Ervas (alecrim/orégano)',key:'ervas (alecrim/oregano)',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf19',name:'Ervilha',key:'ervilha',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf20',name:'Laranja',key:'laranja',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf21',name:'Limão',key:'limao_func',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf22',name:'Maçã',key:'maca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf23',name:'Milho verde',key:'milho verde',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf24',name:'Pimentão verde',key:'pimentao verde_func',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf25',name:'Rúcula',key:'rucula_func',category:'Alimentação dos Funcionários',unit:'Maço'},
+  {id:'uf26',name:'Tomate',key:'tomate',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf27',name:'Vagem',key:'vagem',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf28',name:'Açafrão/Cúrcuma',key:'acafrao/curcuma',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf29',name:'Arroz',key:'arroz',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf30',name:'Feijão carioca',key:'feijao carioca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf31',name:'Feijão fradinho',key:'feijao fradinho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf32',name:'Batata palha',key:'batata palha',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf33',name:'Extrato de tomate',key:'extrato de tomate',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf34',name:'Farinha de mandioca',key:'farinha de mandioca',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf35',name:'Flocão de milho',key:'flocao de milho',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf36',name:'Ketchup',key:'ketchup_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf37',name:'Macarrão espaguete',key:'macarrao espaguete',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf38',name:'Macarrão parafuso',key:'macarrao parafuso',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf39',name:'Maionese',key:'maionese_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf40',name:'Margarina',key:'margarina',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf41',name:'Mostarda',key:'mostarda_func',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf42',name:'Noz-moscada',key:'noz-moscada',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf43',name:'Óleo de soja',key:'oleo de soja',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf44',name:'Paçoca',key:'pacoca',category:'Alimentação dos Funcionários',unit:'Pacote'},
+  {id:'uf45',name:'Pó para gelatina',key:'po para gelatina',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf46',name:'Sal',key:'sal',category:'Alimentação dos Funcionários',unit:'Kg'},
+  {id:'uf47',name:'Vinagre',key:'vinagre',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf48',name:'Açúcar Cristal 5kg',key:'acucar cristal 5kg',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf49',name:'Café export',key:'cafe export',category:'Alimentação dos Funcionários',unit:'Un'},
+  {id:'uf50',name:'Leite integral',key:'leite integral',category:'Alimentação dos Funcionários',unit:'L'},
+  {id:'uf51',name:'Creme de leite 1L',key:'creme de leite 1l',category:'Alimentação dos Funcionários',unit:'Un'},
 ];
 
 // Migração em tempo real: dados de catálogo já salvos no Firebase/localStorage
@@ -4611,7 +4803,35 @@ function getMinPerDay(unitName) {
 function itemFoiContado(unitName, itemId, qty) {
   if ((qty || 0) > 0) return true;
   if (!unitName || unitName === 'CPD') return true;
-  return typeof isConfirmed === 'function' ? isConfirmed(unitName, itemId) : true;
+  if (typeof isConfirmed === 'function' && isConfirmed(unitName, itemId)) return true;
+  // 28/07: a unidade também pode confirmar a contagem por CATEGORIA inteira
+  // (botão "Confirmar" no topo de cada categoria — ver confirmCategory /
+  // getCatConfirmState), sem precisar clicar no ✓ individual de cada item
+  // zerado — é esse o fluxo que os funcionários realmente usam no dia a dia.
+  // Antes desta correção, "Envios do Dia" no CPD ignorava esse sinal e
+  // mostrava "NC" (não contado) em itens que a unidade já tinha contado e
+  // confirmado por categoria, gerando divergência entre a tela da unidade
+  // (tudo confirmado) e a tela do CPD (muita coisa "NC"). A confirmação por
+  // categoria agora também conta como "contado" aqui. O ✓ individual por
+  // item continua existindo e sendo registrado à parte — ver
+  // itemConfirmadoIndividualmente(), usado no indicador de conformidade que
+  // o CPD vê ao lado de cada categoria.
+  if (typeof getUnitCatalog === 'function' && typeof getCatConfirmState === 'function' && typeof unitStock !== 'undefined') {
+    const item = getUnitCatalog(unitName).catalog.find(c => c.id === itemId);
+    if (item) {
+      const stockObj = unitStock[unitName] || {};
+      if (getCatConfirmState(unitName, item.category, stockObj) === 'confirmed') return true;
+    }
+  }
+  return false;
+}
+
+// Confirmação INDIVIDUAL do item (botão ✓ da linha), sem considerar a
+// confirmação por categoria — usado só para medir adesão ao fluxo item-a-
+// item (indicador de conformidade visível pro CPD), nunca para decidir "A
+// Enviar"/NC (isso é itemFoiContado, que já aceita confirmação por categoria).
+function itemConfirmadoIndividualmente(unitName, itemId) {
+  return typeof isConfirmed === 'function' ? isConfirmed(unitName, itemId) : false;
 }
 
 // Um mesmo produto (mesma item.key) pode estar cadastrado em categorias
@@ -5748,7 +5968,7 @@ function isCPD()  { return session && session.unit === 'cpd'; }
 // Views available per role
 function allowedViews() {
   if (!session) return [];
-  if (isCPD()) return ['cpd','units','dashboard','envios-dia','historico-contagens','validade','producao','catalogo'];
+  if (isCPD()) return ['cpd','units','envios-dia','historico-contagens','validade','producao','catalogo'];
   return ['units','validade']; // Unidades: apenas o Painel de Contagem
 }
 
@@ -6086,12 +6306,6 @@ function buildSidebarNav() {
 
   const allSections = [
     {
-      label: 'Vis\u00E3o geral',
-      items: [
-        { view:'dashboard', label:'Dashboard',         icon:'<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>' },
-      ]
-    },
-    {
       label: 'Contagem',
       items: [
         { view:'cpd',       label:'Contagem CPD',        icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' },
@@ -6159,7 +6373,6 @@ const VIEW_TITLES = {
   catalogo: 'Cat\u00E1logo de Itens',
   'historico-contagens': 'Hist\u00F3rico de Contagens',
   'validade': 'Controle de Validades',
-  dashboard: 'Dashboard Consolidado',
 };
 
 function setView(v) {
@@ -6430,6 +6643,24 @@ function el(tag, attrs={}, ...children) {
       const chevron = el('span', {cls:'cat-chevron'}, '\u25BC');
       togBtn.appendChild(countSpan);
       togBtn.appendChild(progWrap);
+
+      // \u2500\u2500 Indicador de conformidade: confirma\u00E7\u00E3o INDIVIDUAL por item \u2500\u2500\u2500\u2500\u2500\u2500
+      // Vis\u00EDvel s\u00F3 pro CPD (a unidade j\u00E1 v\u00EA seu pr\u00F3prio progresso acima).
+      // A confirma\u00E7\u00E3o por categoria j\u00E1 basta pro c\u00E1lculo de "A Enviar" (ver
+      // itemFoiContado), mas o Eduardo pediu um jeito de monitorar se os
+      // funcion\u00E1rios tamb\u00E9m est\u00E3o confirmando item a item, como orientado.
+      if (isCPD() && unitName && unitName !== 'CPD') {
+        const indDone = catItems.filter(i => itemConfirmadoIndividualmente(unitName, i.id)).length;
+        const indTotal = catItems.length;
+        const indOk = indDone === indTotal;
+        const indSpan = el('span', {
+          cls: 'cat-count',
+          style: 'margin-left:2px;font-size:11px;white-space:nowrap;' + (indOk ? 'color:var(--text-3)' : 'color:var(--warning,#B8860B);font-weight:600'),
+          title: indDone + ' de ' + indTotal + ' itens desta categoria com a confirma\u00E7\u00E3o INDIVIDUAL (\u2713 por item) registrada nesta janela \u2014 independente da confirma\u00E7\u00E3o por categoria.'
+        }, (indOk ? '\u2713' : '\u26A0\uFE0F') + ' ind. ' + indDone + '/' + indTotal);
+        togBtn.appendChild(indSpan);
+      }
+
       togBtn.appendChild(chevron);
       togBtn.addEventListener('click', () => {
         openCats[cat] = !openCats[cat];
@@ -6565,8 +6796,11 @@ function el(tag, attrs={}, ...children) {
 
         // Estado de confirmação da contagem desta janela
         const confirmed = showConfirm && unitName ? isConfirmed(unitName, item.id) : false;
-        const uMin = (showConfirm && unitName && window.unitMinimums && window.unitMinimums[unitName])
-          ? (window.unitMinimums[unitName][item.id] || 0) : 0;
+        // 27/07: "estoque mínimo" por item desativado para unidades — mínimo
+        // de unidade agora só existe dentro da lógica de Envios do Dia
+        // (MIN_PER_DAY_*). window.unitMinimums (pizza_unit_minimums) fica
+        // reservado só para o CPD; uma nova lógica está planejada em breve.
+        const uMin = 0;
         let confirmState = 'none';
         if (confirmed) {
           confirmState = qty === 0 ? 'danger' : (uMin > 0 && qty < uMin ? 'warn' : 'ok');
@@ -6687,8 +6921,7 @@ function el(tag, attrs={}, ...children) {
               pruneCountedMap();
               if (newState) {
                 const curQty = parseFloat(inp.value.replace(',','.')) || 0;
-                const curUMin = (window.unitMinimums && window.unitMinimums[unitName])
-                  ? (window.unitMinimums[unitName][item.id] || 0) : 0;
+                const curUMin = 0; // 27/07: estoque mínimo por item desativado para unidades
                 const st = curQty === 0 ? 'danger' : (curUMin > 0 && curQty < curUMin ? 'warn' : 'ok');
                 confBtn.className = 'confirm-btn confirmed-' + st;
                 tr.className = 'count-' + st;
@@ -7215,197 +7448,6 @@ function hidePush() {
   clearTimeout(pushTimer);
 }
 
-// VIEW: Dashboard consolidado (Feature 5)
-function viewDashboard() {
-  const frag = document.createDocumentFragment();
-
-  // ── Resumo rápido: quantas unidades têm item zerado/abaixo do mínimo ──────
-  // Evita que o usuário precise abrir card por card pra achar onde está o problema.
-  const quickIssues = [];
-  [['CPD', cpd], ...UNIT_NAMES.map(u => [u, unitStock[u] || {}])].forEach(([label, stockObj]) => {
-    const qCatalog = (label === 'CPD') ? catalog : getUnitCatalog(label).catalog;
-    const zero = qCatalog.filter(i => (stockObj[i.id] || 0) === 0).length;
-    if (zero > 0) quickIssues.push({ label, zero });
-  });
-  if (quickIssues.length > 0) {
-    const totalZero = quickIssues.reduce((s, q) => s + q.zero, 0);
-    const banner = el('div', {
-      style: 'background:var(--danger-bg);border:1.5px solid #E0A0A0;border-radius:var(--radius);' +
-             'padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap'
-    });
-    banner.appendChild(el('span', {style:'font-size:15px'}, '\u26A0\uFE0F'));
-    banner.appendChild(el('span', {style:'font-size:13px;color:var(--danger);font-weight:600'},
-      totalZero + (totalZero > 1 ? ' itens zerados' : ' item zerado') + ' em ' +
-      quickIssues.length + (quickIssues.length > 1 ? ' unidades: ' : ' unidade: ') +
-      quickIssues.map(q => q.label + ' (' + q.zero + ')').join(', ')
-    ));
-    frag.appendChild(banner);
-  }
-
-  // Subtitle
-  frag.appendChild(el('p', {style:'font-size:13px;color:var(--text-3);margin-bottom:16px;font-style:italic'},
-    'Clique em uma unidade para ver todos os itens com problema. \u1F7E2 OK \u00B7 \u1F7E1 Abaixo do m\u00EDnimo \u00B7 \u1F534 Sem estoque'
-  ));
-
-  // CSS for the dashboard grid (injected once)
-  if (!document.getElementById('dash-grid-style')) {
-    const s = document.createElement('style');
-    s.id = 'dash-grid-style';
-    s.textContent = `
-      .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
-      .dash-summary-card {
-        background: var(--surface); border: 1.5px solid var(--border);
-        border-radius: var(--radius); box-shadow: var(--shadow);
-        padding: 18px 16px; cursor: pointer; transition: border-color .15s, transform .1s;
-        display: flex; flex-direction: column; gap: 8px;
-      }
-      .dash-summary-card:hover { border-color: var(--accent); transform: translateY(-1px); }
-      .dash-card-label { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: var(--text); }
-      .dash-card-header { display: flex; align-items: center; gap: 10px; }
-      .dash-card-avatar {
-        width: 32px; height: 32px; border-radius: 50%; background: var(--gold-light); color: var(--gold);
-        font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14px;
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      }
-      .dash-card-stats { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-      .dash-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 50px; }
-      .dash-stat-num { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; line-height: 1; }
-      .dash-stat-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .4px; }
-      .dash-card-semaphore { display: flex; gap: 5px; align-items: center; margin-top: 4px; }
-      .dash-card-hint { font-size: 11px; color: var(--text-3); font-style: italic; margin-top: 2px; }
-      /* Detail modal list */
-      .dash-detail-row {
-        display: flex; align-items: center; gap: 10px; padding: 9px 0;
-        border-bottom: 1px solid var(--border-light); font-size: 13px;
-      }
-      .dash-detail-row:last-child { border-bottom: none; }
-      .dash-detail-name { flex: 1; font-weight: 500; }
-      .dash-detail-qty { font-weight: 700; min-width: 40px; text-align: right; }
-      .dash-detail-min { font-size: 11px; color: var(--text-3); min-width: 50px; }
-      .dash-detail-unit { font-size: 11px; color: var(--text-3); min-width: 32px; }
-      .dash-section-head { font-size: 11px; font-weight: 700; text-transform: uppercase;
-        letter-spacing: .5px; color: var(--text-2); padding: 10px 0 4px; }
-    `;
-    document.head.appendChild(s);
-  }
-
-  function openDashModal(label, stockObj) {
-    const modalCatalog = (label === 'CPD') ? catalog : getUnitCatalog(label).catalog;
-    const allIssues = modalCatalog.filter(i => {
-      const qty = stockObj[i.id] || 0;
-      const min = minimums[i.id] || 0;
-      return qty === 0 || (min > 0 && qty < min);
-    });
-
-    // Fechar qualquer modal do dashboard aberto antes de abrir novo
-    document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
-    const overlay = el('div', {cls:'modal-overlay'});
-    const box = el('div', {cls:'modal-box', style:'max-width:540px'});
-
-    const header = el('div', {cls:'modal-header'});
-    header.appendChild(el('div', {cls:'modal-title'}, `Aten\u00E7\u00E3o \u2014 ${label}`));
-    header.appendChild(el('button', {cls:'modal-close', onclick:()=>overlay.remove()}, '\u00D7'));
-    box.appendChild(header);
-
-    const body = el('div', {cls:'modal-body', style:'max-height:70vh'});
-
-    if (!allIssues.length) {
-      body.appendChild(el('p', {style:'padding:20px;text-align:center;color:var(--success);font-weight:600'}, '\u2705 Todos os itens est\u00E3o com estoque adequado!'));
-    } else {
-      // Split into zero and low
-      const zeroItems = allIssues.filter(i => (stockObj[i.id]||0) === 0);
-      const lowItems  = allIssues.filter(i => (stockObj[i.id]||0) > 0);
-
-      function addSection(title, items, color) {
-        if (!items.length) return;
-        body.appendChild(el('div', {cls:'dash-section-head', style:`color:${color}`}, `${title} (${items.length})`));
-        items.forEach(item => {
-          const qty = stockObj[item.id] || 0;
-          const min = minimums[item.id] || 0;
-          const row = el('div', {cls:'dash-detail-row'});
-          const dot = el('div', {cls:'sem-dot', style:`background:${qty===0?'var(--danger)':'#E8A020'};flex-shrink:0`});
-          const name = el('span', {cls:'dash-detail-name'}, item.name);
-          const qtySpan = el('span', {cls:'dash-detail-qty', style:`color:${qty===0?'var(--danger)':'#E8A020'}`}, String(qty));
-          const minSpan = el('span', {cls:'dash-detail-min'}, min > 0 ? `m\u00EDn: ${min}` : '');
-          const unitSpan = el('span', {cls:'dash-detail-unit'}, item.unit);
-          row.append(dot, name, qtySpan, minSpan, unitSpan);
-          body.appendChild(row);
-        });
-      }
-
-      addSection('\u1F534 Sem estoque', zeroItems, 'var(--danger)');
-      addSection('\u1F7E1 Abaixo do m\u00EDnimo', lowItems, '#8A6A10');
-    }
-
-    box.appendChild(body);
-
-    const footer = el('div', {cls:'modal-footer'});
-    footer.appendChild(el('button', {cls:'btn btn-outline', onclick:()=>overlay.remove()}, 'Fechar'));
-    box.appendChild(footer);
-
-    overlay.appendChild(box);
-    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-    document.body.appendChild(overlay);
-  }
-
-  function buildSummaryCard(label, stockObj) {
-    // Usar catálogo correto por unidade (não o catálogo do CPD)
-    const cardCatalog = (label === 'CPD') ? catalog : getUnitCatalog(label).catalog;
-    const allIssues = cardCatalog.filter(i => {
-      const qty = stockObj[i.id] || 0;
-      const min = minimums[i.id] || 0;
-      return qty === 0 || (min > 0 && qty < min);
-    });
-    const zeroCount = cardCatalog.filter(i => (stockObj[i.id]||0) === 0).length;
-    const lowCount  = allIssues.filter(i => (stockObj[i.id]||0) > 0).length;
-    const okCount   = cardCatalog.length - zeroCount - lowCount;
-
-    const card = el('div', {cls:'dash-summary-card', onclick: () => openDashModal(label, stockObj)});
-
-    const header = el('div', {cls:'dash-card-header'});
-    header.appendChild(el('div', {cls:'dash-card-avatar'}, label.charAt(0)));
-    header.appendChild(el('div', {cls:'dash-card-label'}, label));
-    card.appendChild(header);
-
-    const stats = el('div', {cls:'dash-card-stats'});
-    const addStat = (num, lbl, color) => {
-      const s = el('div', {cls:'dash-stat'});
-      s.appendChild(el('span', {cls:'dash-stat-num', style:`color:${color}`}, String(num)));
-      s.appendChild(el('span', {cls:'dash-stat-label'}, lbl));
-      stats.appendChild(s);
-    };
-    addStat(okCount, 'OK', 'var(--success)');
-    addStat(lowCount, 'Baixo', '#E8A020');
-    addStat(zeroCount, 'Zero', 'var(--danger)');
-    card.appendChild(stats);
-
-    // Semaphore + hint
-    const sem = el('div', {cls:'dash-card-semaphore'});
-    if (zeroCount > 0) {
-      const d = el('div', {cls:'sem-dot sem-red'}); d.title=`${zeroCount} sem estoque`; sem.appendChild(d);
-    }
-    if (lowCount > 0) {
-      const d = el('div', {cls:'sem-dot sem-yellow'}); d.title=`${lowCount} abaixo do m\u00EDnimo`; sem.appendChild(d);
-    }
-    if (!zeroCount && !lowCount) {
-      sem.appendChild(el('div', {cls:'sem-dot sem-green'}));
-    }
-    if (allIssues.length > 0) {
-      sem.appendChild(el('span', {style:'font-size:11px;color:var(--text-3);margin-left:4px'}, `${allIssues.length} item${allIssues.length>1?'s':''} com aten\u00E7\u00E3o`));
-    }
-    card.appendChild(sem);
-
-    card.appendChild(el('div', {cls:'dash-card-hint'}, 'Clique para ver detalhes \u2192'));
-    return card;
-  }
-
-  const grid = el('div', {cls:'dash-grid'});
-  grid.appendChild(buildSummaryCard('CPD', cpd));
-  UNIT_NAMES.forEach(u => grid.appendChild(buildSummaryCard(u, unitStock[u] || {})));
-  frag.appendChild(grid);
-
-  return frag;
-}
 
 
 // VIEW:Relat\u00F3rioMensal(Feature7)
@@ -9905,7 +9947,7 @@ function viewCatalogo() {
         catTd.setAttribute('colspan', showPrices ? '7' : '6');
         catTd.style.cssText = 'padding:0;width:100%;';
         const togBtn = el('button', {cls:'cat-toggle' + (isOpen ? ' open' : '')});
-        const alertCount = catItems.filter(i => (stockObj[i.id]||0) === 0 && (activeMins[i.id]||0) > 0).length;
+        const alertCount = isCpdTab ? catItems.filter(i => (stockObj[i.id]||0) === 0 && (activeMins[i.id]||0) > 0).length : 0;
         // Nome da categoria vem do cat\u00E1logo (edit\u00E1vel por admin) \u2014 usa textContent
         // via el() em vez de innerHTML para n\u00E3o interpretar o texto como HTML.
         const catCountText = `${catItems.length} itens${alertCount > 0 ? ` \u00B7 \u26A0 ${alertCount}` : ''}`;
@@ -9922,7 +9964,10 @@ function viewCatalogo() {
         const rows = [];
         catItems.forEach(item => {
           const qty   = stockObj[item.id] || 0;
-          const min   = activeMins[item.id] || 0;
+          // 27/07: estoque mínimo por item desativado para abas de unidade —
+          // só continua ativo na aba CPD. Unidades usam mínimo apenas dentro
+          // da lógica de Envios do Dia (MIN_PER_DAY_*).
+          const min   = isCpdTab ? (activeMins[item.id] || 0) : 0;
           const isZero = qty === 0 && min > 0;
           const isLow  = min > 0 && qty < min && !isZero;
 
@@ -9968,30 +10013,33 @@ function viewCatalogo() {
           // Qty cell (read-only in catalog)
           tr.appendChild(el('td', {cls: qty===0&&min>0?'danger':qty>0&&isLow?'warn':'', style:'text-align:right;font-weight:700'}, String(qty)));
 
-          // Min cell — editable, per-tab (CPD = global minimums, unit = unit minimums)
-          const minTd = el('td', {cls:'col-min', style:'text-align:right;cursor:pointer;padding-right:8px'});
-          const minSpan = el('span', {style:'font-size:12px;color:var(--text-3);border-bottom:1px dashed var(--border)'}, min > 0 ? String(min) : '\u2014');
-          const minInp  = el('input', {type:'number', inputmode:'decimal', value: min > 0 ? String(min) : '0',
-            style:'display:none;width:54px;padding:3px 6px;border:1.5px solid #B8922A;border-radius:4px;font-size:12px;text-align:right;outline:none'});
-          minSpan.addEventListener('click', () => { minSpan.style.display='none'; minInp.style.display=''; minInp.focus(); minInp.select(); });
-          const saveMinFn = () => {
-            const v = Math.max(0, parseFloat(minInp.value)||0);
-            if (isCpdTab) {
+          // Min cell — editável só na aba CPD. Nas abas de unidade, o
+          // estoque mínimo por item foi desativado (27/07) — mínimo de
+          // unidade agora só existe na lógica de Envios do Dia — mostramos
+          // um rótulo neutro em vez de um número editável.
+          const minTd = el('td', {cls:'col-min', style:'text-align:right;padding-right:8px'});
+          if (isCpdTab) {
+            minTd.style.cursor = 'pointer';
+            const minSpan = el('span', {style:'font-size:12px;color:var(--text-3);border-bottom:1px dashed var(--border)'}, min > 0 ? String(min) : '\u2014');
+            const minInp  = el('input', {type:'number', inputmode:'decimal', value: min > 0 ? String(min) : '0',
+              style:'display:none;width:54px;padding:3px 6px;border:1.5px solid #B8922A;border-radius:4px;font-size:12px;text-align:right;outline:none'});
+            minSpan.addEventListener('click', () => { minSpan.style.display='none'; minInp.style.display=''; minInp.focus(); minInp.select(); });
+            const saveMinFn = () => {
+              const v = Math.max(0, parseFloat(minInp.value)||0);
               minimums[item.id] = v;
               save('pizza_minimums', minimums);
-            } else {
-              if (!window.unitMinimums[activeTab]) window.unitMinimums[activeTab] = {};
-              window.unitMinimums[activeTab][item.id] = v;
-              save('pizza_unit_minimums', window.unitMinimums);
-            }
-            minSpan.textContent = v > 0 ? String(v) : '\u2014';
-            catInline.style.color = '';
-            catInline.style.fontWeight = '';
-            minInp.style.display='none'; minSpan.style.display='';
-          };
-          minInp.addEventListener('blur', saveMinFn);
-          minInp.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();saveMinFn();} if(e.key==='Escape'){minInp.style.display='none';minSpan.style.display='';} });
-          minTd.appendChild(minSpan); minTd.appendChild(minInp);
+              minSpan.textContent = v > 0 ? String(v) : '\u2014';
+              catInline.style.color = '';
+              catInline.style.fontWeight = '';
+              minInp.style.display='none'; minSpan.style.display='';
+            };
+            minInp.addEventListener('blur', saveMinFn);
+            minInp.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();saveMinFn();} if(e.key==='Escape'){minInp.style.display='none';minSpan.style.display='';} });
+            minTd.appendChild(minSpan); minTd.appendChild(minInp);
+          } else {
+            minTd.appendChild(el('span', {style:'font-size:10.5px;color:var(--text-3);font-style:italic'}, 'Envios do Dia'));
+            minTd.title = 'Mínimo por item desativado para unidades — gerenciado pela lógica de Envios do Dia (SEG/QUA/SEX).';
+          }
           tr.appendChild(minTd);
 
           // Price cell (CPD only)
@@ -10186,11 +10234,17 @@ function patchStockValues(stockObj, useMin, unitMins) {
 function patchUnitReadValues(unitStockObj, unitName) {
   const focused = document.activeElement;
   const rows = document.querySelectorAll('tr[data-item-id]');
-  const uMins = (window.unitMinimums && window.unitMinimums[unitName]) || {};
+  // 27/07: "A Enviar" agora sempre segue a lógica de Envios do Dia
+  // (MIN_PER_DAY_*, por dia da semana) — igual ao render inicial. Antes
+  // este patch usava window.unitMinimums (mínimo fixo por item), diferente
+  // do valor mostrado no primeiro carregamento — uma atualização ao vivo
+  // podia sobrescrever o número certo pelo errado.
+  const day = nextEnviarDay();
 
   rows.forEach(tr => {
     const itemId = tr.getAttribute('data-item-id');
     if (!itemId) return;
+    const itemKey = tr.getAttribute('data-item-key');
     const qty = unitStockObj[itemId] || 0;
 
     // Célula de quantidade (read-only: td com font-weight:700, não input)
@@ -10199,11 +10253,11 @@ function patchUnitReadValues(unitStockObj, unitName) {
 
     // Célula A Enviar
     const envTd = tr.querySelector('td[data-aenviar-cell]');
-    if (envTd) {
-      const uMin = uMins[itemId] || 0;
-      const aEnviar = Math.max(0, uMin - qty);
-      envTd.textContent = aEnviar > 0 ? String(aEnviar) : '\u2014';
-      envTd.style.color = aEnviar > 0 ? 'var(--accent-dark,#1A5229)' : 'var(--text-3)';
+    if (envTd && itemKey) {
+      const contado = itemFoiContado(unitName, itemId, qty);
+      const aEnviar = contado ? calcAEnviar(unitName, itemKey, qty, day) : 0;
+      envTd.textContent = !contado ? 'NC' : (aEnviar > 0 ? String(aEnviar) : '\u2014');
+      envTd.style.color = !contado ? '#E8A020' : (aEnviar > 0 ? 'var(--accent-dark,#1A5229)' : 'var(--text-3)');
     }
   });
 }
@@ -10226,7 +10280,6 @@ function render() {
   else if (currentView === 'historico-contagens') node = viewHistoricoContagens();
   else if (currentView === 'producao') node = viewQuadroProducao();
   else if (currentView === 'validade') node = viewValidadeControl();
-  else if (currentView === 'dashboard')  node = viewDashboard();
   if (node) contentEl.appendChild(node);
 
   // Restaurar scroll após render (evita que a tela "pule" para o topo)
