@@ -1714,7 +1714,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.28'; // 28/07: unifica cadastro duplicado na categoria Bar (Item 4 do relatório). Vicente Pires tinha "Duo Mix X" onde Asa Sul/SIG já tinham "Monin X" (mesmo produto, marca diferente no cadastro) — padronizado para "Monin X" em todo lugar (CPD, Vicente Pires, tabela de mínimo por dia da VP). "Gin Gordons" da Vicente Pires virou "Gin Hype" (igual à SIG — confirmado com o Eduardo que é a mesma bebida). Asa Sul mantém "Gin BEG" — é um gin diferente mesmo, não é duplicidade
+    const APP_VERSION = '1.5.29'; // 28/07: corrige bug no botão "Adicionar item" da tela de Catálogo — para catálogo de UNIDADE (não CPD), o item novo era salvo só no localStorage do aparelho, nunca chegava no Firebase (a chave usada não estava na lista de sincronização). Agora usa saveUnitCatalog(), que grava de verdade. Também corrige a referência de catálogo usada: antes pegava o catálogo da unidade LOGADA (podia ser diferente da aba que o CPD estava editando), agora usa sempre o catálogo da aba ativa
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -9963,13 +9963,19 @@ function viewCatalogo() {
       const name = nameInp.value.trim();
       if (!name) { alert('Informe o nome do item.'); return; }
       const isCpdForm = !window._catActiveTab || window._catActiveTab === 'cpd';
-      const targetCat2 = isCpdForm ? catalog : unitCatalog;
-      const targetKey2 = isCpdForm ? 'pizza_catalog' : ('pizza_unit_catalog/' + unitSlug(window._catActiveTab || 'asa_sul'));
+      // 28/07: usar sempre o cat\u00E1logo da ABA ativa (n\u00E3o o `unitCatalog` global,
+      // que \u00E9 o da unidade logada \u2014 CPD pode estar com outra aba aberta) e
+      // gravar unidade via saveUnitCatalog(), que sincroniza com Firebase de
+      // verdade. Antes, o item era salvo via save('pizza_unit_catalog/<slug>', \u2026),
+      // uma chave que n\u00E3o est\u00E1 em FIREBASE_SYNC_KEYS \u2014 ent\u00E3o itens novos
+      // cadastrados numa unidade ficavam s\u00F3 no localStorage do aparelho,
+      // nunca chegavam no banco.
+      const targetCat2 = isCpdForm ? catalog : getUnitCatalog(window._catActiveTab || 'Asa Sul').catalog;
       if (targetCat2.find(i => i.name.toLowerCase() === name.toLowerCase())) { alert('J\u00E1 existe um item com esse nome.'); return; }
       const _keyNorm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
       const item = {id: Date.now().toString(), name, key: _keyNorm(name), category: catSel.value, unit: unitSel.value};
       targetCat2.push(item);
-      save(targetKey2, targetCat2);
+      isCpdForm ? save('pizza_catalog', targetCat2) : saveUnitCatalog(window._catActiveTab || 'Asa Sul', targetCat2);
       toast('Item "'+name+'" adicionado ao cat\u00E1logo!');
       overlay.remove();
       render();
