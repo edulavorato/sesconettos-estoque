@@ -883,3 +883,30 @@ function _proximoIdCatalogo(catalogArr, category) {
   } while (idsExistentes.has(novoId));
   return novoId;
 }
+
+// 29/07: reordenar itens dentro de uma categoria no Catálogo (arrastar, além
+// dos botões ↑/↓ que já existiam). O catálogo (tabCatalog) é uma lista única
+// com todas as categorias misturadas — os itens de uma categoria não ficam
+// necessariamente em posições contíguas no array. Pra reordenar só dentro da
+// categoria sem bagunçar a posição relativa das outras categorias, pegamos
+// os índices globais ocupados pelos itens dessa categoria (na ordem atual),
+// reordenamos só a sublista da categoria, e devolvemos cada item pro mesmo
+// conjunto de posições globais, na nova ordem.
+// fromCatIdx/toCatIdx são índices DENTRO da categoria (não do array todo).
+// Muta catalogArr in-place e também o retorna, por conveniência.
+function reorderCategoryItems(catalogArr, category, fromCatIdx, toCatIdx) {
+  if (!Array.isArray(catalogArr)) return catalogArr;
+  const catItems = catalogArr.filter(i => i && i.category === category);
+  if (fromCatIdx === toCatIdx) return catalogArr;
+  if (fromCatIdx < 0 || fromCatIdx >= catItems.length) return catalogArr;
+  if (toCatIdx < 0 || toCatIdx >= catItems.length) return catalogArr;
+
+  const globalIndices = [];
+  catalogArr.forEach((it, gi) => { if (it && it.category === category) globalIndices.push(gi); });
+
+  const [moved] = catItems.splice(fromCatIdx, 1);
+  catItems.splice(toCatIdx, 0, moved);
+
+  globalIndices.forEach((gi, i) => { catalogArr[gi] = catItems[i]; });
+  return catalogArr;
+}

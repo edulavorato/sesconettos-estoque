@@ -1714,7 +1714,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.38'; // 29/07: adiciona "Bandeja Panete 420g" e "Bandeja Panete 250g" na categoria Refrigerados do catálogo das 4 unidades (Asa Sul, SIG, Vicente Pires, Delivery) — pedido do Eduardo. Códigos ur56/ur57 (Asa Sul, SIG, Vicente Pires) e ur33/ur34 (Delivery), seguindo o próximo número livre de cada catálogo (dados.js)
+    const APP_VERSION = '1.5.39'; // 29/07: no Catálogo, dá pra arrastar um item pra outra posição dentro da mesma categoria — além dos botões ↑/↓ que já existiam. No mouse é arrastar e soltar normal; no touch precisa pressionar e segurar o ícone por 2s antes de arrastar (evita confundir com rolar a tela). Só aparece nas abas de unidade, logado como CPD, igual às outras ferramentas de reordenar. Lógica de reordenar em regras.js (reorderCategoryItems), testada com simulação de eventos reais de arrastar (mouse e touch) antes de entregar
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -5929,6 +5929,9 @@ function viewCatalogo() {
 
     const renderRows = (search) => {
       tbody.innerHTML = '';
+      // 29/07: estado do arraste pra reordenar itens dentro da categoria —
+      // reiniciado a cada render (busca muda, categoria abre/fecha, etc.)
+      let _dragSrc = null; // { item, tr } do item que está sendo arrastado
       const q = search.toLowerCase().trim();
       const filtered = tabCatalog.filter(i => !q || i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q));
       if (!filtered.length) {
@@ -5974,6 +5977,8 @@ function viewCatalogo() {
           const isLow  = min > 0 && qty < min && !isZero;
 
           const tr = el('tr', {style: isZero ? 'background:var(--danger-bg)' : isLow ? 'background:var(--warning-bg)' : ''});
+          tr.setAttribute('data-item-id', item.id);
+          tr.setAttribute('data-cat', item.category);
           if (!isOpen) tr.style.display = 'none';
 
           // Name cell
@@ -6070,6 +6075,113 @@ function viewCatalogo() {
 
           // Actions
           const actionsTd = el('td', {style:'text-align:right;white-space:nowrap;gap:4px;display:flex;align-items:center;justify-content:flex-end'});
+
+          // ── Arrastar para reordenar (apenas unidades, apenas CPD logado) ──
+          // 29/07: além dos botões ↑/↓ que já existiam, agora dá pra segurar
+          // esse ícone e arrastar o item pra outra posição dentro da mesma
+          // categoria — no mouse (drag-and-drop nativo) ou no touch
+          // (pressiona e segura 2s, depois arrasta com o dedo).
+          if (!isCpdTab && isCPD()) {
+            const dragHandle = el('span', {
+              title: 'Arraste para reordenar (no touch: pressione e segure 2s, depois arraste)',
+              style: 'cursor:grab;padding:2px 8px;font-size:15px;color:var(--text-3);user-select:none;touch-action:none;line-height:1'
+            }, '⠶');
+            dragHandle.draggable = true;
+
+            const clearDragOverStyles = () => {
+              tbody.querySelectorAll('tr[data-item-id]').forEach(r => { r.style.boxShadow = ''; });
+            };
+
+            // — Desktop: HTML5 drag-and-drop nativo —
+            dragHandle.addEventListener('dragstart', (e) => {
+              _dragSrc = { item, tr };
+              tr.style.opacity = '0.5';
+              e.dataTransfer.effectAllowed = 'move';
+              try { e.dataTransfer.setData('text/plain', item.id); } catch(err) {}
+            });
+            dragHandle.addEventListener('dragend', () => {
+              tr.style.opacity = '';
+              clearDragOverStyles();
+              _dragSrc = null;
+            });
+            tr.addEventListener('dragover', (e) => {
+              if (!_dragSrc || _dragSrc.item.category !== item.category) return;
+              e.preventDefault();
+              if (_dragSrc.item !== item) tr.style.boxShadow = 'inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent)';
+            });
+            tr.addEventListener('dragleave', () => { tr.style.boxShadow = ''; });
+            tr.addEventListener('drop', (e) => {
+              e.preventDefault();
+              clearDragOverStyles();
+              if (!_dragSrc || _dragSrc.item === item || _dragSrc.item.category !== item.category) { _dragSrc = null; return; }
+              const catItems = tabCatalog.filter(i => i.category === item.category);
+              const fromIdx = catItems.indexOf(_dragSrc.item);
+              const toIdx   = catItems.indexOf(item);
+              reorderCategoryItems(tabCatalog, item.category, fromIdx, toIdx);
+              isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
+              _dragSrc = null;
+              buildTable();
+            });
+
+            // — Touch: pressiona e segura 2s, depois arrasta com o dedo —
+            let touchTimer = null;
+            let touchActive = false;
+            let touchStartX = 0, touchStartY = 0;
+            let touchDropTr = null;
+            dragHandle.addEventListener('touchstart', (e) => {
+              const t = e.touches[0];
+              touchStartX = t.clientX; touchStartY = t.clientY;
+              touchActive = false;
+              clearTimeout(touchTimer);
+              touchTimer = setTimeout(() => {
+                touchActive = true;
+                tr.style.opacity = '0.5';
+                if (navigator.vibrate) { try { navigator.vibrate(15); } catch(err) {} }
+              }, 2000);
+            }, {passive:true});
+            dragHandle.addEventListener('touchmove', (e) => {
+              const t = e.touches[0];
+              if (!touchActive) {
+                // Antes de completar os 2s, mover o dedo cancela o gesto
+                // (deixa a tela rolar normalmente em vez de tentar arrastar)
+                if (Math.abs(t.clientX - touchStartX) > 8 || Math.abs(t.clientY - touchStartY) > 8) {
+                  clearTimeout(touchTimer);
+                }
+                return;
+              }
+              e.preventDefault();
+              clearDragOverStyles();
+              const under = document.elementFromPoint(t.clientX, t.clientY);
+              const targetTr = under ? under.closest('tr[data-item-id]') : null;
+              if (targetTr && targetTr.getAttribute('data-cat') === item.category && targetTr !== tr) {
+                targetTr.style.boxShadow = 'inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent)';
+                touchDropTr = targetTr;
+              } else {
+                touchDropTr = null;
+              }
+            }, {passive:false});
+            dragHandle.addEventListener('touchend', () => {
+              clearTimeout(touchTimer);
+              tr.style.opacity = '';
+              clearDragOverStyles();
+              if (touchActive && touchDropTr) {
+                const targetId = touchDropTr.getAttribute('data-item-id');
+                const targetItem = tabCatalog.find(i => i.id === targetId);
+                if (targetItem && targetItem.category === item.category) {
+                  const catItems = tabCatalog.filter(i => i.category === item.category);
+                  const fromIdx = catItems.indexOf(item);
+                  const toIdx   = catItems.indexOf(targetItem);
+                  reorderCategoryItems(tabCatalog, item.category, fromIdx, toIdx);
+                  isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
+                  buildTable();
+                }
+              }
+              touchActive = false;
+              touchDropTr = null;
+            });
+
+            actionsTd.appendChild(dragHandle);
+          }
 
           // ── Mover categoria (apenas unidades, apenas CPD logado) ──────────
           if (!isCpdTab && isCPD()) {
