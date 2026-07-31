@@ -1714,7 +1714,7 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.39'; // 29/07: no Catálogo, dá pra arrastar um item pra outra posição dentro da mesma categoria — além dos botões ↑/↓ que já existiam. No mouse é arrastar e soltar normal; no touch precisa pressionar e segurar o ícone por 2s antes de arrastar (evita confundir com rolar a tela). Só aparece nas abas de unidade, logado como CPD, igual às outras ferramentas de reordenar. Lógica de reordenar em regras.js (reorderCategoryItems), testada com simulação de eventos reais de arrastar (mouse e touch) antes de entregar
+    const APP_VERSION = '1.5.42'; // 30/07: dados.js — 13 famílias de item (Cream cheese, Presunto parma, Óleo de soja, Ketchup, Maionese, Farinha de mandioca, Milho verde, Ervilha, Arroz, Feijão carioca, Feijão fradinho, Macarrão parafuso, Macarrão espaguete) ganharam gramatura confirmada com Eduardo, propagada do item irmão que já tinha o peso (mesmo produto, categoria com nome diferente entre CPD "Funcionários" e lojas "Alimentação dos Funcionários"). 7 itens de peça de peso variável (Muçarela, Parmesão grana padano, Provolone, Gorgonzola, Linguiça calabresa, Lombo canadense, Tomate seco) ficaram de fora de propósito — são a peça crua e inteira, peso varia a cada unidade, não a versão já porcionada. Nenhuma mudança de código nesta versão, só dados
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -5783,6 +5783,14 @@ function viewCatalogo() {
     rowGrp.appendChild(catGrp);
     rowGrp.appendChild(unitGrp);
     body.appendChild(rowGrp);
+
+    // 30/07: gramatura opcional — campo separado do nome, mesmo padrão
+    // aceito na edição inline da tabela (número + unidade colados).
+    const gramGrp = el('div', {cls:'form-group'});
+    gramGrp.appendChild(el('label', {}, 'Gramatura (opcional)'));
+    const gramInpAdd = el('input', {type:'text', placeholder:'ex: 300g, 1.5kg, 500ml'});
+    gramGrp.appendChild(gramInpAdd);
+    body.appendChild(gramGrp);
     box.appendChild(body);
 
     const footer = el('div', {cls:'modal-footer'});
@@ -5806,6 +5814,12 @@ function viewCatalogo() {
       // chaves-timestamp \u00f3rf\u00e3s achadas no estoque do CPD (ver _proximoIdCatalogo
       // em regras.js pro racioc\u00ednio completo).
       const item = {id: _proximoIdCatalogo(targetCat2, catSel.value), name, key: _keyNorm(name), category: catSel.value, unit: unitSel.value};
+      const gramRaw = gramInpAdd.value.trim();
+      if (gramRaw) {
+        const gm = gramRaw.match(/^(\d+(?:[.,]\d+)?)\s?(kg|g|ml|l)$/i);
+        if (!gm) { alert('Gramatura em formato inválido. Use, por exemplo: 300g, 1.5kg, 500ml, 2l.'); return; }
+        item.gramatura = {valor: parseFloat(gm[1].replace(',', '.')), unidade: gm[2].toLowerCase()};
+      }
       targetCat2.push(item);
       isCpdForm ? save('pizza_catalog', targetCat2) : saveUnitCatalog(window._catActiveTab || 'Asa Sul', targetCat2);
       toast('Item "'+name+'" adicionado ao cat\u00E1logo!');
@@ -5882,31 +5896,35 @@ function viewCatalogo() {
 
     const table = el('table', {cls:'catalog-table', style:'margin-top:8px'});
 
+    // 30/07: coluna "MÍN." saiu da tabela — o mínimo do CPD continua
+    // existindo e editável, só passou a viver dentro de Ações (ver minChip
+    // mais abaixo). No lugar entrou "Gramatura", separada de Medida
+    // (pedido do chefe do Eduardo — item 14).
     if (showPrices) {
       table.innerHTML = '<thead><tr>' +
-        '<th style="width:26%">Nome</th>' +
+        '<th style="width:24%">Nome</th>' +
+        '<th style="width:10%">Gramatura</th>' +
         '<th class="col-unit" style="width:7%">Medida</th>' +
         '<th style="width:7%;text-align:right">Qtd CPD</th>' +
-        '<th class="col-min" style="width:8%;text-align:right;font-size:10px;color:var(--text-3)">M\u00CDN.</th>' +
         '<th style="width:14%;text-align:right">Pre\u00E7o unit.</th>' +
         '<th style="width:14%;text-align:right">Valor total</th>' +
         '<th style="width:24%;text-align:right" colspan="2">A\u00E7\u00F5es</th>' +
         '</tr></thead>';
     } else if (isCpdTab) {
       table.innerHTML = '<thead><tr>' +
-        '<th style="width:38%">Nome</th>' +
+        '<th style="width:33%">Nome</th>' +
+        '<th style="width:14%">Gramatura</th>' +
         '<th class="col-unit" style="width:9%">Medida</th>' +
         '<th style="width:9%;text-align:right">Qtd CPD</th>' +
-        '<th class="col-min" style="width:9%;text-align:right;font-size:10px;color:var(--text-3)">M\u00CDN.</th>' +
         '<th style="width:35%;text-align:right" colspan="2">A\u00E7\u00F5es</th>' +
         '</tr></thead>';
     } else {
-      // Unit tab — show unit stock + unit-specific minimum (editable by CPD)
+      // Unit tab — show unit stock
       table.innerHTML = '<thead><tr>' +
-        `<th style="width:38%">Nome \u2014 ${activeTab}</th>` +
+        `<th style="width:33%">Nome \u2014 ${activeTab}</th>` +
+        '<th style="width:14%">Gramatura</th>' +
         '<th class="col-unit" style="width:9%">Medida</th>' +
         `<th style="width:9%;text-align:right">Qtd</th>` +
-        '<th class="col-min" style="width:9%;text-align:right;font-size:10px;color:var(--text-3)">M\u00CDN.</th>' +
         '<th style="width:35%;text-align:right" colspan="2">A\u00E7\u00F5es</th>' +
         '</tr></thead>';
     }
@@ -5981,11 +5999,12 @@ function viewCatalogo() {
           tr.setAttribute('data-cat', item.category);
           if (!isOpen) tr.style.display = 'none';
 
-          // Name cell
+          // Name cell — 30/07: nome puro, sem mais nada empilhado embaixo
+          // (Medida e Gramatura ganharam colunas próprias, pedido do
+          // Eduardo pra tirar a poluição visual que tinha ficado).
           const nameTd = el('td', {cls:'item-name'});
           const nameLabel = el('span', {}, item.name);
           const nameInp   = el('input', {type:'text', value:item.name, style:'display:none;width:100%;padding:3px 6px;border:1.5px solid var(--accent);border-radius:4px;font-size:13px;outline:none'});
-          const catInline = el('span', {cls:'item-unit-inline', style: (isZero||isLow)?`color:${isZero?'var(--danger)':'#E8A020'};font-weight:600`:''}, item.unit);
           const saveNameFn = () => {
             const v = nameInp.value.trim() || item.name;
             // Renomear só troca o nome exibido. item.key (usado pelo cálculo
@@ -5998,8 +6017,45 @@ function viewCatalogo() {
           nameLabel.addEventListener('click', () => { nameLabel.style.display='none'; nameInp.style.display=''; nameInp.focus(); nameInp.select(); });
           nameInp.addEventListener('blur', saveNameFn);
           nameInp.addEventListener('keydown', e => { if(e.key==='Enter') saveNameFn(); if(e.key==='Escape'){nameInp.style.display='none';nameLabel.style.display='';} });
-          nameTd.appendChild(nameLabel); nameTd.appendChild(nameInp); nameTd.appendChild(catInline);
+          nameTd.appendChild(nameLabel); nameTd.appendChild(nameInp);
           tr.appendChild(nameTd);
+
+          // Gramatura cell (própria coluna) — 30/07: campo separado do nome
+          // e da Medida, pedido do chefe do Eduardo pra permitir cálculo
+          // automático em vez de depender de texto livre dentro do nome.
+          // Formato aceito no input: número + unidade colados (ex: 300g,
+          // 1.5kg, 500ml, 2l).
+          const gramTd = el('td', {style:'cursor:pointer;white-space:nowrap'});
+          const gramSpan = el('span', {style:`font-size:12px;border-bottom:1px dashed var(--border);${item.gramatura?'color:var(--accent-dark);font-weight:600':'color:var(--text-3)'}`},
+            item.gramatura ? `${item.gramatura.valor}${item.gramatura.unidade}` : '+ gramatura');
+          const gramInp = el('input', {type:'text', value: item.gramatura ? `${item.gramatura.valor}${item.gramatura.unidade}` : '',
+            placeholder:'ex: 300g', style:'display:none;width:64px;padding:2px 5px;border:1.5px solid var(--accent);border-radius:4px;font-size:12px;outline:none'});
+          gramSpan.addEventListener('click', () => { gramSpan.style.display='none'; gramInp.style.display=''; gramInp.focus(); gramInp.select(); });
+          const saveGramFn = () => {
+            const raw = gramInp.value.trim();
+            const gm = raw.match(/^(\d+(?:[.,]\d+)?)\s?(kg|g|ml|l)$/i);
+            if (!raw) {
+              delete item.gramatura;
+              gramSpan.textContent = '+ gramatura';
+              gramSpan.style.color = 'var(--text-3)'; gramSpan.style.fontWeight = '';
+            } else if (gm) {
+              const v = parseFloat(gm[1].replace(',', '.'));
+              const u = gm[2].toLowerCase();
+              item.gramatura = {valor: v, unidade: u};
+              gramSpan.textContent = `${v}${u}`;
+              gramSpan.style.color = 'var(--accent-dark)'; gramSpan.style.fontWeight = '600';
+            } else {
+              alert('Formato inválido. Use, por exemplo: 300g, 1.5kg, 500ml, 2l.');
+              gramInp.style.display='none'; gramSpan.style.display='';
+              return;
+            }
+            isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
+            gramInp.style.display='none'; gramSpan.style.display='';
+          };
+          gramInp.addEventListener('blur', saveGramFn);
+          gramInp.addEventListener('keydown', e => { if(e.key==='Enter') saveGramFn(); if(e.key==='Escape'){gramInp.style.display='none';gramSpan.style.display='';} });
+          gramTd.appendChild(gramSpan); gramTd.appendChild(gramInp);
+          tr.appendChild(gramTd);
 
           // Medida cell (editable)
           const unitTd = el('td', {cls:'muted col-unit', style:'cursor:pointer;white-space:nowrap'});
@@ -6008,7 +6064,7 @@ function viewCatalogo() {
           unitSpan.addEventListener('click', () => { unitSpan.style.display='none'; unitInp.style.display=''; unitInp.focus(); unitInp.select(); });
           const saveUnitFn = () => {
             const v = unitInp.value.trim() || item.unit;
-            item.unit = v; unitSpan.textContent = v; catInline.textContent = v;
+            item.unit = v; unitSpan.textContent = v;
             isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
             unitInp.style.display='none'; unitSpan.style.display='';
           };
@@ -6019,35 +6075,6 @@ function viewCatalogo() {
 
           // Qty cell (read-only in catalog)
           tr.appendChild(el('td', {cls: qty===0&&min>0?'danger':qty>0&&isLow?'warn':'', style:'text-align:right;font-weight:700'}, String(qty)));
-
-          // Min cell — editável só na aba CPD. Nas abas de unidade, o
-          // estoque mínimo por item foi desativado (27/07) — mínimo de
-          // unidade agora só existe na lógica de Envios do Dia — mostramos
-          // um rótulo neutro em vez de um número editável.
-          const minTd = el('td', {cls:'col-min', style:'text-align:right;padding-right:8px'});
-          if (isCpdTab) {
-            minTd.style.cursor = 'pointer';
-            const minSpan = el('span', {style:'font-size:12px;color:var(--text-3);border-bottom:1px dashed var(--border)'}, min > 0 ? String(min) : '\u2014');
-            const minInp  = el('input', {type:'number', inputmode:'decimal', value: min > 0 ? String(min) : '0',
-              style:'display:none;width:54px;padding:3px 6px;border:1.5px solid #B8922A;border-radius:4px;font-size:12px;text-align:right;outline:none'});
-            minSpan.addEventListener('click', () => { minSpan.style.display='none'; minInp.style.display=''; minInp.focus(); minInp.select(); });
-            const saveMinFn = () => {
-              const v = Math.max(0, parseFloat(minInp.value)||0);
-              minimums[item.id] = v;
-              save('pizza_minimums', minimums);
-              minSpan.textContent = v > 0 ? String(v) : '\u2014';
-              catInline.style.color = '';
-              catInline.style.fontWeight = '';
-              minInp.style.display='none'; minSpan.style.display='';
-            };
-            minInp.addEventListener('blur', saveMinFn);
-            minInp.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();saveMinFn();} if(e.key==='Escape'){minInp.style.display='none';minSpan.style.display='';} });
-            minTd.appendChild(minSpan); minTd.appendChild(minInp);
-          } else {
-            minTd.appendChild(el('span', {style:'font-size:10.5px;color:var(--text-3);font-style:italic'}, 'Envios do Dia'));
-            minTd.title = 'Mínimo por item desativado para unidades — gerenciado pela lógica de Envios do Dia (SEG/QUA/SEX).';
-          }
-          tr.appendChild(minTd);
 
           // Price cell (CPD only)
           if (showPrices) {
@@ -6075,6 +6102,31 @@ function viewCatalogo() {
 
           // Actions
           const actionsTd = el('td', {style:'text-align:right;white-space:nowrap;gap:4px;display:flex;align-items:center;justify-content:flex-end'});
+
+          // ── Mínimo (só aba CPD) — 30/07: saiu da coluna própria "MÍN." e
+          // virou um chip pequeno aqui dentro de Ações, pra abrir espaço pra
+          // Gramatura na tabela sem perder a edição do mínimo por item.
+          if (isCpdTab) {
+            const minWrap = el('span', {style:'display:inline-flex;align-items:center;margin-right:6px'});
+            const minSpan = el('span', {
+              title: 'Mínimo do item (CPD)',
+              style: `cursor:pointer;font-size:10.5px;border-bottom:1px dashed var(--border);white-space:nowrap;${(isZero||isLow)?`color:${isZero?'var(--danger)':'#B8860B'};font-weight:700`:'color:var(--text-3)'}`
+            }, `mín ${min > 0 ? min : '—'}`);
+            const minInp = el('input', {type:'number', inputmode:'decimal', value: min > 0 ? String(min) : '0',
+              style:'display:none;width:48px;padding:2px 4px;border:1.5px solid #B8922A;border-radius:4px;font-size:11px;text-align:right;outline:none'});
+            minSpan.addEventListener('click', () => { minSpan.style.display='none'; minInp.style.display=''; minInp.focus(); minInp.select(); });
+            const saveMinFn = () => {
+              const v = Math.max(0, parseFloat(minInp.value)||0);
+              minimums[item.id] = v;
+              save('pizza_minimums', minimums);
+              minSpan.textContent = `mín ${v > 0 ? v : '—'}`;
+              minInp.style.display='none'; minSpan.style.display='';
+            };
+            minInp.addEventListener('blur', saveMinFn);
+            minInp.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();saveMinFn();} if(e.key==='Escape'){minInp.style.display='none';minSpan.style.display='';} });
+            minWrap.appendChild(minSpan); minWrap.appendChild(minInp);
+            actionsTd.appendChild(minWrap);
+          }
 
           // ── Arrastar para reordenar (apenas unidades, apenas CPD logado) ──
           // 29/07: além dos botões ↑/↓ que já existiam, agora dá pra segurar
