@@ -121,6 +121,21 @@ function itemConfirmadoIndividualmente(unitName, itemId) {
   return typeof isConfirmed === 'function' ? isConfirmed(unitName, itemId) : false;
 }
 
+// 05/08: a pedido do Eduardo — colaboração da contagem é baixa na prática, e
+// "NC" travando o cálculo de "A Enviar" deixava o CPD sem nenhum número pra
+// se guiar (melhor um pedido calculado como se fosse zero do que nenhum
+// pedido). Daqui pra frente, item não contado é tratado como estoque ZERO
+// pro cálculo de "A Enviar" (que já é o que aconteceria mesmo, já que
+// itemFoiContado só retorna false quando qty === 0 — ver comentário acima).
+// A diferença fica só na exibição: a célula de estoque mostra "0*" (zero
+// com asterisco) pra sinalizar "isso é zero porque ninguém contou ainda",
+// distinto de um zero de verdade já confirmado pela unidade.
+function formatarQtyComAsterisco(unitName, itemId, qty) {
+  const q = qty || 0;
+  if (q === 0 && !itemFoiContado(unitName, itemId, q)) return '0*';
+  return String(q);
+}
+
 function categoriaCanonica(itemKey, categoriaFallback) {
   const asaSulItem = (typeof getUnitCatalog === 'function')
     ? getUnitCatalog('Asa Sul').catalog.find(c => c.key === itemKey) : null;
