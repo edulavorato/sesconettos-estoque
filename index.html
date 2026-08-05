@@ -7108,15 +7108,31 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
     // Category header
     ops.push(`0.85 0.93 0.87 rg ${ML} ${y-2} ${TW} 14 re f 0 0 0 rg`);
     ops.push(`BT /F1 9 Tf ${ML+3} ${y+2} Td ${pdfStr(cat.toUpperCase())} Tj ET`);
-    // Nome do confirmador da categoria (apenas unidades)
+    // Situação de confirmação da categoria — 05/08 a pedido do Eduardo: a
+    // mesma informação (quem confirmou e quando) que já aparece na tela pro
+    // CPD (Contagem das Unidades) também sai aqui no PDF, pra quem imprime
+    // ou manda o PDF ter a mesma visibilidade sem precisar abrir o sistema.
+    // Vale tanto para o PDF gerado pelo CPD quanto pela própria unidade —
+    // só não existe conceito de confirmação por categoria pro catálogo do
+    // próprio CPD (unitLabel === "CPD"), aí não mostra nada.
     if (unitLabel !== 'CPD') {
       const _pSlug = typeof unitSlug === 'function' ? unitSlug(unitLabel) : '';
       const _pConf = catConfirmations[_pSlug] && catConfirmations[_pSlug][cat];
-      if (_pConf) {
+      const _pState = typeof getCatConfirmState === 'function' ? getCatConfirmState(unitLabel, cat, stockObj) : (_pConf ? 'confirmed' : 'none');
+      let _pStr, _pColor;
+      if (_pState === 'confirmed' && _pConf) {
         const _pTs = new Date(_pConf.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-        const _pStr = '\u2713 ' + _pConf.name + '  ' + _pTs;
-        ops.push(`BT /F2 7 Tf 0.2 0.5 0.3 rg ${ML+TW-100} ${y+3} Td ${pdfStr(_pStr)} Tj ET 0 0 0 rg`);
+        _pStr = '\u2713 ' + _pConf.name + '  ' + _pTs;
+        _pColor = '0.2 0.5 0.3 rg';
+      } else if (_pState === 'needs-reconfirm' && _pConf) {
+        const _pTs = new Date(_pConf.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        _pStr = '\u26A0 ' + _pConf.name + '  ' + _pTs + ' (desatualizado)';
+        _pColor = '0.6 0.4 0 rg';
+      } else {
+        _pStr = 'N\u00E3o confirmada';
+        _pColor = '0.6 0.15 0.15 rg';
       }
+      ops.push(`BT /F2 7 Tf ${_pColor} ${ML+TW-150} ${y+3} Td ${pdfStr(_pStr)} Tj ET 0 0 0 rg`);
     }
     y -= 16;
     byCategory[cat].forEach(item => {
