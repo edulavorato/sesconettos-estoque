@@ -738,7 +738,7 @@
   .hist-actions { display:flex; gap:8px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
   .hist-empty { padding:32px; text-align:center; color:var(--text-3); font-size:13px; }
 
-  /* ── Modal genérico (Dashboard e outros) ───────────────────────────────── */
+  /* ── Modal genérico ───────────────────────────────────────────────────── */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 3000;
     background: rgba(0,0,0,.48);
@@ -1974,14 +1974,6 @@ auth.onAuthStateChanged(user => {
   </div>
 
   <div class="nav-section">
-    <span class="nav-label">Visão geral</span>
-    <button class="nav-item" data-view="dashboard" onclick="setView('dashboard')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
-      Dashboard
-    </button>
-  </div>
-
-  <div class="nav-section">
     <span class="nav-label">Contagem</span>
     <button class="nav-item" data-view="cpd" onclick="setView('cpd')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -2101,10 +2093,6 @@ auth.onAuthStateChanged(user => {
   <button class="bnav-btn active" data-view="cpd" onclick="setView('cpd')">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
     CPD
-  </button>
-  <button class="bnav-btn" data-view="dashboard" onclick="setView('dashboard')">
-    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/></svg>
-    Dash
   </button>
   <button class="bnav-btn" data-view="units" onclick="setView('units')">
     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/></svg>
@@ -5742,7 +5730,7 @@ function isCPD()  { return session && session.unit === 'cpd'; }
 // Views available per role
 function allowedViews() {
   if (!session) return [];
-  if (isCPD()) return ['cpd','units','dashboard','envios-dia','historico-contagens','validade','producao','catalogo'];
+  if (isCPD()) return ['cpd','units','envios-dia','historico-contagens','validade','producao','catalogo'];
   return ['units','validade']; // Unidades: apenas o Painel de Contagem
 }
 
@@ -6072,12 +6060,6 @@ function buildSidebarNav() {
 
   const allSections = [
     {
-      label: 'Vis\u00E3o geral',
-      items: [
-        { view:'dashboard', label:'Dashboard',         icon:'<path d="M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z"/>' },
-      ]
-    },
-    {
       label: 'Contagem',
       items: [
         { view:'cpd',       label:'Contagem CPD',        icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>' },
@@ -6145,7 +6127,6 @@ const VIEW_TITLES = {
   catalogo: 'Cat\u00E1logo de Itens',
   'historico-contagens': 'Hist\u00F3rico de Contagens',
   'validade': 'Controle de Validades',
-  dashboard: 'Dashboard Consolidado',
 };
 
 function setView(v) {
@@ -7204,198 +7185,6 @@ function showPushNotif(title, body, actions=[]) {
 function hidePush() {
   document.getElementById('push-toast').style.display = 'none';
   clearTimeout(pushTimer);
-}
-
-// VIEW: Dashboard consolidado (Feature 5)
-function viewDashboard() {
-  const frag = document.createDocumentFragment();
-
-  // ── Resumo rápido: quantas unidades têm item zerado/abaixo do mínimo ──────
-  // Evita que o usuário precise abrir card por card pra achar onde está o problema.
-  const quickIssues = [];
-  [['CPD', cpd], ...UNIT_NAMES.map(u => [u, unitStock[u] || {}])].forEach(([label, stockObj]) => {
-    const qCatalog = (label === 'CPD') ? catalog : getUnitCatalog(label).catalog;
-    const zero = qCatalog.filter(i => (stockObj[i.id] || 0) === 0).length;
-    if (zero > 0) quickIssues.push({ label, zero });
-  });
-  if (quickIssues.length > 0) {
-    const totalZero = quickIssues.reduce((s, q) => s + q.zero, 0);
-    const banner = el('div', {
-      style: 'background:var(--danger-bg);border:1.5px solid #E0A0A0;border-radius:var(--radius);' +
-             'padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap'
-    });
-    banner.appendChild(el('span', {style:'font-size:15px'}, '\u26A0\uFE0F'));
-    banner.appendChild(el('span', {style:'font-size:13px;color:var(--danger);font-weight:600'},
-      totalZero + (totalZero > 1 ? ' itens zerados' : ' item zerado') + ' em ' +
-      quickIssues.length + (quickIssues.length > 1 ? ' unidades: ' : ' unidade: ') +
-      quickIssues.map(q => q.label + ' (' + q.zero + ')').join(', ')
-    ));
-    frag.appendChild(banner);
-  }
-
-  // Subtitle
-  frag.appendChild(el('p', {style:'font-size:13px;color:var(--text-3);margin-bottom:16px;font-style:italic'},
-    'Clique em uma unidade para ver todos os itens com problema. \u1F7E2 OK \u00B7 \u1F7E1 Abaixo do m\u00EDnimo \u00B7 \u1F534 Sem estoque'
-  ));
-
-  // CSS for the dashboard grid (injected once)
-  if (!document.getElementById('dash-grid-style')) {
-    const s = document.createElement('style');
-    s.id = 'dash-grid-style';
-    s.textContent = `
-      .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
-      .dash-summary-card {
-        background: var(--surface); border: 1.5px solid var(--border);
-        border-radius: var(--radius); box-shadow: var(--shadow);
-        padding: 18px 16px; cursor: pointer; transition: border-color .15s, transform .1s;
-        display: flex; flex-direction: column; gap: 8px;
-      }
-      .dash-summary-card:hover { border-color: var(--accent); transform: translateY(-1px); }
-      .dash-card-label { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: var(--text); }
-      .dash-card-header { display: flex; align-items: center; gap: 10px; }
-      .dash-card-avatar {
-        width: 32px; height: 32px; border-radius: 50%; background: var(--gold-light); color: var(--gold);
-        font-family: 'Playfair Display', serif; font-weight: 700; font-size: 14px;
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      }
-      .dash-card-stats { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-      .dash-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; min-width: 50px; }
-      .dash-stat-num { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; line-height: 1; }
-      .dash-stat-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .4px; }
-      .dash-card-semaphore { display: flex; gap: 5px; align-items: center; margin-top: 4px; }
-      .dash-card-hint { font-size: 11px; color: var(--text-3); font-style: italic; margin-top: 2px; }
-      /* Detail modal list */
-      .dash-detail-row {
-        display: flex; align-items: center; gap: 10px; padding: 9px 0;
-        border-bottom: 1px solid var(--border-light); font-size: 13px;
-      }
-      .dash-detail-row:last-child { border-bottom: none; }
-      .dash-detail-name { flex: 1; font-weight: 500; }
-      .dash-detail-qty { font-weight: 700; min-width: 40px; text-align: right; }
-      .dash-detail-min { font-size: 11px; color: var(--text-3); min-width: 50px; }
-      .dash-detail-unit { font-size: 11px; color: var(--text-3); min-width: 32px; }
-      .dash-section-head { font-size: 11px; font-weight: 700; text-transform: uppercase;
-        letter-spacing: .5px; color: var(--text-2); padding: 10px 0 4px; }
-    `;
-    document.head.appendChild(s);
-  }
-
-  function openDashModal(label, stockObj) {
-    const modalCatalog = (label === 'CPD') ? catalog : getUnitCatalog(label).catalog;
-    const allIssues = modalCatalog.filter(i => {
-      const qty = stockObj[i.id] || 0;
-      const min = minimums[i.id] || 0;
-      return qty === 0 || (min > 0 && qty < min);
-    });
-
-    // Fechar qualquer modal do dashboard aberto antes de abrir novo
-    document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
-    const overlay = el('div', {cls:'modal-overlay'});
-    const box = el('div', {cls:'modal-box', style:'max-width:540px'});
-
-    const header = el('div', {cls:'modal-header'});
-    header.appendChild(el('div', {cls:'modal-title'}, `Aten\u00E7\u00E3o \u2014 ${label}`));
-    header.appendChild(el('button', {cls:'modal-close', onclick:()=>overlay.remove()}, '\u00D7'));
-    box.appendChild(header);
-
-    const body = el('div', {cls:'modal-body', style:'max-height:70vh'});
-
-    if (!allIssues.length) {
-      body.appendChild(el('p', {style:'padding:20px;text-align:center;color:var(--success);font-weight:600'}, '\u2705 Todos os itens est\u00E3o com estoque adequado!'));
-    } else {
-      // Split into zero and low
-      const zeroItems = allIssues.filter(i => (stockObj[i.id]||0) === 0);
-      const lowItems  = allIssues.filter(i => (stockObj[i.id]||0) > 0);
-
-      function addSection(title, items, color) {
-        if (!items.length) return;
-        body.appendChild(el('div', {cls:'dash-section-head', style:`color:${color}`}, `${title} (${items.length})`));
-        items.forEach(item => {
-          const qty = stockObj[item.id] || 0;
-          const min = minimums[item.id] || 0;
-          const row = el('div', {cls:'dash-detail-row'});
-          const dot = el('div', {cls:'sem-dot', style:`background:${qty===0?'var(--danger)':'#E8A020'};flex-shrink:0`});
-          const name = el('span', {cls:'dash-detail-name'}, item.name);
-          const qtySpan = el('span', {cls:'dash-detail-qty', style:`color:${qty===0?'var(--danger)':'#E8A020'}`}, String(qty));
-          const minSpan = el('span', {cls:'dash-detail-min'}, min > 0 ? `m\u00EDn: ${min}` : '');
-          const unitSpan = el('span', {cls:'dash-detail-unit'}, item.unit);
-          row.append(dot, name, qtySpan, minSpan, unitSpan);
-          body.appendChild(row);
-        });
-      }
-
-      addSection('\u1F534 Sem estoque', zeroItems, 'var(--danger)');
-      addSection('\u1F7E1 Abaixo do m\u00EDnimo', lowItems, '#8A6A10');
-    }
-
-    box.appendChild(body);
-
-    const footer = el('div', {cls:'modal-footer'});
-    footer.appendChild(el('button', {cls:'btn btn-outline', onclick:()=>overlay.remove()}, 'Fechar'));
-    box.appendChild(footer);
-
-    overlay.appendChild(box);
-    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-    document.body.appendChild(overlay);
-  }
-
-  function buildSummaryCard(label, stockObj) {
-    // Usar catálogo correto por unidade (não o catálogo do CPD)
-    const cardCatalog = (label === 'CPD') ? catalog : getUnitCatalog(label).catalog;
-    const allIssues = cardCatalog.filter(i => {
-      const qty = stockObj[i.id] || 0;
-      const min = minimums[i.id] || 0;
-      return qty === 0 || (min > 0 && qty < min);
-    });
-    const zeroCount = cardCatalog.filter(i => (stockObj[i.id]||0) === 0).length;
-    const lowCount  = allIssues.filter(i => (stockObj[i.id]||0) > 0).length;
-    const okCount   = cardCatalog.length - zeroCount - lowCount;
-
-    const card = el('div', {cls:'dash-summary-card', onclick: () => openDashModal(label, stockObj)});
-
-    const header = el('div', {cls:'dash-card-header'});
-    header.appendChild(el('div', {cls:'dash-card-avatar'}, label.charAt(0)));
-    header.appendChild(el('div', {cls:'dash-card-label'}, label));
-    card.appendChild(header);
-
-    const stats = el('div', {cls:'dash-card-stats'});
-    const addStat = (num, lbl, color) => {
-      const s = el('div', {cls:'dash-stat'});
-      s.appendChild(el('span', {cls:'dash-stat-num', style:`color:${color}`}, String(num)));
-      s.appendChild(el('span', {cls:'dash-stat-label'}, lbl));
-      stats.appendChild(s);
-    };
-    addStat(okCount, 'OK', 'var(--success)');
-    addStat(lowCount, 'Baixo', '#E8A020');
-    addStat(zeroCount, 'Zero', 'var(--danger)');
-    card.appendChild(stats);
-
-    // Semaphore + hint
-    const sem = el('div', {cls:'dash-card-semaphore'});
-    if (zeroCount > 0) {
-      const d = el('div', {cls:'sem-dot sem-red'}); d.title=`${zeroCount} sem estoque`; sem.appendChild(d);
-    }
-    if (lowCount > 0) {
-      const d = el('div', {cls:'sem-dot sem-yellow'}); d.title=`${lowCount} abaixo do m\u00EDnimo`; sem.appendChild(d);
-    }
-    if (!zeroCount && !lowCount) {
-      sem.appendChild(el('div', {cls:'sem-dot sem-green'}));
-    }
-    if (allIssues.length > 0) {
-      sem.appendChild(el('span', {style:'font-size:11px;color:var(--text-3);margin-left:4px'}, `${allIssues.length} item${allIssues.length>1?'s':''} com aten\u00E7\u00E3o`));
-    }
-    card.appendChild(sem);
-
-    card.appendChild(el('div', {cls:'dash-card-hint'}, 'Clique para ver detalhes \u2192'));
-    return card;
-  }
-
-  const grid = el('div', {cls:'dash-grid'});
-  grid.appendChild(buildSummaryCard('CPD', cpd));
-  UNIT_NAMES.forEach(u => grid.appendChild(buildSummaryCard(u, unitStock[u] || {})));
-  frag.appendChild(grid);
-
-  return frag;
 }
 
 
@@ -10214,7 +10003,6 @@ function render() {
   else if (currentView === 'historico-contagens') node = viewHistoricoContagens();
   else if (currentView === 'producao') node = viewQuadroProducao();
   else if (currentView === 'validade') node = viewValidadeControl();
-  else if (currentView === 'dashboard')  node = viewDashboard();
   if (node) contentEl.appendChild(node);
 
   // Restaurar scroll após render (evita que a tela "pule" para o topo)
