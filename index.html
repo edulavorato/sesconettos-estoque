@@ -1603,8 +1603,24 @@ const auth = firebase.auth();
 window._fb = {
   cache:    {},
   ready:    false,
-  pendingWrites: []
+  pendingWrites: [],
+  inFlight: 0
 };
+
+// 05/08: contador de writes "em voo" (já disparados no Firebase, mas cuja
+// Promise ainda não resolveu nem falhou). O mecanismo de pendingWrites só
+// protege writes que JÁ FALHARAM — um write que está simplesmente demorando
+// (rede fraca da loja, por ex.) não entra nessa lista, e se a página for
+// recarregada/fechada nesse meio-tempo (ex: gerente digita a contagem e
+// clica em "Sair" logo em seguida, ou fecha a aba no fechamento da loja), o
+// navegador aborta a requisição e o dado digitado nunca chega ao Firebase —
+// sem erro, sem fila, sem nada. Isso explica casos como "o PDF mostrou 1
+// caixa de massa mas o sistema mostra 0": o PDF é montado a partir da
+// memória local (sempre correto), mas o Firebase pode não ter recebido o
+// último write a tempo. _fbWriteStart/_fbWriteEnd rastreiam isso para que
+// logout() e o aviso de saída da página possam proteger o usuário.
+function _fbWriteStart() { window._fb.inFlight = (window._fb.inFlight || 0) + 1; }
+function _fbWriteEnd()   { window._fb.inFlight = Math.max(0, (window._fb.inFlight || 0) - 1); }
 
 // Login anonimo automatico
 auth.signInAnonymously()
@@ -5359,11 +5375,13 @@ function saveItemAtomic(itemId, qty) {
   clearTimeout(window._fb.localWriteTimer);
   window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 5000);
 
+  _fbWriteStart();
   db.ref('dados/pizza_cpd/' + itemId).transaction(currentVal => {
     // currentVal é o valor atual no Firebase — retornar o novo valor
     // Se currentVal for null (item não existe), inicializa com 0 + nova qty
     return qty;
   }, (error, committed) => {
+    _fbWriteEnd();
     clearTimeout(window._fb.localWriteTimer);
     if (error) {
       console.error('[Firebase] Transação falhou para', itemId, error);
@@ -5420,14 +5438,17 @@ function save(key, data) {
         clearTimeout(window._fb.localWriteTimer);
         // 5s de janela para cobrir writes lentos em conexões móveis
         window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 5000);
+        _fbWriteStart();
         db.ref('dados/' + key).set(data)
           .then(() => {
+            _fbWriteEnd();
             // Resetar flag imediatamente após confirmação — não esperar o timer
             clearTimeout(window._fb.localWriteTimer);
             // Pequena janela residual para o listener processar o echo
             window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 300);
           })
           .catch(e => {
+            _fbWriteEnd();
             console.warn('[Firebase] Erro ao salvar ' + key + ':', e);
             // Em caso de erro, liberar o flag para não travar o listener indefinidamente
             clearTimeout(window._fb.localWriteTimer);
@@ -5526,6 +5547,15 @@ window.addEventListener('beforeunload', (e) => {
         e.preventDefault();
         e.returnValue = '';
       }
+    }
+    // 05/08: se ainda há um write em voo (disparado mas nem confirmado nem
+    // falho), avisar antes de fechar/recarregar — é o mesmo aviso padrão do
+    // navegador, mas cobre exatamente o caso "digitei o número e fechei a
+    // aba/saí na hora", que sem isso perde o dado silenciosamente (ver
+    // comentário em _fbWriteStart mais acima).
+    if (window._fb && (window._fb.inFlight || 0) > 0) {
+      e.preventDefault();
+      e.returnValue = '';
     }
   } catch(err) {}
 });
@@ -5898,6 +5928,29 @@ function logout() {
 }
 
 function _doLogout() {
+  // 05/08: se ainda houver um write pro Firebase em voo (ex: o gerente
+  // acabou de digitar a última quantidade e já clicou em Sair, sem esperar
+  // a rede confirmar), aguardar um pouco antes de recarregar a página —
+  // senão o reload aborta a requisição e o dado digitado nunca chega ao
+  // Firebase, mesmo que o PDF gerado localmente já mostrasse o valor certo.
+  // Esse foi o caso relatado: PDF de fechamento mostrando 1 caixa de massa,
+  // sistema mostrando 0 depois. Ver _fbWriteStart/_fbWriteEnd.
+  const inFlight = () => (window._fb && window._fb.inFlight) || 0;
+  if (inFlight() > 0) {
+    toast('Salvando última alteração antes de sair…');
+    const start = Date.now();
+    const wait = setInterval(() => {
+      if (inFlight() <= 0 || Date.now() - start > 6000) {
+        clearInterval(wait);
+        _finishLogout();
+      }
+    }, 200);
+    return;
+  }
+  _finishLogout();
+}
+
+function _finishLogout() {
   session = null;
   save('pizza_session', null);
   // Clear password field for security
@@ -6422,16 +6475,40 @@ function el(tag, attrs={}, ...children) {
         });
         catWrap.appendChild(togBtn);
 
-        // ── Botão confirmar categoria (apenas unidades, não CPD) ────────────
-        if (!isCPD() && unitName) {
+        // ── Badge/botão de confirmação da categoria ──────────────────────────
+        // Unidades: botão interativo (confirmar/reconfirmar/desconfirmar).
+        // CPD: 05/08 a pedido do Eduardo — mesma informação (quem confirmou e
+        // a que horas), só que somente leitura, sem os botões de ação — quem
+        // confirma é a própria unidade, o CPD só acompanha.
+        if (unitName) {
           const confState = getCatConfirmState(unitName, cat, stockObj);
+          const confInfo = catConfirmations[unitSlug(unitName)] && catConfirmations[unitSlug(unitName)][cat];
+          const confTimeStr = (confInfo && confInfo.ts)
+            ? ' \u00E0s ' + new Date(confInfo.ts).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})
+            : '';
+          if (isCPD()) {
+            const confBadge = el('span', {
+              cls: 'cat-confirm-btn' + (confState === 'confirmed' ? ' confirmed' : confState === 'needs-reconfirm' ? ' needs-reconfirm' : ''),
+              style: 'cursor:default;pointer-events:none',
+              title: confState === 'confirmed'
+                ? 'Confirmada por ' + confInfo.name + confTimeStr
+                : confState === 'needs-reconfirm'
+                  ? 'Confirmada por ' + confInfo.name + confTimeStr + ', mas o estoque mudou depois \u2014 precisa reconfirmar'
+                  : 'Categoria ainda n\u00E3o confirmada por ' + unitName
+            });
+            confBadge.textContent = confState === 'confirmed'
+              ? '\u2713 ' + confInfo.name + confTimeStr
+              : confState === 'needs-reconfirm'
+                ? '\u26A0\uFE0F ' + confInfo.name + confTimeStr + ' (desatualizado)'
+                : 'N\u00E3o confirmada';
+            catWrap.appendChild(confBadge);
+          } else {
           const confBtn = el('button', {
             cls: 'cat-confirm-btn' + (confState === 'confirmed' ? ' confirmed' : confState === 'needs-reconfirm' ? ' needs-reconfirm' : ''),
             title: confState === 'confirmed' ? 'Categoria confirmada' : confState === 'needs-reconfirm' ? 'Reconfirmação necessária' : 'Confirmar contagem desta categoria'
           });
-          const confInfo = catConfirmations[unitSlug(unitName)] && catConfirmations[unitSlug(unitName)][cat];
           confBtn.textContent = confState === 'confirmed'
-            ? '\u2713 ' + confInfo.name
+            ? '\u2713 ' + confInfo.name + confTimeStr
             : confState === 'needs-reconfirm'
               ? '\u26A0\uFE0F Reconfirmar'
               : 'Confirmar';
@@ -6514,6 +6591,7 @@ function el(tag, attrs={}, ...children) {
           // PDF da categoria liberado independente de confirmação — a
           // confirmação é um controle de processo (quem contou, quando),
           // não deve impedir tirar uma conferência em PDF a qualquer momento.
+          }
         }
 
         catWrap.appendChild(catPdfBtn);
@@ -7365,12 +7443,15 @@ function viewUnits() {
       window._fb.localWrite = true;
       clearTimeout(window._fb.localWriteTimer);
       window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 5000);
+      _fbWriteStart();
       db.ref('dados/pizza_units/' + _slug + '/' + itemId).set(qty)
         .then(() => {
+          _fbWriteEnd();
           clearTimeout(window._fb.localWriteTimer);
           window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 300);
         })
         .catch(e => {
+          _fbWriteEnd();
           console.warn('[Firebase] Erro ao salvar item', itemId, e);
           window._fb.localWrite = false;
           // NÃO usar saveUnit() (sobrescreve o objeto inteiro) aqui — é
