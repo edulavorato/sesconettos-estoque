@@ -549,10 +549,14 @@
   .qp-table td:first-child { border-radius:var(--radius) 0 0 var(--radius); border-left:1.5px solid var(--border); border-top:1.5px solid var(--border); border-bottom:1.5px solid var(--border); }
   .qp-table td:last-child  { border-radius:0 var(--radius) var(--radius) 0; border-right:1.5px solid var(--border); border-top:1.5px solid var(--border); border-bottom:1.5px solid var(--border); }
   .qp-table td:not(:first-child):not(:last-child) { border-top:1.5px solid var(--border); border-bottom:1.5px solid var(--border); }
-  .qp-table tr.qp-precisa td { background:var(--warning-bg); }
-  .qp-table tr.qp-precisa td:first-child { border-left-color:#D6A017; border-top-color:#D6A017; border-bottom-color:#D6A017; }
+  /* 05/08: fundo âmbar era pesado demais aplicado à linha inteira (deixava a
+     tela toda amarela quando a maioria dos itens precisa de produção, o que
+     é o caso comum). Trocado por uma faixa fina de destaque na borda
+     esquerda — sinaliza "precisa de atenção" sem cansar a vista. */
+  .qp-table tr.qp-precisa td { background:var(--surface); }
+  .qp-table tr.qp-precisa td:first-child { border-left:4px solid #D6A017; border-top-color:#D6A017; border-bottom-color:#D6A017; padding-left:9px; }
   .qp-table tr.qp-precisa td:last-child  { border-right-color:#D6A017; border-top-color:#D6A017; border-bottom-color:#D6A017; }
-  .qp-item-name { font-weight:500; }
+  .qp-item-name { font-weight:500; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
   .qp-rendimento { font-size:11px; color:var(--text-3); margin-top:2px; }
   .qp-lotes-cell { display:flex; align-items:center; gap:6px; justify-content:center; }
   .qp-qty-btn {
@@ -570,12 +574,22 @@
     padding:4px; border-radius:6px;
   }
   .qp-qty-input:focus { outline:none; border-color:var(--accent); }
+  /* Sugestão agora é um "chip" clicável de verdade (antes era só texto colorido,
+     pouco óbvio que dava pra clicar) — inclui a info de A Enviar/CPD no title
+     (tooltip) em vez de uma linha extra sempre visível embaixo da Cobertura. */
   .qp-sugestao {
-    font-size:11px; color:var(--accent-dark,#1A5229); font-weight:600;
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:11px; color:var(--accent-dark,#1A5229); font-weight:700;
     white-space:nowrap; cursor:pointer;
+    background:rgba(42,145,72,.1); border:1.5px solid rgba(42,145,72,.35);
+    padding:4px 10px; border-radius:20px; transition:all .12s;
   }
-  .qp-sugestao:hover { text-decoration:underline; }
-  .qp-sugestao.zero { color:var(--text-3); font-weight:400; cursor:default; }
+  .qp-sugestao:hover { background:var(--accent,#1A5229); color:#fff; border-color:var(--accent,#1A5229); }
+  .qp-sugestao.zero {
+    color:var(--text-3); font-weight:400; cursor:default;
+    background:transparent; border-color:transparent; padding:4px 0;
+  }
+  .qp-sugestao-meta { display:block; font-size:10px; color:var(--text-3); margin-top:4px; }
   .qp-cobertura-sel {
     font-size:11px; padding:3px 6px; border-radius:4px;
     border:1px solid var(--border); background:var(--surface);
@@ -588,12 +602,15 @@
   }
   .qp-status-btn.liberado { background:#F5EDD8; color:var(--accent-dark,#1A5229); border-color:var(--accent,#1A5229); }
   .qp-status-btn.disabled { opacity:.4; cursor:not-allowed; pointer-events:none; }
-  .qp-liberar-all {
+  .qp-liberar-all, .qp-aceitar-all {
     padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700;
-    background:var(--accent,#1A5229); color:#fff; border:none; cursor:pointer;
-    touch-action:manipulation; transition:opacity .15s;
+    cursor:pointer; touch-action:manipulation; transition:opacity .15s, background .15s;
+    white-space:nowrap;
   }
+  .qp-liberar-all { background:var(--accent,#1A5229); color:#fff; border:none; }
   .qp-liberar-all:hover { opacity:.88; }
+  .qp-aceitar-all { background:transparent; color:var(--accent-dark,#1A5229); border:1.5px solid var(--accent,#1A5229); }
+  .qp-aceitar-all:hover { background:rgba(42,145,72,.1); }
   .qp-insumos { font-size:11px; color:var(--text-3); line-height:1.7; }
   .qp-insumos b { color:var(--text-2); }
   .qp-insumos .emb { color:var(--accent-dark,#1A5229); }
@@ -608,6 +625,16 @@
     font-size:10px; padding:2px 6px; border-radius:4px;
     background:rgba(42,145,72,.1); color:var(--accent-dark,#1A5229);
   }
+  /* Ícone de aviso "não contado" — antes era um selo com o texto todo escrito
+     por extenso, quebrava em várias linhas dentro do nome do item. Agora é
+     só um ícone pequeno; o texto completo continua acessível via title
+     (tooltip ao passar o mouse / manter tocado no celular). */
+  .qp-warn-icon {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:18px; height:18px; border-radius:50%; flex:0 0 auto;
+    background:rgba(232,160,32,.18); color:#B8740D;
+    font-size:11px; font-weight:700; cursor:help;
+  }
   .qp-section-footer {
     display:flex; align-items:center; justify-content:space-between;
     padding:10px 14px; background:var(--surface-2);
@@ -616,6 +643,40 @@
     gap:8px; flex-wrap:wrap;
   }
   .qp-footer-info { font-size:11px; color:var(--text-3); }
+  /* ── Responsivo: tabela vira lista de cartões abaixo de 760px ──────────────
+     Técnica CSS-only: cada <td> some sua exibição de célula e some como uma
+     linha "rótulo: valor" dentro do cartão da linha (que virou um bloco).
+     O rótulo vem do atributo data-label, setado na hora de montar o <td> no
+     JS. A primeira coluna (nome do item) fica sem rótulo, servindo de
+     título do cartão. */
+  @media (max-width:760px) {
+    .qp-table thead { display:none; }
+    .qp-table, .qp-table tbody, .qp-table tr { display:block; width:100%; }
+    .qp-table { border-spacing:0; }
+    .qp-table tr {
+      margin-bottom:10px; border-radius:var(--radius); overflow:hidden;
+      border:1.5px solid var(--border); display:block;
+    }
+    .qp-table tr.qp-precisa { border-color:#D6A017; border-width:1.5px 1.5px 1.5px 4px; }
+    .qp-table td {
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:8px 12px; border:none !important; border-radius:0 !important;
+      border-top:1px solid var(--border-soft, rgba(0,0,0,.06)) !important;
+    }
+    .qp-table tr.qp-precisa td:first-child { border-left:none !important; padding-left:12px; }
+    .qp-table td:first-child {
+      display:block; border-top:none !important; background:var(--surface-2);
+      padding:10px 12px;
+    }
+    .qp-table td::before {
+      content:attr(data-label); font-size:10px; font-weight:700;
+      text-transform:uppercase; letter-spacing:.5px; color:var(--text-3);
+      flex:0 0 auto; margin-right:10px;
+    }
+    .qp-table td:first-child::before { display:none; }
+    .qp-lotes-cell { justify-content:flex-end; }
+    .qp-insumos { text-align:right; }
+  }
   .qp-masseiro-grid {
     display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:14px;
     background:var(--surface); border:1.5px solid rgba(42,145,72,.2);
@@ -8899,7 +8960,7 @@ function viewQuadroProducao() {
           style:'background:rgba(42,145,72,.08);color:var(--text-3)'}, 'tudo OK'));
       areaHdr.appendChild(areaLeft);
 
-      const areaRight = el('div', {style:'display:flex;gap:8px;align-items:center'});
+      const areaRight = el('div', {style:'display:flex;gap:8px;align-items:center;flex-wrap:wrap'});
       if (totalArea > 0) {
         areaRight.appendChild(el('span', {cls:'qp-footer-info'},
           liberadosArea + '/' + totalArea + ' liberados'));
@@ -8915,6 +8976,20 @@ function viewQuadroProducao() {
           });
           areaRight.appendChild(libAllBtn);
         }
+      }
+      // 05/08 a pedido do Eduardo: aceitar todas as sugestões da área de uma
+      // vez, em vez de item por item. Continua sendo uma decisão explícita
+      // do responsável (um clique só, não é automático) — só preenche o
+      // campo Lotes com a sugestão calculada, não libera nem confirma nada.
+      const pendentesAceitar = items.filter(i => dayCode && i.lotes > 0 && i.lotesEfetivos !== i.lotes);
+      if (pendentesAceitar.length > 0) {
+        const acceptAllBtn = el('button', {cls:'qp-aceitar-all'}, '↑ Aceitar sugestões (' + pendentesAceitar.length + ')');
+        acceptAllBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          pendentesAceitar.forEach(i => qpSet('qty_' + dayIdx + '_' + i.ft.id, i.lotes));
+          renderQPBody(dayIdx);
+        });
+        areaRight.appendChild(acceptAllBtn);
       }
       areaHdr.appendChild(areaRight);
       areaWrap.appendChild(areaHdr);
@@ -9020,22 +9095,27 @@ function viewQuadroProducao() {
         // Nome + rendimento
         const tdNome = el('td');
         const nameSpan = el('div', {cls:'qp-item-name'});
-        nameSpan.textContent = ft.nome;
+        const nomeTxt = document.createElement('span');
+        nomeTxt.textContent = ft.nome;
+        nameSpan.appendChild(nomeTxt);
         if (lotes === 0 && dayCode) {
           nameSpan.appendChild(el('span', {cls:'qp-sem-necessidade'}, '✓ Estoque OK'));
         }
         if (pendente && dayCode) {
+          // 05/08 a pedido do Eduardo: era um selo com o texto todo escrito
+          // (quebrava em várias linhas dentro da coluna). Virou um ícone
+          // pequeno — a explicação completa continua disponível no title.
           nameSpan.appendChild(el('span', {
-            style:'display:inline-block;margin-left:6px;font-size:10px;font-weight:700;color:#B8740D;background:rgba(232,160,32,.12);padding:1px 6px;border-radius:8px',
-            title:'Alguma unidade ainda não contou este item nesta janela — a sugestão abaixo pode estar subestimada.'
-          }, '⚠ NÃO CONTADO EM ALGUMA UNIDADE'));
+            cls:'qp-warn-icon',
+            title:'Alguma unidade ainda não contou este item nesta janela — a sugestão pode estar subestimada.'
+          }, '⚠'));
         }
         tdNome.appendChild(nameSpan);
         tdNome.appendChild(el('div', {cls:'qp-rendimento'}, ft.rendimento));
         tr.appendChild(tdNome);
 
         // Cobertura (select)
-        const tdCob = el('td', {style:'text-align:center'});
+        const tdCob = el('td', {style:'text-align:center', 'data-label':'Cobertura'});
         const cobSel = el('select', {cls:'qp-cobertura-sel'});
         [1,2,3].forEach(n => {
           const opt = document.createElement('option');
@@ -9048,13 +9128,16 @@ function viewQuadroProducao() {
           const newCob = parseInt(cobSel.value);
           qpSet(`cob_${ft.id}`, newCob);
           // Recalcular sugestão sem re-renderizar o DOM inteiro
-          const { lotes: newLotes } = calcLotesSugeridos(ft, newCob);
+          const { lotes: newLotes, aEnviarTotal: newAEnviar, estCPD: newEstCPD } = calcLotesSugeridos(ft, newCob);
           const thisTr = cobSel.closest('tr');
           if (thisTr) {
             const sugEl = thisTr.querySelector('[data-role="sug"]');
             if (sugEl) {
               sugEl.textContent = newLotes > 0 ? '↑ ' + newLotes + ' lotes' : '—';
               sugEl.className = 'qp-sugestao' + (newLotes === 0 ? ' zero' : '');
+              sugEl.title = newLotes > 0
+                ? `A enviar: ${newAEnviar} · CPD: ${newEstCPD} — clique para usar esta sugestão`
+                : `A enviar: ${newAEnviar} · CPD: ${newEstCPD} — sem necessidade de produção`;
               sugEl.onclick = newLotes > 0 ? () => {
                 qpSet('qty_' + dayIdx + '_' + ft.id, newLotes);
                 const qi = thisTr.querySelector('.qp-qty-input');
@@ -9064,20 +9147,19 @@ function viewQuadroProducao() {
           }
         });
         tdCob.appendChild(cobSel);
-        if (dayCode) {
-          const cobInfo = el('div', {style:'font-size:10px;color:var(--text-3);margin-top:3px'});
-          cobInfo.textContent = 'A enviar: ' + aEnviarTotal + ' · CPD: ' + estCPD;
-          tdCob.appendChild(cobInfo);
-        }
         tr.appendChild(tdCob);
 
-        // Sugestão automática
-        const tdSug = el('td', {style:'text-align:center'});
+        // Sugestão automática — "chip" clicável; a info de A Enviar/CPD (antes
+        // uma linha sempre visível embaixo da Cobertura) virou tooltip aqui,
+        // pra reduzir a poluição visual mantendo a informação acessível.
+        const tdSug = el('td', {style:'text-align:center', 'data-label':'Sugestão'});
         if (dayCode) {
           const sugSpan = document.createElement('span');
           sugSpan.className = 'qp-sugestao' + (lotes === 0 ? ' zero' : '');
           sugSpan.setAttribute('data-role', 'sug');
-          sugSpan.title = lotes > 0 ? 'Clique para usar esta sugestão' : 'Sem necessidade de produção';
+          sugSpan.title = lotes > 0
+            ? `A enviar: ${aEnviarTotal} · CPD: ${estCPD} — clique para usar esta sugestão`
+            : `A enviar: ${aEnviarTotal} · CPD: ${estCPD} — sem necessidade de produção`;
           sugSpan.textContent = lotes > 0 ? '↑ ' + lotes + ' lotes' : '—';
           if (lotes > 0) {
             sugSpan.addEventListener('click', () => {
@@ -9093,7 +9175,7 @@ function viewQuadroProducao() {
         tr.appendChild(tdSug);
 
         // Quantidade de lotes (manual)
-        const tdQty = el('td', {style:'text-align:center'});
+        const tdQty = el('td', {style:'text-align:center', 'data-label':'Lotes'});
         const qtyCell = el('div', {cls:'qp-lotes-cell'});
         const minusBtn = el('button', {cls:'qp-qty-btn'}, '−');
         const qtyInp = el('input', {cls:'qp-qty-input', type:'number', min:'0'});
@@ -9164,7 +9246,7 @@ function viewQuadroProducao() {
         tr.appendChild(tdQty);
 
         // Insumos calculados
-        const tdIns = el('td');
+        const tdIns = el('td', {'data-label':'Insumos'});
         const insDiv = el('div', {cls:'qp-insumos'});
         if (lotesEfetivos > 0) {
           ft.mp.forEach(i => {
@@ -9186,7 +9268,7 @@ function viewQuadroProducao() {
         tr.appendChild(tdIns);
 
         // Observações
-        const tdObs = el('td');
+        const tdObs = el('td', {'data-label':'Obs'});
         const obsInp = el('textarea', {cls:'qp-obs-input', rows:'2',
           placeholder:'Obs...', style:'min-width:80px'});
         obsInp.value = qpGet(`obs_${dayIdx}_${ft.id}`, '');
@@ -9195,7 +9277,7 @@ function viewQuadroProducao() {
         tr.appendChild(tdObs);
 
         // Status / Liberar
-        const tdStatus = el('td', {style:'text-align:center'});
+        const tdStatus = el('td', {style:'text-align:center', 'data-label':'Status'});
         const libBtn = el('button', {
           cls: 'qp-status-btn' + (liberado ? ' liberado' : lotesEfetivos === 0 ? ' disabled' : ''),
         });
