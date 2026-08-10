@@ -7188,23 +7188,26 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
       const isZero = showMinCol && item.qty === 0 && item.min > 0;
       if (isZero) ops.push(`1 0.9 0.9 rg ${ML} ${y-2} ${TW} 13 re f 0 0 0 rg`);
       else if (isLow) ops.push(`1 0.97 0.87 rg ${ML} ${y-2} ${TW} 13 re f 0 0 0 rg`);
-      // Verificar se item foi confirmado na janela atual
-      // Verificar confirmação: unidades usam unitCatalog (não catalog do CPD)
-      // "Não contado" = qty === 0 E não confirmado via botão ✓
-      // qty > 0 = foi contado mesmo sem clicar no botão de confirmação
-      let itemConfirmed = true;
+      // 10/08: mesma lógica adotada na tela "Envios do Dia" — item ainda não
+      // contado não trava mais o cálculo de "A Enviar" em "NC"; ele entra no
+      // cálculo como estoque zero (que já é o valor real nesse caso — ver
+      // itemFoiContado()). A sinalização de "ainda não contado" passa a ser
+      // um asterisco na própria quantidade (ex.: "0*"), igual ao que já
+      // aparece na tela de Contagem das Unidades — ver
+      // formatarQtyComAsterisco().
+      let contado = true;
+      let catalogItemId = null;
       if (!showMinCol && unitLabel !== 'CPD') {
-        if (item.qty > 0) {
-          itemConfirmed = true;
-        } else {
-          const catalogItem = unitCatalog.find(i => i.name === item.name);
-          itemConfirmed = catalogItem ? isConfirmed(unitLabel, catalogItem.id) : false;
-        }
+        const catalogItem = unitCatalog.find(i => i.name === item.name);
+        catalogItemId = catalogItem ? catalogItem.id : null;
+        contado = catalogItemId ? itemFoiContado(unitLabel, catalogItemId, item.qty || 0) : (item.qty || 0) > 0;
       }
-      const itemName = itemConfirmed ? item.name : ('! nao contado ! ' + item.name);
-      // ITEM (vermelho se não contado, preto se contado)
-      ops.push(itemConfirmed ? `0 0 0 rg` : `0.7 0.1 0.1 rg`);
-      ops.push(`BT /F2 8 Tf ${colX[0]+3} ${y+1} Td ${pdfStr(itemName)} Tj ET`);
+      const qtyDisplay = catalogItemId
+        ? formatarQtyComAsterisco(unitLabel, catalogItemId, item.qty || 0)
+        : String(item.qty !== undefined ? item.qty : '-');
+      // ITEM (âmbar se ainda não contado, preto se contado)
+      ops.push(contado ? `0 0 0 rg` : `0.6 0.4 0 rg`);
+      ops.push(`BT /F2 8 Tf ${colX[0]+3} ${y+1} Td ${pdfStr(item.name)} Tj ET`);
       ops.push(`0 0 0 rg`);
       ops.push(`BT /F2 8 Tf ${colX[1]+3} ${y+1} Td ${pdfStr(item.unit)} Tj ET`);
       if (showMinCol) {
@@ -7214,18 +7217,19 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
         ops.push(`BT /F1 9 Tf ${colX[3]+3} ${y+1} Td (${item.qty}) Tj ET`);
         ops.push(`0 0 0 rg`);
       } else if (showEnviarCol) {
-        // QTD em verde
-        ops.push(`0.1 0.45 0.2 rg`);
-        ops.push(`BT /F1 9 Tf ${colX[2]+3} ${y+1} Td (${item.qty !== undefined ? item.qty : '-'}) Tj ET`);
+        // QTD em verde (âmbar + asterisco se ainda não contado)
+        ops.push(contado ? `0.1 0.45 0.2 rg` : `0.6 0.4 0 rg`);
+        ops.push(`BT /F1 9 Tf ${colX[2]+3} ${y+1} Td ${pdfStr(qtyDisplay)} Tj ET`);
         // A ENVIAR: max(0, Mínimo do Dia de Entrega − Estoque Atual)
-        // Se o item não foi contado nesta janela, não calculamos "a enviar" a
-        // partir de um zero falso — mostramos "NC" (não contado) em vez de número.
+        // 10/08: item não contado entra no cálculo como estoque zero (que já
+        // é o valor real nesse caso) em vez de travar em "NC" — mesma regra
+        // já aplicada na tela "Envios do Dia".
         const _estoqueAtual = item.qty || 0;
-        const _aEnviar = itemConfirmed ? calcAEnviar(unitLabel, item.key, _estoqueAtual, _enviarDay) : 0;
-        ops.push(itemConfirmed ? `0.1 0.25 0.65 rg` : `0.7 0.45 0.05 rg`);
-        ops.push(`BT /F1 9 Tf ${colX[3]+3} ${y+1} Td ${itemConfirmed ? ('(' + (_aEnviar > 0 ? _aEnviar : '-') + ')') : '(NC)'} Tj ET`);
+        const _aEnviar = calcAEnviar(unitLabel, item.key, _estoqueAtual, _enviarDay);
+        ops.push(`0.1 0.25 0.65 rg`);
+        ops.push(`BT /F1 9 Tf ${colX[3]+3} ${y+1} Td (${_aEnviar > 0 ? _aEnviar : '-'}) Tj ET`);
         // Fundo azul claro na célula A ENVIAR se tiver valor
-        if (itemConfirmed && _aEnviar > 0) {
+        if (_aEnviar > 0) {
           const envX = colX[3]; const colWEnv = colW[3];
           ops.splice(ops.length - 1, 0,
             `0.88 0.93 0.98 rg ${envX} ${y-2} ${colWEnv} 13 re f 0 0 0 rg`,
