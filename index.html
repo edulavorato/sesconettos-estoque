@@ -8350,23 +8350,11 @@ function viewEnviosDia() {
       if (pu && pu.contado === false) naoContadosDia.push({ unit: u, name: row.name });
     });
   });
-  if (naoContadosDia.length > 0) {
-    const ncBanner = el('div', {cls:'alert-banner warn', style:'margin-bottom:14px;align-items:center'});
-    const ncIcon = el('span', {cls:'alert-banner-icon'}, '❓');
-    const ncBody = el('div', {cls:'alert-banner-body', style:'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;width:100%'});
-    const ncText = el('div', {});
-    ncText.appendChild(el('div', {cls:'alert-banner-title'}, naoContadosDia.length + ' item(ns) ainda não contado(s) nesta janela'));
-    ncText.appendChild(el('div', {cls:'alert-banner-items'}, 'Não entram no cálculo de A Enviar até a unidade confirmar a contagem.'));
-    ncBody.appendChild(ncText);
-    const ncBtn = el('button', {cls:'btn btn-outline btn-sm', style:'flex-shrink:0'}, 'Ver lista');
-    ncBtn.addEventListener('click', () => openNaoContadosModal(naoContadosDia));
-    ncBody.appendChild(ncBtn);
-    ncBanner.appendChild(ncIcon);
-    ncBanner.appendChild(ncBody);
-    frag.appendChild(ncBanner);
-  }
-
-  // ── Aviso de contagem desatualizada usada neste cálculo ────────────────────
+  // 12/08: a pedido do Eduardo -- os dois banners de aviso que ficavam aqui
+  // (itens nao contados / contagem desatualizada) foram removidos do topo
+  // da tela Envios do Dia -- ja tinham sido tirados antes e voltaram numa
+  // restauracao anterior. staleEntries continua sendo calculado porque
+  // alimenta o botao "PDF Tabela" mais abaixo.
   const staleEntries = [];
   relevantPairs.forEach(pair => {
     const [unitName, cat] = pair.split('|');
@@ -8377,17 +8365,6 @@ function viewEnviosDia() {
         : ' (' + st.days + (st.days === 1 ? ' dia' : ' dias') + ' atr\u00E1s)'));
     }
   });
-  if (staleEntries.length > 0) {
-    const staleBanner = el('div', {cls:'alert-banner warn', style:'margin-bottom:14px'});
-    const icon = el('span', {cls:'alert-banner-icon'}, '\u26A0\uFE0F');
-    const body = el('div', {cls:'alert-banner-body'});
-    body.appendChild(el('div', {cls:'alert-banner-title'}, 'Este cálculo usa contagem desatualizada'));
-    body.appendChild(el('div', {cls:'alert-banner-items'},
-      staleEntries.join(' \u00B7 ') + '. O valor de A Enviar usa o último estoque registrado, não uma contagem de hoje.'));
-    staleBanner.appendChild(icon);
-    staleBanner.appendChild(body);
-    frag.appendChild(staleBanner);
-  }
 
   // Enriquecer com totais e situação
   const rows = [];
