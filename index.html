@@ -4718,17 +4718,29 @@ function categoriaCanonica(itemKey, categoriaFallback) {
   return asaSulItem ? asaSulItem.category : categoriaFallback;
 }
 
-function calcAEnviar(unitName, itemKeyOrName, estoqueAtual, dayCode) {
-  const minMap = getMinPerDay(unitName);
-  // Preferência: item.key (fixo, não muda quando o nome exibido é renomeado).
-  // Fallback: nome normalizado, só por segurança pra qualquer chamada antiga
-  // que ainda não tenha sido migrada pra passar a key.
+// 12/08: extraido pra funcao unica -- antes essa mesma logica (tentar
+// item.key exato, cair pro nome normalizado) estava duplicada dentro de
+// calcAEnviar/calcAEnviarDias, e a tela Envios do Dia tinha um TERCEIRO
+// lugar (o filtro que decide se o item entra na tabela) fazendo so
+// minMap[item.key] DIRETO, sem esse fallback. Resultado: se o nome do item
+// no catalogo da unidade divergisse (acento, espaco, "200g" a mais/a menos)
+// do nome usado em MIN_PER_DAY_*, o item sumia da tela Envios do Dia mesmo
+// tendo minimo cadastrado pro dia -- mesmo bug de fundo que o diagnostico
+// ja tinha apontado pra ITENS_PRODUZIDOS/COMPRADOS, so que aqui afetando o
+// que aparece (ou nao) na tela principal de envio. Ver viewEnviosDia().
+function resolveMinEntry(minMap, itemKeyOrName) {
   let entry = minMap[itemKeyOrName];
   if (!entry) {
     const _norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
     const k = Object.keys(minMap).find(k => _norm(k) === _norm(itemKeyOrName));
     entry = k ? minMap[k] : null;
   }
+  return entry || null;
+}
+
+function calcAEnviar(unitName, itemKeyOrName, estoqueAtual, dayCode) {
+  const minMap = getMinPerDay(unitName);
+  const entry = resolveMinEntry(minMap, itemKeyOrName);
   if (!entry) return 0;
   const minDia = entry[dayCode] || 0;
   return Math.max(0, minDia - (estoqueAtual || 0));
@@ -4745,12 +4757,7 @@ function somaMinDias(entry, dayCodes) {
 
 function calcAEnviarDias(unitName, itemKeyOrName, estoqueAtual, dayCodes) {
   const minMap = getMinPerDay(unitName);
-  let entry = minMap[itemKeyOrName];
-  if (!entry) {
-    const _norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-    const k = Object.keys(minMap).find(k => _norm(k) === _norm(itemKeyOrName));
-    entry = k ? minMap[k] : null;
-  }
+  const entry = resolveMinEntry(minMap, itemKeyOrName);
   if (!entry) return 0;
   const minAlvo = somaMinDias(entry, dayCodes);
   return Math.max(0, minAlvo - (estoqueAtual || 0));
@@ -5634,6 +5641,16 @@ window.addEventListener('beforeunload', (e) => {
       e.preventDefault();
       e.returnValue = '';
     }
+    // 12/08: mesma proteção, mas para o caso ANTERIOR ao write em voo — a
+    // pessoa digitou uma quantidade e ainda está dentro da janela de debounce
+    // (1s digitando quantidade, 300ms nos botões +/-), o Firebase nem chegou
+    // a ser chamado ainda. Sem isso, fechar a aba bem rápido depois de digitar
+    // perdia a contagem sem nenhum aviso — o achado de "contagens diferentes
+    // do que a loja digitou" reportado pelo Eduardo em 12/08.
+    if (window._fb && window._fb.pendingDebounces && window._fb.pendingDebounces.size > 0) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
   } catch(err) {}
 });
 
@@ -6374,8 +6391,22 @@ function el(tag, attrs={}, ...children) {
       inlineSpan.style.fontWeight = dotColor ? '600' : '400';
     }
 
+    // 12/08: registro global de "digitei mas ainda não mandei pro Firebase"
+    // (esse debounce de 1s existe pra não salvar a cada tecla). Antes disso,
+    // se a pessoa fechasse a aba/navegador nesse intervalo de 1s, o número
+    // digitado nunca chegava a ser enviado — sem aviso nenhum, e sem cair na
+    // proteção de beforeunload (que só olhava write "em voo", não o timer
+    // que ainda nem tinha disparado). Ver window.addEventListener('beforeunload').
+    if (!window._fb) window._fb = {};
+    if (!window._fb.pendingDebounces) window._fb.pendingDebounces = new Set();
+    const _pdKey = searchInp.id + ':' + itemId;
+    window._fb.pendingDebounces.add(_pdKey);
+
     clearTimeout(saveTimer[itemId]);
-    saveTimer[itemId] = setTimeout(() => onUpdate(itemId, q), 1000);
+    saveTimer[itemId] = setTimeout(() => {
+      window._fb.pendingDebounces.delete(_pdKey);
+      onUpdate(itemId, q);
+    }, 1000);
   }
 
   // track open state per table instance -- all closed by default
@@ -6769,8 +6800,13 @@ function el(tag, attrs={}, ...children) {
                 inlineUnit.textContent = clampedQ > 0 ? String(clampedQ) : '';
               }
               // Cancelar timer anterior e agendar com 300ms
+              if (!window._fb) window._fb = {};
+              if (!window._fb.pendingDebounces) window._fb.pendingDebounces = new Set();
+              const _pdKey2 = searchInp.id + ':' + item.id;
+              window._fb.pendingDebounces.add(_pdKey2);
               clearTimeout(saveTimer[item.id]);
               saveTimer[item.id] = setTimeout(() => {
+                window._fb.pendingDebounces.delete(_pdKey2);
                 if (typeof onUpdate === 'function') {
                   const raw = parseFloat(inp.value.replace(',','.'));
                   onUpdate(item.id, Math.max(0, isNaN(raw) ? 0 : raw));
@@ -6855,10 +6891,8 @@ function el(tag, attrs={}, ...children) {
             const envTd = el('td', {style:'text-align:right;font-weight:700;color:' + (aEnviar > 0 ? 'var(--accent-dark,#1A5229)' : 'var(--text-3)')});
             envTd.setAttribute('data-aenviar-cell', item.id);
             envTd.textContent = aEnviar > 0 ? String(aEnviar) : '\u2014';
-            // item.key é fixo (não muda com rename), então a busca aqui é
-            // direta — sem precisar normalizar nome nenhum.
             const _minMap = getMinPerDay(_unitDisp);
-            const _minEntry = _minMap[item.key];
+            const _minEntry = resolveMinEntry(_minMap, item.key);
             const _minDia = _minEntry ? (_minEntry[_day] || 0) : 0;
             envTd.title = 'M\u00EDn (' + _day + '): ' + _minDia + ' | Estoque: ' + qty + ' | A Enviar: ' + aEnviar
               + (_naoContado ? ' | (estoque ainda n\u00E3o contado \u2014 tratado como zero)' : '');
@@ -7800,7 +7834,7 @@ function gerarPdfEnvios(tipo) {
       // ficar fora da lista. Ainda registramos em naoContados só pra avisar
       // no rodapé do PDF que aquele zero não foi confirmado pela unidade.
       if (!itemFoiContado(unitName, item.id, estUnit)) {
-        const minEntry = minMap[item.key];
+        const minEntry = resolveMinEntry(minMap, item.key);
         const minDia = minEntry ? (minEntry[day] || 0) : 0;
         if (minDia > 0) naoContados.push(unitName + ' - ' + item.name);
       }
@@ -8183,7 +8217,6 @@ function viewEnviosDia() {
   const frag = document.createDocumentFragment();
   const day     = nextEnviarDay();
   const dayFull = {SEG:'Segunda-feira', QUA:'Quarta-feira', SEX:'Sexta-feira'}[day] || day;
-  const _norm   = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
 
   // ── Seletor de dias a somar (SEG/QUA/SEX) ────────────────────────────────
   // 11/08: restaurado a pedido do Eduardo (existia até a v1.5.37 e foi
@@ -8193,10 +8226,25 @@ function viewEnviosDia() {
   // programar uma compra que cubra vários dias de uma vez.
   // window._enviosDiaDias persiste entre renders (mesmo padrão de openCats),
   // então a seleção não se perde ao digitar na busca etc.
+  //
+  // 12/08 — CORREÇÃO IMPORTANTE (a pedido do Eduardo, reclamação de itens
+  // errados/faltando em Envios do Dia): antes, essa persistência ficava
+  // "presa" no dia em que a aba foi aberta pela primeira vez. Se alguém
+  // deixasse a tela aberta passando das 15h (quando nextEnviarDay() vira do
+  // dia de hoje pro próximo — ex: de Segunda pra Quarta), window._enviosDiaDias
+  // continuava valendo ['SEG'] pra sempre, porque só era inicializado quando
+  // estava vazio. Resultado: a tela continuava calculando (e mostrando) o
+  // envio de um dia que já passou — itens de segunda que não deveriam mais
+  // aparecer, E itens de quarta que deveriam aparecer e não apareciam.
+  // Agora: window._enviosDiaManual controla se o usuário mexeu manualmente
+  // no seletor. Enquanto ele NÃO mexeu, a seleção sempre segue o dia
+  // operacional atual (recalculado a cada render). Só passa a "congelar" na
+  // escolha do usuário depois que ele clica em algum dia/"Semana (3 dias)" —
+  // e "↻ Voltar pra hoje" desliga o modo manual de novo.
   const DIA_LABEL_CURTO = {SEG:'Segunda', QUA:'Quarta', SEX:'Sexta'};
   const DIA_LABEL_FULL  = {SEG:'Segunda-feira', QUA:'Quarta-feira', SEX:'Sexta-feira'};
   const DIAS_ORDEM = ['SEG','QUA','SEX'];
-  if (!window._enviosDiaDias || window._enviosDiaDias.length === 0) {
+  if (!window._enviosDiaManual || !window._enviosDiaDias || window._enviosDiaDias.length === 0) {
     window._enviosDiaDias = [day];
   }
   const diasSel = DIAS_ORDEM.filter(d => window._enviosDiaDias.includes(d));
@@ -8242,6 +8290,7 @@ function viewEnviosDia() {
     }, DIA_LABEL_CURTO[d]);
     chip.title = ativo ? 'Clique para remover ' + DIA_LABEL_CURTO[d] + ' da soma' : 'Clique para somar ' + DIA_LABEL_CURTO[d];
     chip.addEventListener('click', () => {
+      window._enviosDiaManual = true; // usuário mexeu — para de seguir o dia automático
       const idx = window._enviosDiaDias.indexOf(d);
       if (idx >= 0) {
         if (window._enviosDiaDias.length > 1) window._enviosDiaDias.splice(idx, 1);
@@ -8254,12 +8303,12 @@ function viewEnviosDia() {
   });
   const btnTodos = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:11px;padding:4px 12px'}, 'Semana (3 dias)');
   btnTodos.title = 'Somar segunda + quarta + sexta — visão geral pra compra semanal';
-  btnTodos.addEventListener('click', () => { window._enviosDiaDias = DIAS_ORDEM.slice(); render(); });
+  btnTodos.addEventListener('click', () => { window._enviosDiaManual = true; window._enviosDiaDias = DIAS_ORDEM.slice(); render(); });
   diasWrap.appendChild(btnTodos);
   if (!ehSelecaoPadrao) {
     const btnReset = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:11px;padding:4px 12px'}, '↻ Voltar pra hoje');
-    btnReset.title = 'Voltar a mostrar só o envio automático de hoje (' + dayFull + ')';
-    btnReset.addEventListener('click', () => { window._enviosDiaDias = [day]; render(); });
+    btnReset.title = 'Voltar a mostrar só o envio automático de hoje (' + dayFull + '), e voltar a acompanhar a virada do dia sozinho';
+    btnReset.addEventListener('click', () => { window._enviosDiaManual = false; window._enviosDiaDias = [day]; render(); });
     diasWrap.appendChild(btnReset);
   }
   frag.appendChild(diasWrap);
@@ -8312,7 +8361,7 @@ function viewEnviosDia() {
       // de aEnviar). Isso garante que todos os itens relevantes aparecem na
       // tabela. Quando mais de um dia está selecionado (seletor "Somar dias"),
       // minDia/aEnviar somam os mínimos de todos eles — ver somaMinDias/calcAEnviarDias.
-      const minEntry = minMap[item.key];
+      const minEntry = resolveMinEntry(minMap, item.key);
       const minDia = somaMinDias(minEntry, diasSel);
       if (minDia === 0) return; // sem mínimo para este(s) dia(s) — não é relevante
 
