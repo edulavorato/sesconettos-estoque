@@ -9701,8 +9701,47 @@ function viewRecebimentos() {
     const resolvidos = list.filter(r => (r.status || 'em_transito') !== 'em_transito').slice(0, 20);
 
     // ── Pendentes ──────────────────────────────────────────────────────
-    pendWrap.appendChild(el('h3', {style:'font-size:14px;font-weight:700;color:var(--text-2);margin-bottom:10px'},
+    const pendHdrRow = el('div', {style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px'});
+    pendHdrRow.appendChild(el('h3', {style:'font-size:14px;font-weight:700;color:var(--text-2);margin:0'},
       '🚚 Aguardando confirmação (' + pendentes.length + ')'));
+    // 12/08: marcação retroativa em lote, a pedido do Eduardo — os romaneios
+    // emitidos antes do fluxo de status/recebimento existir ficaram todos
+    // presos em "em trânsito" (não tinham como ser confirmados). Esse botão
+    // regulariza o histórico de uma vez só: marca como Recebido tudo que
+    // estiver pendente agora, sem exigir que a unidade confirme item por
+    // item um envio que, na prática, já foi entregue há tempos. Só o CPD
+    // tem esse botão — é uma correção administrativa, não uma confirmação
+    // de recebimento de verdade.
+    if (isCP && pendentes.length) {
+      const bulkBtn = el('button', {cls:'btn btn-outline btn-sm', style:'margin-left:auto;font-size:12px'}, '✓ Marcar todos como Entregues (retroativo)');
+      bulkBtn.title = 'Regularização em lote: marca todos os romaneios pendentes acima como Recebidos, sem passar pela confirmação da unidade. Use uma vez para os romaneios anteriores a este recurso.';
+      bulkBtn.addEventListener('click', () => {
+        if (!confirm('Marcar os ' + pendentes.length + ' romaneio(s) pendente(s) acima como "Recebido"?\n\nIsso é uma regularização administrativa (não passa pela confirmação da unidade) — use só para dar baixa em envios anteriores a este recurso que você sabe que já foram entregues.')) return;
+        bulkBtn.disabled = true;
+        bulkBtn.textContent = 'Marcando...';
+        const agora = Date.now();
+        const updates = {};
+        pendentes.forEach(r => {
+          const itensConfirmados = (r.itens || []).map(it => Object.assign({}, it, { confirmado: true }));
+          updates['dados/pizza_romaneios/' + r._id + '/status'] = 'recebido';
+          updates['dados/pizza_romaneios/' + r._id + '/itens'] = itensConfirmados;
+          updates['dados/pizza_romaneios/' + r._id + '/recebido_em'] = agora;
+          updates['dados/pizza_romaneios/' + r._id + '/recebido_por'] = (session && session.name) || 'CPD';
+          updates['dados/pizza_romaneios/' + r._id + '/divergencia_obs'] = null;
+          updates['dados/pizza_romaneios/' + r._id + '/marcado_retroativo'] = true;
+        });
+        db.ref().update(updates).then(() => {
+          toast('✓ ' + pendentes.length + ' romaneio(s) marcado(s) como Entregue(s).');
+          if (currentView === 'recebimentos') render();
+        }).catch(e => {
+          alert('Erro ao marcar em lote: ' + e.message);
+          bulkBtn.disabled = false;
+          bulkBtn.textContent = '✓ Marcar todos como Entregues (retroativo)';
+        });
+      });
+      pendHdrRow.appendChild(bulkBtn);
+    }
+    pendWrap.appendChild(pendHdrRow);
     if (!pendentes.length) {
       pendWrap.appendChild(el('div', {cls:'table-wrap', style:'padding:20px;text-align:center;color:var(--success);font-weight:600;font-size:13px'},
         '✅ Nenhum romaneio aguardando confirmação' + (!isCP ? ' pra ' + meuNome : '') + '.'));
