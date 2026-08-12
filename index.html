@@ -2080,6 +2080,10 @@ auth.onAuthStateChanged(user => {
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/><path d="M15 2v4M9 2v4"/></svg>
       Romaneio
     </button>
+    <button class="nav-item" data-view="recebimentos" onclick="setView('recebimentos')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      Recebimentos
+    </button>
     <button class="nav-item" data-view="validade" onclick="setView('validade')">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
       Validades
@@ -5833,8 +5837,8 @@ function isCPD()  { return session && session.unit === 'cpd'; }
 // Views available per role
 function allowedViews() {
   if (!session) return [];
-  if (isCPD()) return ['cpd','units','envios-dia','historico-contagens','validade','producao','catalogo','romaneio'];
-  return ['units','validade']; // Unidades: apenas o Painel de Contagem
+  if (isCPD()) return ['cpd','units','envios-dia','historico-contagens','validade','producao','catalogo','romaneio','recebimentos'];
+  return ['units','validade','recebimentos']; // Unidades: Painel de Contagem + confirmar recebimento de romaneios
 }
 
 function defaultView() {
@@ -6199,6 +6203,7 @@ function buildSidebarNav() {
         { view:'catalogo',  label:'Cat\u00E1logo de Itens',  icon:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>' },
         { view:'producao', label:'Quadro Produ\u00E7\u00E3o', icon:'<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>' },
         { view:'romaneio', label:'Romaneio', icon:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/><path d="M15 2v4M9 2v4"/>' },
+        { view:'recebimentos', label:'Recebimentos', icon:'<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>' },
         { view:'validade', label:'Validades', icon:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>' },
         { view:'historico-contagens', label:'Hist\u00F3rico', icon:'<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>' },
       ]
@@ -6255,6 +6260,7 @@ const VIEW_TITLES = {
   'historico-contagens': 'Hist\u00F3rico de Contagens',
   'validade': 'Controle de Validades',
   'romaneio': 'Romaneio de Entrega',
+  'recebimentos': 'Recebimentos',
 };
 
 function setView(v) {
@@ -7334,6 +7340,16 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
   if (typeof toast === 'function') toast('✓ PDF gerado! Confira nos downloads do seu aparelho.');
 }
 
+// 12/08: numeração sequencial real do romaneio — antes o "Nº" impresso no
+// PDF era só os 6 últimos dígitos do timestamp (coincidência, não uma
+// contagem de verdade). Usa uma transação no Firebase pra garantir que dois
+// romaneios criados ao mesmo tempo (duas abas, dois usuários) nunca saiam
+// com o mesmo número. Retorna uma Promise<number>.
+function nextRomaneioNumero() {
+  return db.ref('dados/pizza_romaneio_seq').transaction(cur => (cur || 0) + 1)
+    .then(res => (res && res.committed) ? res.snapshot.val() : null);
+}
+
 // 10/08: PDF do Romaneio de Entrega — a pedido do Eduardo, pra imprimir na
 // hora do envio e colher a assinatura de quem separou (CPD) e de quem
 // recebeu (unidade). Auto-contido (fonts/pdfStr/addObj próprios), no mesmo
@@ -7343,8 +7359,19 @@ function printRomaneioPdf(romaneio) {
   const dt = new Date(romaneio.data || Date.now());
   const dateStr = dt.toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
   const timeStr = dt.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-  const numero = String(romaneio.data || Date.now()).slice(-6);
+  // 12/08: preferir o número sequencial real (romaneio.numero, gerado por
+  // nextRomaneioNumero() via transação no Firebase) — registros antigos sem
+  // esse campo continuam caindo no fallback de sempre (6 últimos dígitos do
+  // timestamp), pra não quebrar reimpressão de romaneios já emitidos.
+  const numero = (romaneio.numero != null) ? romaneio.numero : String(romaneio.data || Date.now()).slice(-6);
   const itens = romaneio.itens || [];
+  const STATUS_LABEL_PDF = {
+    em_transito: null, // não exibe linha extra — é o estado normal
+    recebido: '✓ RECEBIDO',
+    recebido_divergencia: '⚠ RECEBIDO COM DIVERGÊNCIA',
+    cancelado: '✕ CANCELADO',
+  };
+  const statusLabelPdf = STATUS_LABEL_PDF[romaneio.status] || null;
 
   const W = 595, ML = 40, MR = 40, TW = W - ML - MR;
   const colW = [TW*0.60, TW*0.15, TW*0.25];
@@ -7395,6 +7422,13 @@ function printRomaneioPdf(romaneio) {
     ops.push(`BT /F2 10 Tf ${ML} ${y} Td ${pdfStr('Origem: CPD   →   Destino: ' + romaneio.destino)} Tj ET`);
     y -= 16;
     ops.push(`BT /F2 9 Tf ${ML} ${y} Td ${pdfStr('Emitido por: ' + (romaneio.criado_por || '-'))} Tj ET`);
+    if (statusLabelPdf) {
+      y -= 15;
+      const statusColor = romaneio.status === 'cancelado' ? '0.63 0.23 0.23' : (romaneio.status === 'recebido_divergencia' ? '0.72 0.53 0.04' : '0.1 0.45 0.2');
+      ops.push(`${statusColor} rg`);
+      ops.push(`BT /F1 10 Tf ${ML} ${y} Td ${pdfStr(statusLabelPdf)} Tj ET`);
+      ops.push(`0 0 0 rg`);
+    }
     y -= 10;
     ops.push(`${ML} ${y} m ${W-MR} ${y} l S`);
     y -= 16;
@@ -9069,14 +9103,146 @@ function viewValidadeControl() {
 // assinatura de quem separou (CPD) e de quem recebeu (unidade), e fica
 // registrado num histórico (dados/pizza_romaneios) pra consulta/reimpressão.
 // Só o CPD cria romaneios — ver allowedViews().
-let _romaneioCart = []; // { id, name, unit, qty }
+let _romaneioCart = []; // { id, key, name, unit, qty, sugerido }
 let _romaneioDestino = UNIT_NAMES[0];
+
+// 12/08: estrutura de status do romaneio, restaurada a pedido do Eduardo —
+// ver conversa sobre o fluxo completo (emitido → em trânsito → recebido/
+// recebido com divergência, ou cancelado antes da unidade confirmar).
+const ROMANEIO_STATUS_BADGE = {
+  em_transito:          { label:'🚚 Em trânsito',            cls:'pendente' },
+  recebido:             { label:'✅ Recebido',                cls:'ok' },
+  recebido_divergencia: { label:'⚠️ Recebido c/ divergência', cls:'falta' },
+  cancelado:            { label:'✕ Cancelado',                cls:'falta' },
+};
+function romaneioStatusBadge(status) {
+  return ROMANEIO_STATUS_BADGE[status] || ROMANEIO_STATUS_BADGE.em_transito;
+}
+
+// Calcula o "Sugerido" (mínimo cadastrado − estoque atual da unidade, pro
+// próximo dia de entrega) pra um item do catálogo do CPD numa unidade de
+// destino. É só uma referência visual dentro do Romaneio — nunca trava o
+// campo de quantidade real, porque os mínimos cadastrados ainda estão em
+// calibração com a venda de verdade (conversa de 11-12/08 com o Eduardo).
+// Retorna null quando o item não está cadastrado no catálogo da unidade
+// (não dá pra calcular — mostra "—" na tela).
+function calcSugeridoRomaneio(destino, itemKey) {
+  const uc = getUnitCatalog(destino).catalog;
+  const uItem = uc.find(i => i.key === itemKey);
+  if (!uItem) return null;
+  const estUnit = (unitStock[destino] || {})[uItem.id] || 0;
+  return calcAEnviar(destino, itemKey, estUnit, nextEnviarDay());
+}
+
+// Estorna a baixa de estoque de um romaneio no CPD e marca como cancelado.
+// Mantém o registro no histórico (nunca apaga) — só muda de status. Só faz
+// sentido cancelar um romaneio que ainda está "em trânsito" (a unidade ainda
+// não confirmou recebimento) — ver botão na tabela de histórico.
+function cancelarRomaneio(id, romaneio, onDone) {
+  if (!confirm('Cancelar o romaneio Nº ' + (romaneio.numero != null ? romaneio.numero : id) + '?\n\nO estoque do CPD será estornado (itens devolvidos) e o romaneio ficará marcado como cancelado no histórico.')) return;
+  const itens = romaneio.itens || [];
+  itens.forEach(it => {
+    const novoCpd = (cpd[it.id] || 0) + it.qty;
+    cpd[it.id] = novoCpd;
+    saveItemAtomic(it.id, novoCpd);
+  });
+  db.ref('dados/pizza_romaneios/' + id).update({
+    status: 'cancelado',
+    cancelado_em: Date.now(),
+    cancelado_por: (session && session.name) || '',
+  }).then(() => {
+    toast('✓ Romaneio cancelado — estoque do CPD estornado.');
+    if (typeof onDone === 'function') onDone();
+  }).catch(e => {
+    alert('Erro ao cancelar romaneio: ' + e.message);
+  });
+}
+
+// Relatório de calibração: pra cada item, soma o que o sistema sugeria
+// (mínimo cadastrado) contra o que realmente foi enviado em cada romaneio —
+// o dado que falta pra ajustar os mínimos com a venda real (ver conversa
+// 11-12/08). Só considera romaneios não cancelados.
+function openRelatorioCalibracaoModal() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+  const overlay = el('div', {cls:'modal-overlay'});
+  const box = el('div', {cls:'modal-box', style:'max-width:720px'});
+  const header = el('div', {cls:'modal-header'});
+  header.appendChild(el('div', {cls:'modal-title'}, '📊 Relatório de Calibração — Sugerido × Enviado'));
+  header.appendChild(el('button', {cls:'modal-close', onclick:()=>overlay.remove()}, '×'));
+  box.appendChild(header);
+  const body = el('div', {cls:'modal-body', style:'max-height:70vh'});
+  body.appendChild(el('div', {style:'padding:2px 20px 12px;color:var(--text-3);font-size:12.5px'},
+    '⏳ Carregando últimos romaneios...'));
+  box.appendChild(body);
+  const footer = el('div', {cls:'modal-footer'});
+  footer.appendChild(el('button', {cls:'btn btn-outline', onclick:()=>overlay.remove()}, 'Fechar'));
+  box.appendChild(footer);
+  overlay.appendChild(box);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  db.ref('dados/pizza_romaneios').orderByKey().limitToLast(200).once('value').then(snap => {
+    body.innerHTML = '';
+    const val = snap.val() || {};
+    const list = Object.values(val).filter(r => r.status !== 'cancelado');
+    if (!list.length) {
+      body.appendChild(el('div', {style:'padding:16px 20px;color:var(--text-3);font-size:13px'}, 'Nenhum romaneio ainda pra calcular.'));
+      return;
+    }
+    // Agrega por item.key: soma sugerido, soma enviado, nº de romaneios
+    const agg = {}; // key → { name, unit, somaSugerido, somaEnviado, n, semSugerido }
+    list.forEach(r => (r.itens || []).forEach(it => {
+      if (!agg[it.key]) agg[it.key] = { name: it.name, unit: it.unit, somaSugerido: 0, somaEnviado: 0, n: 0, semSugerido: 0 };
+      const a = agg[it.key];
+      a.somaEnviado += (it.qty || 0);
+      a.n += 1;
+      if (it.sugerido == null) a.semSugerido += 1;
+      else a.somaSugerido += it.sugerido;
+    }));
+    const rows = Object.values(agg).map(a => ({
+      ...a,
+      diff: a.somaEnviado - a.somaSugerido,
+    })).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+    body.appendChild(el('div', {style:'padding:2px 20px 12px;color:var(--text-3);font-size:12.5px'},
+      'Baseado nos últimos ' + list.length + ' romaneios não cancelados. Diferença = Enviado − Sugerido (positivo: mandou mais que o mínimo cadastrado; negativo: mandou menos).'));
+    const table = el('table', {cls:'stock-table'});
+    const thead = el('thead');
+    const trh = el('tr');
+    ['Item','Sugerido (soma)','Enviado (soma)','Diferença',''].forEach(h => trh.appendChild(el('th', h === 'Diferença' ? {style:'text-align:right'} : {}, h)));
+    thead.appendChild(trh);
+    table.appendChild(thead);
+    const tbody = el('tbody');
+    rows.forEach(r => {
+      const tr = el('tr');
+      tr.appendChild(el('td', {}, r.name));
+      tr.appendChild(el('td', {}, r.semSugerido === r.n ? '—' : String(r.somaSugerido) + (r.semSugerido ? ' *' : '')));
+      tr.appendChild(el('td', {}, String(r.somaEnviado) + ' ' + (r.unit||'')));
+      const diffTd = el('td', {style:'text-align:right;font-weight:700;color:' + (r.diff > 0 ? '#1A5229' : (r.diff < 0 ? '#A03A3A' : 'var(--text-3)'))},
+        (r.diff > 0 ? '+' : '') + String(Math.round(r.diff * 100) / 100));
+      tr.appendChild(diffTd);
+      tr.appendChild(el('td', {style:'color:var(--text-3);font-size:11px'}, r.n + ' romaneio(s)'));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    body.appendChild(table);
+    body.appendChild(el('div', {style:'padding:10px 20px;color:var(--text-3);font-size:11px'},
+      '* item não estava cadastrado no catálogo da unidade de destino em pelo menos um desses romaneios — sugerido daquele envio ficou de fora da soma.'));
+  }).catch(e => {
+    body.innerHTML = '';
+    body.appendChild(el('div', {style:'padding:16px 20px;color:var(--danger,#A03A3A);font-size:13px'}, 'Erro ao carregar: ' + e.message));
+  });
+}
 
 function viewRomaneio() {
   const frag = document.createDocumentFragment();
 
   const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px'});
   hdrWrap.appendChild(el('h2', {cls:'table-title'}, 'Romaneio de Entrega'));
+  const relBtn = el('button', {cls:'btn btn-outline btn-sm', style:'margin-left:auto;font-size:12px'}, '📊 Relatório de Calibração');
+  relBtn.title = 'Compara, item a item, o que o sistema sugeria (mínimo cadastrado) com o que realmente foi enviado em cada romaneio';
+  relBtn.addEventListener('click', openRelatorioCalibracaoModal);
+  hdrWrap.appendChild(relBtn);
   frag.appendChild(hdrWrap);
 
   const formCard = el('div', {style:'background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius,14px);padding:18px;margin-bottom:24px;display:flex;flex-direction:column;gap:14px'});
@@ -9091,7 +9257,18 @@ function viewRomaneio() {
     destSel.appendChild(opt);
   });
   destSel.value = _romaneioDestino;
-  destSel.addEventListener('change', () => { _romaneioDestino = destSel.value; });
+  destSel.addEventListener('change', () => {
+    _romaneioDestino = destSel.value;
+    updateSugeridoHint();
+    // 12/08: o "Sugerido" que cada item do carrinho mostra é calculado pra
+    // unidade de destino — se trocar o destino no meio da montagem, os
+    // valores de referência ficariam de outra unidade sem avisar ninguém.
+    // Recalcula todos (a Quantidade Real digitada pelo CPD não muda).
+    if (_romaneioCart.length) {
+      _romaneioCart.forEach(c => { c.sugerido = calcSugeridoRomaneio(_romaneioDestino, c.key); });
+      renderCartTable();
+    }
+  });
   destRow.appendChild(destSel);
   formCard.appendChild(destRow);
 
@@ -9106,6 +9283,7 @@ function viewRomaneio() {
     const q = itemInp.value.toLowerCase();
     itemDrop.innerHTML = '';
     selectedRomItem = null;
+    updateSugeridoHint();
     if (q.length < 1) { itemDrop.style.display = 'none'; return; }
     const matches = catalog.filter(i => i.name.toLowerCase().includes(q)).slice(0, 20);
     if (!matches.length) { itemDrop.style.display = 'none'; return; }
@@ -9118,6 +9296,7 @@ function viewRomaneio() {
         selectedRomItem = i;
         itemInp.value = i.name;
         itemDrop.style.display = 'none';
+        updateSugeridoHint();
         qtyInp.focus();
       });
       opt.addEventListener('mouseover', () => opt.style.background = 'var(--surface-2)');
@@ -9130,10 +9309,22 @@ function viewRomaneio() {
   itemWrap.appendChild(itemInp);
   itemWrap.appendChild(itemDrop);
 
-  const qtyWrap = el('div', {style:'width:110px'});
-  qtyWrap.appendChild(el('div', {style:'font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px'}, 'Qtd.'));
+  const qtyWrap = el('div', {style:'width:130px'});
+  qtyWrap.appendChild(el('div', {style:'font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px'}, 'Qtd. real a enviar'));
   const qtyInp = el('input', {type:'number', cls:'confirm-name-input', placeholder:'0', min:'0.01', step:'0.01', style:'width:100%'});
   qtyWrap.appendChild(qtyInp);
+  // 12/08: mostra o mínimo cadastrado como referência (não trava o campo) —
+  // ver calcSugeridoRomaneio(). A pessoa que separa continua decidindo a
+  // quantidade real com base no que sabe da demanda.
+  const sugeridoHint = el('div', {style:'font-size:11px;color:var(--text-3);margin-top:4px;min-height:14px'});
+  qtyWrap.appendChild(sugeridoHint);
+  function updateSugeridoHint() {
+    if (!selectedRomItem) { sugeridoHint.textContent = ''; return; }
+    const sug = calcSugeridoRomaneio(_romaneioDestino, selectedRomItem.key);
+    sugeridoHint.textContent = sug == null
+      ? 'Sugerido: — (item não cadastrado no catálogo de ' + _romaneioDestino + ')'
+      : 'Sugerido pelo mínimo cadastrado: ' + sug;
+  }
 
   const addBtn = el('button', {cls:'btn btn-sm', style:'background:var(--accent,#1A5229);color:#fff'}, '+ Adicionar');
   const romErrEl = el('div', {style:'font-size:12px;color:var(--danger,#A03A3A);display:none'});
@@ -9143,10 +9334,12 @@ function viewRomaneio() {
     if (!selectedRomItem) { romErrEl.textContent = 'Selecione um item do catálogo.'; romErrEl.style.display = 'block'; return; }
     const qty = parseFloat((qtyInp.value || '').replace(',', '.'));
     if (!qty || qty <= 0) { romErrEl.textContent = 'Informe uma quantidade válida.'; romErrEl.style.display = 'block'; return; }
+    const sugerido = calcSugeridoRomaneio(_romaneioDestino, selectedRomItem.key);
     const existing = _romaneioCart.find(c => c.id === selectedRomItem.id);
     if (existing) existing.qty += qty;
-    else _romaneioCart.push({ id: selectedRomItem.id, key: selectedRomItem.key, name: selectedRomItem.name, unit: selectedRomItem.unit, qty });
+    else _romaneioCart.push({ id: selectedRomItem.id, key: selectedRomItem.key, name: selectedRomItem.name, unit: selectedRomItem.unit, qty, sugerido });
     itemInp.value = ''; qtyInp.value = ''; selectedRomItem = null;
+    updateSugeridoHint();
     itemInp.focus();
     renderCartTable();
   }
@@ -9174,7 +9367,8 @@ function viewRomaneio() {
     const trh = el('tr');
     trh.appendChild(el('th', {}, 'Item'));
     trh.appendChild(el('th', {}, 'Un.'));
-    trh.appendChild(el('th', {style:'text-align:right'}, 'Qtd.'));
+    trh.appendChild(el('th', {style:'text-align:right'}, 'Sugerido'));
+    trh.appendChild(el('th', {style:'text-align:right'}, 'Qtd. real'));
     trh.appendChild(el('th', {}, ''));
     thead.appendChild(trh);
     table.appendChild(thead);
@@ -9183,6 +9377,9 @@ function viewRomaneio() {
       const tr = el('tr');
       tr.appendChild(el('td', {}, c.name));
       tr.appendChild(el('td', {}, c.unit));
+      // "Sugerido" é só referência (mínimo cadastrado) — nunca editável aqui,
+      // quem decide a quantidade real é sempre o CPD.
+      tr.appendChild(el('td', {style:'text-align:right;color:var(--text-3);font-size:12px'}, c.sugerido == null ? '—' : String(c.sugerido)));
       const qtyTd = el('td', {style:'text-align:right'});
       const qEditInp = el('input', {type:'number', min:'0.01', step:'0.01', style:'width:70px;text-align:right', value:String(c.qty)});
       qEditInp.addEventListener('change', () => {
@@ -9229,40 +9426,57 @@ function viewRomaneio() {
       genBtn.textContent = 'Gerando...';
 
       const ts = Date.now();
-      const romaneio = {
-        data: ts,
-        destino,
-        destino_slug: unitSlug(destino),
-        criado_por: (session && session.name) || '',
-        observacoes: obsInp.value || '',
-        itens: _romaneioCart.map(c => ({ id: c.id, key: c.key, name: c.name, unit: c.unit, qty: c.qty })),
-      };
+      // 12/08: numeração sequencial real (nextRomaneioNumero(), transação no
+      // Firebase) — se por algum motivo a transação falhar (ex.: offline),
+      // cai pro fallback antigo (6 últimos dígitos do timestamp) em vez de
+      // travar o envio; printRomaneioPdf já sabe lidar com os dois casos.
+      nextRomaneioNumero().then(numero => {
+        const romaneio = {
+          numero: numero != null ? numero : null,
+          data: ts,
+          destino,
+          destino_slug: unitSlug(destino),
+          criado_por: (session && session.name) || '',
+          observacoes: obsInp.value || '',
+          status: 'em_transito',
+          // Cada item guarda os dois números lado a lado: sugerido (o que o
+          // mínimo cadastrado apontava) e qty (o que o CPD decidiu enviar de
+          // verdade). É esse par que alimenta o Relatório de Calibração.
+          itens: _romaneioCart.map(c => ({ id: c.id, key: c.key, name: c.name, unit: c.unit, qty: c.qty, sugerido: c.sugerido == null ? null : c.sugerido })),
+        };
 
-      // 10/08: por enquanto o romaneio só dá baixa no estoque do CPD — a
-      // soma automática no estoque da unidade de destino foi retirada a
-      // pedido do Eduardo (ele quer deixar esse lado mais robusto/com mais
-      // controle antes de automatizar). A unidade continua registrando o
-      // recebimento do jeito que já faz hoje (Contagem das Unidades).
-      romaneio.itens.forEach(it => {
-        const novoCpd = Math.max(0, (cpd[it.id] || 0) - it.qty);
-        cpd[it.id] = novoCpd;
-        saveItemAtomic(it.id, novoCpd);
-      });
-
-      // Registrar no histórico
-      db.ref('dados/pizza_romaneios/' + ts).set(romaneio)
-        .then(() => {
-          toast('✓ Romaneio gerado e estoque do CPD atualizado!');
-          printRomaneioPdf(romaneio);
-          _romaneioCart = [];
-          if (currentView === 'romaneio') render();
-        })
-        .catch(e => {
-          romErrEl.textContent = 'Erro ao salvar romaneio: ' + e.message;
-          romErrEl.style.display = 'block';
-          genBtn.disabled = false;
-          genBtn.textContent = '📄 Confirmar Envio e Gerar Romaneio';
+        // 10/08: por enquanto o romaneio só dá baixa no estoque do CPD — a
+        // soma automática no estoque da unidade de destino foi retirada a
+        // pedido do Eduardo (ele quer deixar esse lado mais robusto/com mais
+        // controle antes de automatizar). A unidade confirma o recebimento
+        // na tela "Recebimentos" (ver viewRecebimentos()).
+        romaneio.itens.forEach(it => {
+          const novoCpd = Math.max(0, (cpd[it.id] || 0) - it.qty);
+          cpd[it.id] = novoCpd;
+          saveItemAtomic(it.id, novoCpd);
         });
+
+        // Registrar no histórico
+        db.ref('dados/pizza_romaneios/' + ts).set(romaneio)
+          .then(() => {
+            toast('✓ Romaneio Nº ' + (romaneio.numero != null ? romaneio.numero : '—') + ' gerado e estoque do CPD atualizado!');
+            printRomaneioPdf(romaneio);
+            // Avisa a unidade de destino em tempo real (mesmo mecanismo de
+            // notificação push já usado no resto do sistema).
+            db.ref('notificacoes/unidades/' + encodeURIComponent(destino) + '/' + Date.now()).set({
+              titulo: '🚚 Novo romaneio a caminho',
+              corpo: 'Romaneio Nº ' + (romaneio.numero != null ? romaneio.numero : '—') + ' do CPD, ' + romaneio.itens.length + ' item(ns). Confirme o recebimento assim que chegar.',
+            }).catch(() => {});
+            _romaneioCart = [];
+            if (currentView === 'romaneio') render();
+          })
+          .catch(e => {
+            romErrEl.textContent = 'Erro ao salvar romaneio: ' + e.message;
+            romErrEl.style.display = 'block';
+            genBtn.disabled = false;
+            genBtn.textContent = '📄 Confirmar Envio e Gerar Romaneio';
+          });
+      });
     };
 
     // Aviso (não bloqueia): item enviado além do estoque atual do CPD —
@@ -9280,46 +9494,256 @@ function viewRomaneio() {
 
   // ── Histórico ──────────────────────────────────────────────────────────
   const histWrap = el('div', {});
-  histWrap.appendChild(el('h3', {style:'font-size:14px;font-weight:700;color:var(--text-2);margin-bottom:10px'}, 'Últimos Romaneios'));
+  const histHdrRow = el('div', {style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px'});
+  histHdrRow.appendChild(el('h3', {style:'font-size:14px;font-weight:700;color:var(--text-2);margin:0'}, 'Últimos Romaneios'));
+  // 12/08: filtro por unidade — o histórico misturava todos os destinos numa
+  // lista só, dificultava auditar/conferir o que uma unidade específica
+  // recebeu.
+  const histFiltroSel = el('select', {cls:'confirm-name-input', style:'font-size:12px;padding:5px 8px;width:auto'});
+  histFiltroSel.appendChild(el('option', {value:''}, 'Todas as unidades'));
+  UNIT_NAMES.forEach(u => histFiltroSel.appendChild(el('option', {value:u}, u)));
+  histHdrRow.appendChild(histFiltroSel);
+  histWrap.appendChild(histHdrRow);
   const histBody = el('div', {});
   histBody.appendChild(el('div', {style:'color:var(--text-3);font-size:13px'}, '⏳ Carregando...'));
   histWrap.appendChild(histBody);
   frag.appendChild(histWrap);
 
-  db.ref('dados/pizza_romaneios').orderByKey().limitToLast(20).once('value').then(snap => {
+  let _histList = [];
+  function renderHistTable() {
     histBody.innerHTML = '';
-    const val = snap.val() || {};
-    const list = Object.entries(val).map(([id, d]) => ({ _id: id, ...d })).sort((a,b) => Number(b._id) - Number(a._id));
+    const filtro = histFiltroSel.value;
+    const list = filtro ? _histList.filter(r => r.destino === filtro) : _histList;
     if (!list.length) {
-      histBody.appendChild(el('div', {style:'color:var(--text-3);font-size:13px'}, 'Nenhum romaneio emitido ainda.'));
+      histBody.appendChild(el('div', {style:'color:var(--text-3);font-size:13px'}, 'Nenhum romaneio' + (filtro ? ' para ' + filtro : ' emitido ainda') + '.'));
       return;
     }
     const table = el('table', {cls:'stock-table'});
     const thead = el('thead');
     const trh = el('tr');
-    ['Data','Destino','Itens','Emitido por',''].forEach(h => trh.appendChild(el('th', {}, h)));
+    ['Nº','Data','Destino','Itens','Emitido por','Status',''].forEach(h => trh.appendChild(el('th', {}, h)));
     thead.appendChild(trh);
     table.appendChild(thead);
     const tbody = el('tbody');
     list.forEach(r => {
       const tr = el('tr');
       const rdt = new Date(Number(r._id));
+      tr.appendChild(el('td', {}, r.numero != null ? String(r.numero) : '—'));
       tr.appendChild(el('td', {}, rdt.toLocaleDateString('pt-BR') + ' ' + rdt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})));
       tr.appendChild(el('td', {}, r.destino || '-'));
       tr.appendChild(el('td', {}, String((r.itens||[]).length) + ' item(ns)'));
       tr.appendChild(el('td', {}, r.criado_por || '-'));
-      const actTd = el('td', {});
+      const statusTd = el('td', {});
+      const st = romaneioStatusBadge(r.status || 'em_transito');
+      const badge = el('span', {cls:'envios-badge ' + st.cls}, st.label);
+      if (r.status === 'recebido_divergencia' && r.divergencia_obs) badge.title = r.divergencia_obs;
+      statusTd.appendChild(badge);
+      tr.appendChild(statusTd);
+      const actTd = el('td', {style:'display:flex;gap:6px;flex-wrap:wrap'});
       const reBtn = el('button', {cls:'btn btn-outline btn-sm'}, 'Reimprimir PDF');
       reBtn.addEventListener('click', () => printRomaneioPdf(r));
       actTd.appendChild(reBtn);
+      // Só cabe cancelar romaneios ainda "em trânsito" — depois que a
+      // unidade confirma (recebido/com divergência), o histórico já reflete
+      // o que de fato aconteceu, e um cancelamento post-facto bagunçaria o
+      // dado de calibração.
+      if ((r.status || 'em_transito') === 'em_transito') {
+        const cxBtn = el('button', {cls:'btn btn-outline btn-sm', style:'color:var(--danger,#A03A3A);border-color:var(--danger,#A03A3A)'}, 'Cancelar');
+        cxBtn.addEventListener('click', () => cancelarRomaneio(r._id, r, () => { if (currentView === 'romaneio') render(); }));
+        actTd.appendChild(cxBtn);
+      }
       tr.appendChild(actTd);
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
     histBody.appendChild(table);
+  }
+  histFiltroSel.addEventListener('change', renderHistTable);
+
+  db.ref('dados/pizza_romaneios').orderByKey().limitToLast(50).once('value').then(snap => {
+    const val = snap.val() || {};
+    _histList = Object.entries(val).map(([id, d]) => ({ _id: id, ...d })).sort((a,b) => Number(b._id) - Number(a._id));
+    renderHistTable();
   }).catch(e => {
     histBody.innerHTML = '';
     histBody.appendChild(el('div', {style:'color:var(--danger,#A03A3A);font-size:13px'}, 'Erro ao carregar histórico: ' + e.message));
+  });
+
+  return frag;
+}
+
+// ═══ RECEBIMENTOS (confirmação de romaneio pela unidade) ════════════════════
+// 12/08: fecha o ciclo do Romaneio — antes ele nascia e morria do lado do
+// CPD (emitido → baixa no estoque → PDF), sem nenhum rastro de que a unidade
+// realmente recebeu o que estava no papel. Aqui a unidade confirma item por
+// item (ou marca divergência); o CPD só acompanha em modo leitura.
+function viewRecebimentos() {
+  const frag = document.createDocumentFragment();
+  const isCP = isCPD();
+  const meuNome = session ? session.unit : null;
+
+  const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px'});
+  hdrWrap.appendChild(el('h2', {cls:'table-title'}, 'Recebimentos'));
+  frag.appendChild(hdrWrap);
+  frag.appendChild(el('p', {style:'color:var(--text-3);font-size:13px;margin:0 0 18px'},
+    isCP ? 'Acompanhamento de todos os romaneios em trânsito e já resolvidos, por unidade.'
+         : 'Confira os itens que chegaram do CPD e confirme o recebimento — ou avise se algo veio diferente do romaneio.'));
+
+  const pendWrap = el('div', {});
+  pendWrap.appendChild(el('div', {style:'color:var(--text-3);font-size:13px'}, '⏳ Carregando...'));
+  frag.appendChild(pendWrap);
+
+  const histWrap = el('div', {style:'margin-top:28px'});
+  frag.appendChild(histWrap);
+
+  function buildRomaneioCard(r, readOnly) {
+    const card = el('div', {style:'background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius,14px);padding:16px;margin-bottom:14px'});
+    const top = el('div', {style:'display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px'});
+    const rdt = new Date(Number(r._id));
+    const info = el('div', {});
+    info.appendChild(el('div', {style:'font-weight:700;font-size:13.5px'},
+      'Romaneio Nº ' + (r.numero != null ? r.numero : '—') + (readOnly ? ' → ' + r.destino : '')));
+    info.appendChild(el('div', {style:'font-size:11.5px;color:var(--text-3)'},
+      rdt.toLocaleDateString('pt-BR') + ' ' + rdt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) + ' · Emitido por ' + (r.criado_por || '-')));
+    top.appendChild(info);
+    const pdfBtn = el('button', {cls:'btn btn-outline btn-sm'}, 'Ver PDF');
+    pdfBtn.addEventListener('click', () => printRomaneioPdf(r));
+    top.appendChild(pdfBtn);
+    card.appendChild(top);
+
+    const itens = r.itens || [];
+    const table = el('table', {cls:'stock-table', style:'margin-bottom:10px'});
+    const thead = el('thead');
+    const trh = el('tr');
+    trh.appendChild(el('th', {}, 'Item'));
+    trh.appendChild(el('th', {}, 'Un.'));
+    trh.appendChild(el('th', {style:'text-align:right'}, 'Qtd. enviada'));
+    if (!readOnly) trh.appendChild(el('th', {style:'text-align:center'}, 'Confere'));
+    thead.appendChild(trh);
+    table.appendChild(thead);
+    const tbody = el('tbody');
+    const checks = []; // { id, key, name, chk }
+    itens.forEach(it => {
+      const tr = el('tr');
+      tr.appendChild(el('td', {}, it.name));
+      tr.appendChild(el('td', {}, it.unit || ''));
+      tr.appendChild(el('td', {style:'text-align:right;font-weight:700'}, String(it.qty)));
+      if (!readOnly) {
+        const chkTd = el('td', {style:'text-align:center'});
+        const chk = el('input', {type:'checkbox', checked:'checked', style:'width:16px;height:16px;cursor:pointer'});
+        chkTd.appendChild(chk);
+        tr.appendChild(chkTd);
+        checks.push({ id: it.id, key: it.key, name: it.name, chk });
+      }
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    card.appendChild(table);
+
+    if (readOnly) return card; // CPD só acompanha — quem confirma é sempre a unidade
+
+    const obsWrap = el('div', {style:'margin-bottom:10px'});
+    obsWrap.appendChild(el('div', {style:'font-size:11.5px;color:var(--text-2);margin-bottom:3px'}, 'Observação (opcional — obrigatória se algum item não conferir)'));
+    const obsInp = el('textarea', {rows:'2', style:'width:100%;resize:vertical;font-family:inherit;font-size:13px', placeholder:'Ex.: faltaram 2 caixas de muçarela, item X veio trocado...'});
+    obsWrap.appendChild(obsInp);
+    card.appendChild(obsWrap);
+
+    const errEl = el('div', {style:'font-size:12px;color:var(--danger,#A03A3A);display:none;margin-bottom:8px'});
+    card.appendChild(errEl);
+
+    const btnRow = el('div', {style:'display:flex;justify-content:flex-end;gap:8px'});
+    const confirmBtn = el('button', {cls:'btn', style:'background:var(--accent,#1A5229);color:#fff;font-weight:700'}, '✓ Confirmar Recebimento');
+    confirmBtn.addEventListener('click', () => {
+      errEl.style.display = 'none';
+      const divergentes = checks.filter(c => !c.chk.checked);
+      if (divergentes.length && !obsInp.value.trim()) {
+        errEl.textContent = 'Descreva a divergência na observação antes de confirmar.';
+        errEl.style.display = 'block';
+        return;
+      }
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Confirmando...';
+      const itensConfirmados = itens.map(it => {
+        const c = checks.find(x => x.id === it.id);
+        return Object.assign({}, it, { confirmado: c ? c.chk.checked : true });
+      });
+      const status = divergentes.length ? 'recebido_divergencia' : 'recebido';
+      db.ref('dados/pizza_romaneios/' + r._id).update({
+        status,
+        itens: itensConfirmados,
+        divergencia_obs: obsInp.value.trim() || null,
+        recebido_em: Date.now(),
+        recebido_por: (session && session.name) || '',
+      }).then(() => {
+        toast(status === 'recebido' ? '✓ Recebimento confirmado!' : '⚠️ Divergência registrada.');
+        if (currentView === 'recebimentos') render();
+      }).catch(e => {
+        errEl.textContent = 'Erro ao confirmar: ' + e.message;
+        errEl.style.display = 'block';
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '✓ Confirmar Recebimento';
+      });
+    });
+    btnRow.appendChild(confirmBtn);
+    card.appendChild(btnRow);
+
+    return card;
+  }
+
+  db.ref('dados/pizza_romaneios').orderByKey().limitToLast(80).once('value').then(snap => {
+    pendWrap.innerHTML = '';
+    histWrap.innerHTML = '';
+    const val = snap.val() || {};
+    let list = Object.entries(val).map(([id, d]) => ({ _id: id, ...d })).sort((a,b) => Number(b._id) - Number(a._id));
+    if (!isCP) list = list.filter(r => r.destino === meuNome);
+
+    const pendentes  = list.filter(r => (r.status || 'em_transito') === 'em_transito');
+    const resolvidos = list.filter(r => (r.status || 'em_transito') !== 'em_transito').slice(0, 20);
+
+    // ── Pendentes ──────────────────────────────────────────────────────
+    pendWrap.appendChild(el('h3', {style:'font-size:14px;font-weight:700;color:var(--text-2);margin-bottom:10px'},
+      '🚚 Aguardando confirmação (' + pendentes.length + ')'));
+    if (!pendentes.length) {
+      pendWrap.appendChild(el('div', {cls:'table-wrap', style:'padding:20px;text-align:center;color:var(--success);font-weight:600;font-size:13px'},
+        '✅ Nenhum romaneio aguardando confirmação' + (!isCP ? ' pra ' + meuNome : '') + '.'));
+    } else {
+      pendentes.forEach(r => pendWrap.appendChild(buildRomaneioCard(r, isCP)));
+    }
+
+    // ── Resolvidos recentes ───────────────────────────────────────────
+    histWrap.appendChild(el('h3', {style:'font-size:14px;font-weight:700;color:var(--text-2);margin-bottom:10px'}, 'Resolvidos recentemente'));
+    if (!resolvidos.length) {
+      histWrap.appendChild(el('div', {style:'color:var(--text-3);font-size:13px'}, 'Nada por aqui ainda.'));
+    } else {
+      const table = el('table', {cls:'stock-table'});
+      const thead = el('thead');
+      const trh = el('tr');
+      (isCP ? ['Nº','Data','Destino','Itens','Status','Confirmado por'] : ['Nº','Data','Itens','Status','Confirmado por']).forEach(h => trh.appendChild(el('th', {}, h)));
+      thead.appendChild(trh);
+      table.appendChild(thead);
+      const tbody = el('tbody');
+      resolvidos.forEach(r => {
+        const tr = el('tr');
+        const rdt = new Date(Number(r._id));
+        tr.appendChild(el('td', {}, r.numero != null ? String(r.numero) : '—'));
+        tr.appendChild(el('td', {}, rdt.toLocaleDateString('pt-BR')));
+        if (isCP) tr.appendChild(el('td', {}, r.destino || '-'));
+        tr.appendChild(el('td', {}, String((r.itens||[]).length) + ' item(ns)'));
+        const st = romaneioStatusBadge(r.status);
+        const stTd = el('td', {});
+        const badge = el('span', {cls:'envios-badge ' + st.cls}, st.label);
+        if (r.divergencia_obs) badge.title = r.divergencia_obs;
+        stTd.appendChild(badge);
+        tr.appendChild(stTd);
+        tr.appendChild(el('td', {}, r.recebido_por || '-'));
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      histWrap.appendChild(table);
+    }
+  }).catch(e => {
+    pendWrap.innerHTML = '';
+    pendWrap.appendChild(el('div', {style:'color:var(--danger,#A03A3A);font-size:13px'}, 'Erro ao carregar: ' + e.message));
   });
 
   return frag;
@@ -10698,6 +11122,7 @@ function render() {
   else if (currentView === 'producao') node = viewQuadroProducao();
   else if (currentView === 'validade') node = viewValidadeControl();
   else if (currentView === 'romaneio') node = viewRomaneio();
+  else if (currentView === 'recebimentos') node = viewRecebimentos();
   if (node) contentEl.appendChild(node);
 
   // Restaurar scroll após render (evita que a tela "pule" para o topo)
