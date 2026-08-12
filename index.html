@@ -9234,12 +9234,156 @@ function openRelatorioCalibracaoModal() {
   });
 }
 
+// Popup de automação (12/08, a pedido do Eduardo): em vez de buscar item por
+// item, escolhe a unidade de destino e o sistema já traz a lista de tudo que
+// precisa ser enviado pra ela (mesma lógica do Sugerido — itens do catálogo
+// com sugerido > 0 pro próximo dia de envio), agrupada por categoria igual às
+// demais tabelas do sistema. A automação é só na MONTAGEM da lista — a
+// quantidade real continua 100% manual, item a item, campo em branco pro
+// estoquista preencher (o Sugerido nunca preenche nem trava nada, igual no
+// fluxo manual). Ao confirmar, os itens preenchidos entram no carrinho do
+// Romaneio pra revisão final antes de gerar (mesmo botão de sempre).
+function openAutomacaoRomaneioModal() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+  const overlay = el('div', {cls:'modal-overlay'});
+  const box = el('div', {cls:'modal-box', style:'max-width:820px'});
+  const header = el('div', {cls:'modal-header'});
+  header.appendChild(el('div', {cls:'modal-title'}, '🤖 Automação de Envio'));
+  header.appendChild(el('button', {cls:'modal-close', onclick:()=>overlay.remove()}, '×'));
+  box.appendChild(header);
+
+  const body = el('div', {cls:'modal-body', style:'max-height:70vh'});
+  box.appendChild(body);
+
+  const destWrap = el('div', {style:'padding:14px 20px 6px'});
+  destWrap.appendChild(el('div', {style:'font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:4px'}, 'Unidade de destino'));
+  const destSel = el('select', {cls:'confirm-name-input', style:'width:100%;max-width:280px'});
+  UNIT_NAMES.forEach(u => {
+    const opt = el('option', {value:u}, u);
+    if (u === _romaneioDestino) opt.setAttribute('selected','selected');
+    destSel.appendChild(opt);
+  });
+  destSel.value = _romaneioDestino;
+  destWrap.appendChild(destSel);
+  body.appendChild(destWrap);
+
+  const listWrap = el('div', {style:'padding:6px 20px 4px'});
+  body.appendChild(listWrap);
+
+  // qty digitada em cada linha (chave = item.id do catálogo do CPD)
+  const qtyByItemId = {};
+
+  function buildCandidateList(destino) {
+    // Itens do catálogo do CPD que têm Sugerido > 0 pra essa unidade —
+    // mesma checagem que já existe no formulário manual (calcSugeridoRomaneio).
+    return catalog
+      .map(i => ({ item: i, sugerido: calcSugeridoRomaneio(destino, i.key) }))
+      .filter(x => x.sugerido != null && x.sugerido > 0);
+  }
+
+  function renderList() {
+    listWrap.innerHTML = '';
+    const destino = destSel.value;
+    const candidatos = buildCandidateList(destino);
+    if (!candidatos.length) {
+      listWrap.appendChild(el('div', {style:'padding:16px 0;color:var(--text-3);font-size:13px'},
+        'Nenhum item com "a enviar" pendente pra ' + destino + ' no momento (todos os itens do catálogo estão dentro do mínimo cadastrado).'));
+      return;
+    }
+    const allCatsPresent = [...new Set(candidatos.map(x => x.item.category))];
+    const catOrder = CATEGORIES.filter(c => allCatsPresent.includes(c));
+    const extraCats = allCatsPresent.filter(c => !catOrder.includes(c));
+    const usedCats = [...catOrder, ...extraCats];
+
+    listWrap.appendChild(el('div', {style:'font-size:11.5px;color:var(--text-3);margin-bottom:10px'},
+      candidatos.length + ' item(ns) sugerido(s) pra ' + destino + '. A coluna "Sugerido" é só referência — preencha a quantidade real que vai ser enviada em cada linha (pode deixar em branco os que não vão nessa entrega).'));
+
+    usedCats.forEach(cat => {
+      const catItems = candidatos.filter(x => x.item.category === cat);
+      if (!catItems.length) return;
+      listWrap.appendChild(el('div', {
+        style:'background:var(--accent,#1A5229);color:#fff;font-weight:700;font-size:12px;padding:7px 10px;border-radius:6px;margin:10px 0 6px'
+      }, cat));
+      const table = el('table', {cls:'stock-table', style:'margin-bottom:2px'});
+      const thead = el('thead');
+      const trh = el('tr');
+      ['Item','Un','Sugerido','Qtd a Enviar'].forEach(h => trh.appendChild(el('th', h === 'Qtd a Enviar' || h === 'Sugerido' ? {style:'text-align:center'} : {}, h)));
+      thead.appendChild(trh);
+      table.appendChild(thead);
+      const tbody = el('tbody');
+      catItems.forEach(x => {
+        const i = x.item;
+        const tr = el('tr');
+        tr.appendChild(el('td', {}, i.name));
+        tr.appendChild(el('td', {style:'text-align:center;color:var(--text-3)'}, i.unit || ''));
+        tr.appendChild(el('td', {style:'text-align:center;color:var(--text-3)'}, String(x.sugerido)));
+        const qtyTd = el('td', {style:'text-align:center'});
+        const qtyInp = el('input', {type:'number', min:'0', step:'0.01', placeholder:'0', style:'width:90px;text-align:center;padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:13px'});
+        if (qtyByItemId[i.id] != null) qtyInp.value = qtyByItemId[i.id];
+        qtyInp.addEventListener('input', () => {
+          const v = parseFloat((qtyInp.value || '').replace(',', '.'));
+          if (v && v > 0) qtyByItemId[i.id] = v; else delete qtyByItemId[i.id];
+        });
+        qtyTd.appendChild(qtyInp);
+        tr.appendChild(qtyTd);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      listWrap.appendChild(table);
+    });
+  }
+
+  destSel.addEventListener('change', () => {
+    _romaneioDestino = destSel.value;
+    // troca de unidade dentro do popup começa a lista de novo (sugeridos são
+    // por unidade — misturar quantidades de unidades diferentes confundiria)
+    Object.keys(qtyByItemId).forEach(k => delete qtyByItemId[k]);
+    renderList();
+  });
+  renderList();
+
+  const footer = el('div', {cls:'modal-footer'});
+  const errEl = el('div', {style:'font-size:12px;color:var(--danger,#A03A3A);margin-right:auto;align-self:center'});
+  footer.appendChild(errEl);
+  footer.appendChild(el('button', {cls:'btn btn-outline', onclick:()=>overlay.remove()}, 'Cancelar'));
+  const confirmBtn = el('button', {cls:'btn', style:'background:var(--accent,#1A5229);color:#fff'}, '✓ Confirmar Quantidades');
+  confirmBtn.addEventListener('click', () => {
+    const ids = Object.keys(qtyByItemId);
+    if (!ids.length) { errEl.textContent = 'Preencha ao menos uma quantidade.'; return; }
+    const destino = destSel.value;
+    ids.forEach(idStr => {
+      const id = /^\d+$/.test(idStr) ? Number(idStr) : idStr;
+      const i = catalog.find(c => String(c.id) === String(idStr));
+      if (!i) return;
+      const qty = qtyByItemId[idStr];
+      const sugerido = calcSugeridoRomaneio(destino, i.key);
+      const existing = _romaneioCart.find(c => String(c.id) === String(i.id));
+      if (existing) existing.qty += qty;
+      else _romaneioCart.push({ id: i.id, key: i.key, name: i.name, unit: i.unit, qty, sugerido });
+    });
+    _romaneioDestino = destino;
+    overlay.remove();
+    toast('✓ ' + ids.length + ' item(ns) adicionado(s) ao carrinho — revise antes de gerar o romaneio.');
+    render();
+  });
+  footer.appendChild(confirmBtn);
+  box.appendChild(footer);
+
+  overlay.appendChild(box);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function viewRomaneio() {
   const frag = document.createDocumentFragment();
 
   const hdrWrap = el('div', {style:'display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px'});
   hdrWrap.appendChild(el('h2', {cls:'table-title'}, 'Romaneio de Entrega'));
-  const relBtn = el('button', {cls:'btn btn-outline btn-sm', style:'margin-left:auto;font-size:12px'}, '📊 Relatório de Calibração');
+  const autoBtn = el('button', {cls:'btn btn-outline btn-sm', style:'margin-left:auto;font-size:12px'}, '🤖 Automação de Envio');
+  autoBtn.title = 'Escolhe a unidade e já traz a lista de itens que precisam ser enviados, agrupada por categoria — você só digita as quantidades reais';
+  autoBtn.addEventListener('click', openAutomacaoRomaneioModal);
+  hdrWrap.appendChild(autoBtn);
+  const relBtn = el('button', {cls:'btn btn-outline btn-sm', style:'font-size:12px'}, '📊 Relatório de Calibração');
   relBtn.title = 'Compara, item a item, o que o sistema sugeria (mínimo cadastrado) com o que realmente foi enviado em cada romaneio';
   relBtn.addEventListener('click', openRelatorioCalibracaoModal);
   hdrWrap.appendChild(relBtn);
@@ -9596,13 +9740,23 @@ function viewRecebimentos() {
   const histWrap = el('div', {style:'margin-top:28px'});
   frag.appendChild(histWrap);
 
-  function buildRomaneioCard(r, readOnly) {
+  // 12/08: a pedido do Eduardo — "posso dar o recebido pelo login CPD?".
+  // Antes só a unidade confirmava (CPD ficava em modo leitura); agora o CPD
+  // também pode confirmar em nome da unidade — útil quando quem recebeu
+  // avisou por telefone/whatsapp em vez de mexer no sistema, por exemplo.
+  // Fica registrado com confirmado_via:'cpd' pra não se misturar, no
+  // histórico, com uma confirmação de verdade feita pela própria unidade —
+  // ver badge "(via CPD)" na tabela de resolvidos.
+  // mode: 'unit' (unidade confirma, com checklist item a item) | 'cpd'
+  // (CPD confirma em nome da unidade, sem checklist — CPD não está com o
+  // pedido na mão pra conferir item por item).
+  function buildRomaneioCard(r, mode) {
     const card = el('div', {style:'background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius,14px);padding:16px;margin-bottom:14px'});
     const top = el('div', {style:'display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px'});
     const rdt = new Date(Number(r._id));
     const info = el('div', {});
     info.appendChild(el('div', {style:'font-weight:700;font-size:13.5px'},
-      'Romaneio Nº ' + (r.numero != null ? r.numero : '—') + (readOnly ? ' → ' + r.destino : '')));
+      'Romaneio Nº ' + (r.numero != null ? r.numero : '—') + (mode === 'cpd' ? ' → ' + r.destino : '')));
     info.appendChild(el('div', {style:'font-size:11.5px;color:var(--text-3)'},
       rdt.toLocaleDateString('pt-BR') + ' ' + rdt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) + ' · Emitido por ' + (r.criado_por || '-')));
     top.appendChild(info);
@@ -9612,13 +9766,14 @@ function viewRecebimentos() {
     card.appendChild(top);
 
     const itens = r.itens || [];
+    const showChecklist = mode === 'unit';
     const table = el('table', {cls:'stock-table', style:'margin-bottom:10px'});
     const thead = el('thead');
     const trh = el('tr');
     trh.appendChild(el('th', {}, 'Item'));
     trh.appendChild(el('th', {}, 'Un.'));
     trh.appendChild(el('th', {style:'text-align:right'}, 'Qtd. enviada'));
-    if (!readOnly) trh.appendChild(el('th', {style:'text-align:center'}, 'Confere'));
+    if (showChecklist) trh.appendChild(el('th', {style:'text-align:center'}, 'Confere'));
     thead.appendChild(trh);
     table.appendChild(thead);
     const tbody = el('tbody');
@@ -9628,7 +9783,7 @@ function viewRecebimentos() {
       tr.appendChild(el('td', {}, it.name));
       tr.appendChild(el('td', {}, it.unit || ''));
       tr.appendChild(el('td', {style:'text-align:right;font-weight:700'}, String(it.qty)));
-      if (!readOnly) {
+      if (showChecklist) {
         const chkTd = el('td', {style:'text-align:center'});
         const chk = el('input', {type:'checkbox', checked:'checked', style:'width:16px;height:16px;cursor:pointer'});
         chkTd.appendChild(chk);
@@ -9640,10 +9795,14 @@ function viewRecebimentos() {
     table.appendChild(tbody);
     card.appendChild(table);
 
-    if (readOnly) return card; // CPD só acompanha — quem confirma é sempre a unidade
+    if (mode === 'cpd') {
+      card.appendChild(el('div', {style:'font-size:11px;color:var(--text-3);margin-bottom:8px'},
+        'Confirmando em nome de ' + r.destino + ' — sem checklist, porque o CPD não está com a mercadoria pra conferir item a item. Fica registrado como confirmado pelo CPD, não pela unidade.'));
+    }
 
     const obsWrap = el('div', {style:'margin-bottom:10px'});
-    obsWrap.appendChild(el('div', {style:'font-size:11.5px;color:var(--text-2);margin-bottom:3px'}, 'Observação (opcional — obrigatória se algum item não conferir)'));
+    obsWrap.appendChild(el('div', {style:'font-size:11.5px;color:var(--text-2);margin-bottom:3px'},
+      showChecklist ? 'Observação (opcional — obrigatória se algum item não conferir)' : 'Observação / divergência relatada pela unidade (opcional)'));
     const obsInp = el('textarea', {rows:'2', style:'width:100%;resize:vertical;font-family:inherit;font-size:13px', placeholder:'Ex.: faltaram 2 caixas de muçarela, item X veio trocado...'});
     obsWrap.appendChild(obsInp);
     card.appendChild(obsWrap);
@@ -9651,29 +9810,30 @@ function viewRecebimentos() {
     const errEl = el('div', {style:'font-size:12px;color:var(--danger,#A03A3A);display:none;margin-bottom:8px'});
     card.appendChild(errEl);
 
-    const btnRow = el('div', {style:'display:flex;justify-content:flex-end;gap:8px'});
-    const confirmBtn = el('button', {cls:'btn', style:'background:var(--accent,#1A5229);color:#fff;font-weight:700'}, '✓ Confirmar Recebimento');
-    confirmBtn.addEventListener('click', () => {
+    function doConfirm(forcarDivergencia) {
       errEl.style.display = 'none';
-      const divergentes = checks.filter(c => !c.chk.checked);
-      if (divergentes.length && !obsInp.value.trim()) {
+      const divergentes = showChecklist ? checks.filter(c => !c.chk.checked) : [];
+      const temDivergencia = forcarDivergencia || divergentes.length > 0;
+      if (temDivergencia && !obsInp.value.trim()) {
         errEl.textContent = 'Descreva a divergência na observação antes de confirmar.';
         errEl.style.display = 'block';
         return;
       }
       confirmBtn.disabled = true;
+      if (divBtn) divBtn.disabled = true;
       confirmBtn.textContent = 'Confirmando...';
       const itensConfirmados = itens.map(it => {
         const c = checks.find(x => x.id === it.id);
-        return Object.assign({}, it, { confirmado: c ? c.chk.checked : true });
+        return Object.assign({}, it, { confirmado: c ? c.chk.checked : !temDivergencia });
       });
-      const status = divergentes.length ? 'recebido_divergencia' : 'recebido';
+      const status = temDivergencia ? 'recebido_divergencia' : 'recebido';
       db.ref('dados/pizza_romaneios/' + r._id).update({
         status,
         itens: itensConfirmados,
         divergencia_obs: obsInp.value.trim() || null,
         recebido_em: Date.now(),
         recebido_por: (session && session.name) || '',
+        confirmado_via: mode, // 'unit' ou 'cpd' — ver comentário acima
       }).then(() => {
         toast(status === 'recebido' ? '✓ Recebimento confirmado!' : '⚠️ Divergência registrada.');
         if (currentView === 'recebimentos') render();
@@ -9681,9 +9841,23 @@ function viewRecebimentos() {
         errEl.textContent = 'Erro ao confirmar: ' + e.message;
         errEl.style.display = 'block';
         confirmBtn.disabled = false;
-        confirmBtn.textContent = '✓ Confirmar Recebimento';
+        if (divBtn) divBtn.disabled = false;
+        confirmBtn.textContent = confirmBtnLabel;
       });
-    });
+    }
+
+    const confirmBtnLabel = showChecklist ? '✓ Confirmar Recebimento' : '✓ Marcar como Recebido';
+    const btnRow = el('div', {style:'display:flex;justify-content:flex-end;gap:8px'});
+    let divBtn = null;
+    if (!showChecklist) {
+      // Modo CPD: sem checklist item a item, então "divergência" é uma
+      // escolha explícita (botão separado) em vez de derivada de checkboxes.
+      divBtn = el('button', {cls:'btn btn-outline btn-sm', style:'color:var(--warn,#B8740D);border-color:var(--warn,#B8740D)'}, '⚠️ Marcar c/ Divergência');
+      divBtn.addEventListener('click', () => doConfirm(true));
+      btnRow.appendChild(divBtn);
+    }
+    const confirmBtn = el('button', {cls:'btn', style:'background:var(--accent,#1A5229);color:#fff;font-weight:700'}, confirmBtnLabel);
+    confirmBtn.addEventListener('click', () => doConfirm(false));
     btnRow.appendChild(confirmBtn);
     card.appendChild(btnRow);
 
@@ -9746,7 +9920,7 @@ function viewRecebimentos() {
       pendWrap.appendChild(el('div', {cls:'table-wrap', style:'padding:20px;text-align:center;color:var(--success);font-weight:600;font-size:13px'},
         '✅ Nenhum romaneio aguardando confirmação' + (!isCP ? ' pra ' + meuNome : '') + '.'));
     } else {
-      pendentes.forEach(r => pendWrap.appendChild(buildRomaneioCard(r, isCP)));
+      pendentes.forEach(r => pendWrap.appendChild(buildRomaneioCard(r, isCP ? 'cpd' : 'unit')));
     }
 
     // ── Resolvidos recentes ───────────────────────────────────────────
@@ -9774,7 +9948,7 @@ function viewRecebimentos() {
         if (r.divergencia_obs) badge.title = r.divergencia_obs;
         stTd.appendChild(badge);
         tr.appendChild(stTd);
-        tr.appendChild(el('td', {}, r.recebido_por || '-'));
+        tr.appendChild(el('td', {}, (r.recebido_por || '-') + (r.confirmado_via === 'cpd' ? ' (via CPD)' : (r.marcado_retroativo ? ' (retroativo)' : ''))));
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
