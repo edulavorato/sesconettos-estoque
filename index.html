@@ -2223,11 +2223,11 @@ const DAILY_REQUIRED_CATEGORIES_BY_WEEKDAY = {
 
 // Retorna a lista de categorias obrigatórias válida para a data informada
 // (ou para agora, se omitida), já somando as obrigatórias fixas + as do dia
-// da semana (horário de Brasília).
+// da semana. 12/08: passou a usar diaOperacional() — ver comentário lá —
+// em vez de uma conta de fuso horário própria e divergente.
 function getDailyRequiredCategories(date) {
-  const now = date || new Date();
-  const brt = new Date(now.getTime() - 3*60*60*1000); // UTC-3
-  const extras = DAILY_REQUIRED_CATEGORIES_BY_WEEKDAY[brt.getDay()] || [];
+  const weekday = diaOperacional(date);
+  const extras = DAILY_REQUIRED_CATEGORIES_BY_WEEKDAY[weekday] || [];
   return DAILY_REQUIRED_CATEGORIES.concat(extras.filter(c => !DAILY_REQUIRED_CATEGORIES.includes(c)));
 }
 
@@ -2668,7 +2668,7 @@ const ASA_SUL_CATALOG = [
   {id:'ue05',name:'Nozes 100g',key:'nozes 100g',category:'Estoque Seco',unit:'Kg'},
   {id:'ue06',name:'Pistache 250g',key:'pistache 250g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue07',name:'Atum natural lata',key:'atum natural lata',category:'Estoque Seco',unit:'Un'},
-  {id:'ue08',name:'Aceto balsâmico 250ml',key:'aceto balsamico 250ml',category:'Estoque Seco',unit:'Garrafa'},
+  {id:'ue08',name:'Aceto balsâmico 500ml',key:'aceto balsamico 500ml',category:'Estoque Seco',unit:'Garrafa'},
   {id:'ue09',name:'Creme de leite cx 200ml',key:'creme de leite cx 200ml',category:'Estoque Seco',unit:'Un'},
   {id:'ue10',name:'Azeitona preta 2kg',key:'azeitona preta 2kg',category:'Estoque Seco',unit:'Balde'},
   {id:'ue11',name:'Leite condensado 400ml',key:'leite condensado 400ml',category:'Estoque Seco',unit:'Un'},
@@ -2977,7 +2977,7 @@ const SIG_CATALOG = [
   {id:'ue05',name:'Nozes 100g',key:'nozes 100g',category:'Estoque Seco',unit:'Kg'},
   {id:'ue06',name:'Pistache 250g',key:'pistache 250g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue07',name:'Atum natural lata',key:'atum natural lata',category:'Estoque Seco',unit:'Un'},
-  {id:'ue08',name:'Aceto balsâmico 250ml',key:'aceto balsamico 250ml',category:'Estoque Seco',unit:'Garrafa'},
+  {id:'ue08',name:'Aceto balsâmico 500ml',key:'aceto balsamico 500ml',category:'Estoque Seco',unit:'Garrafa'},
   {id:'ue09',name:'Creme de leite cx 200ml',key:'creme de leite cx 200ml',category:'Estoque Seco',unit:'Un'},
   {id:'ue10',name:'Azeitona preta 2kg',key:'azeitona preta 2kg',category:'Estoque Seco',unit:'Balde'},
   {id:'ue11',name:'Leite condensado 400ml',key:'leite condensado 400ml',category:'Estoque Seco',unit:'Un'},
@@ -3215,7 +3215,7 @@ const VICENTE_PIRES_CATALOG = [
   {id:'ue05',name:'Nozes 100g',key:'nozes 100g',category:'Estoque Seco',unit:'Kg'},
   {id:'ue06',name:'Pistache 250g',key:'pistache 250g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue07',name:'Atum natural lata',key:'atum natural lata',category:'Estoque Seco',unit:'Un'},
-  {id:'ue08',name:'Aceto balsâmico 250ml',key:'aceto balsamico 250ml',category:'Estoque Seco',unit:'Garrafa'},
+  {id:'ue08',name:'Aceto balsâmico 500ml',key:'aceto balsamico 500ml',category:'Estoque Seco',unit:'Garrafa'},
   {id:'ue09',name:'Creme de leite cx 200ml',key:'creme de leite cx 200ml',category:'Estoque Seco',unit:'Un'},
   {id:'ue10',name:'Azeitona preta 2kg',key:'azeitona preta 2kg',category:'Estoque Seco',unit:'Balde'},
   {id:'ue11',name:'Leite condensado 400ml',key:'leite condensado 400ml',category:'Estoque Seco',unit:'Un'},
@@ -3639,9 +3639,9 @@ const ITENS_PRODUZIDOS = new Set([
   'Tomate seco 700g',
   'Presunto 500g',
   'Lascas de coco 200g',
-  'Nutella 400g',
+  'Nutella 200g',
   'Guianduela branca',
-  'Creme de pistache 400g',
+  'Creme de pistache 220g',
   'Geleia amora framboesa pizza',
   'Geleia abacaxi c/pimenta 500g',
   'Purê de abóbora 500g',
@@ -3672,7 +3672,7 @@ const ITENS_COMPRADOS = new Set([
   'Presunto parma 500g',
   'Semolina 10kg',
   'Atum natural lata',
-  'Aceto balsâmico 250ml',
+  'Aceto balsâmico 500ml',
   'Creme de leite cx 200ml',
   'Azeitona preta 2kg',
   'Leite condensado 400ml',
@@ -3771,7 +3771,7 @@ const MIN_PER_DAY_ASA_SUL = {
   'nozes 100g':{'SEG':2,'SEX':2},
   'pistache 250g':{'SEG':2,'SEX':2},
   'atum natural lata':{'SEG':6,'SEX':10},
-  'aceto balsamico 250ml':{'SEG':2,'SEX':3},
+  'aceto balsamico 500ml':{'SEG':2,'SEX':3},
   'creme de leite cx 200ml':{'SEG':8,'SEX':10},
   'azeitona preta 2kg':{'SEG':4,'SEX':4},
   'leite condensado 400ml':{'SEG':8,'SEX':8},
@@ -4075,7 +4075,7 @@ const MIN_PER_DAY_SIG = {
   'nozes 100g':{'SEG':1,'SEX':2},
   'pistache 250g':{'SEG':1,'SEX':2},
   'atum natural lata':{'SEG':6,'SEX':6},
-  'aceto balsamico 250ml':{'SEG':1,'SEX':2},
+  'aceto balsamico 500ml':{'SEG':1,'SEX':2},
   'creme de leite cx 200ml':{'SEG':6,'SEX':8},
   'azeitona preta 2kg':{'SEG':2,'SEX':3},
   'leite condensado 400ml':{'SEG':6,'SEX':6},
@@ -4310,7 +4310,7 @@ const MIN_PER_DAY_VICENTE_PIRES = {
   'nozes 100g':{'SEG':3,'SEX':3},
   'pistache 250g':{'SEG':3,'SEX':2},
   'atum natural lata':{'SEG':10,'SEX':12},
-  'aceto balsamico 250ml':{'SEG':2,'SEX':3},
+  'aceto balsamico 500ml':{'SEG':2,'SEX':3},
   'creme de leite cx 200ml':{'SEG':10,'SEX':10},
   'azeitona preta 2kg':{'SEG':4,'SEX':4},
   'leite condensado 400ml':{'SEG':6,'SEX':10},
@@ -5590,14 +5590,40 @@ function _flushPendingWrites() {
       })
       .catch(e => {
         console.warn('[Firebase] Erro no write pendente:', e);
-        // Reinserir no início da fila para retry
-        window._fb.pendingWrites.unshift(item);
+        // 12/08: CORREÇÃO DE ACHADO CRÍTICO do diagnóstico (03/08) — antes,
+        // quando um item da fila falhava ao reenviar, só ELE voltava pra
+        // fila (unshift) e o processamento simplesmente parava aqui. Os
+        // itens seguintes (pending[idx], pending[idx+1]...) só existiam
+        // nesta cópia local `pending` (já tinham sido removidos de
+        // window._fb.pendingWrites lá em cima, no .splice(0)) — então
+        // sumiam para sempre, sem nenhum aviso na tela. Uma loja sem
+        // internet podia perder contagens já digitadas dessa forma. Agora:
+        // devolve o item que falhou E TODO O RESTANTE ainda não processado
+        // desta passada, na ordem original, pra fila — nada se perde, e a
+        // próxima reconexão (ou o retry periódico abaixo) tenta de novo.
+        const remaining = pending.slice(idx - 1); // idx-1 = item que acabou de falhar
+        window._fb.pendingWrites = remaining.concat(window._fb.pendingWrites);
         _updatePendingBadge(window._fb.pendingWrites.length);
       });
   }
   _updatePendingBadge(pending.length);
   processNext();
 }
+
+// 12/08: rede de segurança adicional — antes, a fila de writes pendentes só
+// era reprocessada em dois momentos (autenticação inicial e o evento de
+// reconexão do Firebase, .info/connected). Se por algum motivo esse evento
+// não disparasse de forma confiável (conexão "zumbi": parece conectada mas
+// as escritas continuam falhando; ou o navegador não gera o evento em certas
+// redes/celulares), os itens ficavam parados na fila indefinidamente sem
+// nenhuma nova tentativa. Este retry periódico garante que, enquanto houver
+// algo pendente, o sistema tenta de novo a cada 20s — sem depender de nenhum
+// evento específico do navegador ou do Firebase.
+setInterval(() => {
+  if (window._fb && window._fb.ready && (window._fb.pendingWrites || []).length > 0) {
+    _flushPendingWrites();
+  }
+}, 20000);
 
 // Atualizar indicador visual de dados pendentes
 function _updatePendingBadge(count) {
@@ -5876,9 +5902,19 @@ const CONTAGEM_JANELAS = {
 };
 const DIAS_SEMANA = ['Domingo','Segunda','Ter\u00E7a','Quarta','Quinta','Sexta','S\u00E1bado'];
 
-// Retorna o dia operacional atual (0-6). Entre 0h-3h, conta como o dia anterior.
-function diaOperacional() {
-  const now = new Date();
+// Retorna o dia operacional (0-6) para a data informada (ou agora, se
+// omitida). Entre 0h-3h, conta como o dia anterior.
+// 12/08: ÚNICA fonte de verdade pro "dia operacional" — corrigido achado do
+// diagnóstico (03/08): getDailyRequiredCategories() tinha sua PRÓPRIA conta
+// separada (subtraindo manualmente 3h do relógio do aparelho, como se ele
+// estivesse em UTC), enquanto esta função aqui já assume que o relógio do
+// aparelho está no horário de Brasília (o normal pra quem está no Brasil).
+// As duas contas podiam divergir — a categoria obrigatória do dia (ex:
+// "Vinhos" às quartas) calculando um dia diferente da janela de confirmação,
+// gerando "item não contado" mesmo já tendo sido confirmado. Agora as duas
+// usam esta mesma função.
+function diaOperacional(date) {
+  const now = date || new Date();
   let d = now.getDay();
   if (now.getHours() < 3) d = (d + 6) % 7;
   return d;
@@ -10848,6 +10884,49 @@ function viewCatalogo() {
   if (isCPD()) {
     frag.appendChild(tabsWrap);
     buildTabs();
+
+    // 12/08: correção pontual do diagnóstico — confirmado com o Eduardo que
+    // o valor certo é 500ml (as lojas estavam com "250ml" cadastrado, o CPD
+    // já estava certo). Renomear pelo campo normal NÃO resolve isso, porque
+    // o item.key fica fixo de propósito ao renomear (pra não quebrar Envios
+    // do Dia) — esse item específico continuaria referenciado pela chave
+    // antiga "aceto balsamico 250ml" mesmo depois de mudar o texto exibido.
+    // Este botão corrige o nome E a chave dos itens já salvos no Firebase
+    // das 3 lojas afetadas, preservando o mesmo ID (não perde estoque nem
+    // histórico). Roda uma vez só — pode clicar de novo sem problema, é
+    // seguro (só reafirma o mesmo valor correto).
+    if (window._fb && window._fb.ready) {
+      const acetoBtn = el('button', {cls:'btn btn-outline btn-sm', style:'margin-bottom:14px;font-size:12px'},
+        '🔧 Corrigir "Aceto balsâmico" (250ml → 500ml) nas lojas');
+      acetoBtn.title = 'Corrige o nome e a referência interna do item nos catálogos de Asa Sul, SIG e Vicente Pires, confirmado com o Eduardo em 12/08';
+      acetoBtn.addEventListener('click', () => {
+        if (!confirm('Corrigir "Aceto balsâmico 250ml" para "Aceto balsâmico 500ml" no catálogo de Asa Sul, SIG e Vicente Pires?\n\nMantém o mesmo item (mesmo ID, mesmo estoque) — só corrige o nome e a referência interna que hoje impede o sistema de cruzar com o estoque do CPD.')) return;
+        const slugsAfetados = ['Asa Sul', 'SIG', 'Vicente Pires'];
+        let feitos = 0, erros = 0;
+        slugsAfetados.forEach(unitName => {
+          const slug = unitSlug(unitName);
+          db.ref('dados/pizza_unit_catalog/' + slug).once('value').then(snap => {
+            const cat = snap.val();
+            if (!Array.isArray(cat)) { erros++; return; }
+            let mudou = false;
+            const novo = cat.map(it => {
+              if (it && it.key === 'aceto balsamico 250ml') {
+                mudou = true;
+                return Object.assign({}, it, { name: 'Aceto balsâmico 500ml', key: 'aceto balsamico 500ml' });
+              }
+              return it;
+            });
+            if (!mudou) { feitos++; if (feitos + erros === slugsAfetados.length) toast('✓ Correção aplicada (ou já não havia o item antigo) nas ' + feitos + ' loja(s).'); return; }
+            db.ref('dados/pizza_unit_catalog/' + slug).set(novo).then(() => {
+              feitos++;
+              if (window._unitCatalogCache) window._unitCatalogCache[slug] = novo;
+              if (feitos + erros === slugsAfetados.length) { toast('✓ Correção aplicada em ' + feitos + ' loja(s).'); render(); }
+            }).catch(() => { erros++; });
+          }).catch(() => { erros++; });
+        });
+      });
+      frag.appendChild(acetoBtn);
+    }
   }
 
   // ── Adicionar item: agora atrás de um botão flutuante (FAB), não mais
