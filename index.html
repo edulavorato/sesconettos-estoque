@@ -3676,7 +3676,7 @@ const ITENS_PRODUZIDOS = new Set([
   'Presunto 500g',
   'Lascas de coco 200g',
   'Nutella 200g',
-  'Guianduela branca',
+  'Guianduela branca 200g', // 13/08: nome real no catálogo tem o peso — sem isso, esse item nunca era classificado como produzido
   'Creme de pistache 220g',
   'Geleia amora framboesa pizza',
   'Geleia abacaxi c/pimenta 500g',
@@ -11202,6 +11202,48 @@ function viewCatalogo() {
         });
       });
       frag.appendChild(unitFixBtn);
+
+      // 13/08: achado BAIXO do diagnóstico — "42 registros de histórico
+      // ainda no formato de chave antigo". O diagnóstico menciona um script
+      // de migração "já preparado e entregue", mas ele não está disponível
+      // nesta sessão pra eu confirmar o formato exato sem arriscar rodar uma
+      // migração às cegas em cima de dados reais de produção. Este botão é
+      // só de LEITURA (não grava nada) — lista, pra cada loja, quais chaves
+      // de dados/pizza_history/<loja> não seguem o formato atual (timestamp
+      // numérico em milissegundos), pra eu conseguir ver o formato antigo de
+      // verdade e escrever a migração certa a partir disso.
+      const histDiagBtn = el('button', {cls:'btn btn-outline btn-sm', style:'margin-bottom:14px;font-size:12px;margin-left:8px'},
+        '🔍 Diagnóstico de histórico (só leitura)');
+      histDiagBtn.title = 'Lista chaves de histórico em formato antigo, sem alterar nada — resultado aparece no console (F12)';
+      histDiagBtn.addEventListener('click', () => {
+        if (!window._fb || !window._fb.ready || typeof db === 'undefined') { alert('Sem conexão com o Firebase agora.'); return; }
+        const slugs = ['cpd', 'asa_sul', 'sig', 'vicente_pires', 'delivery'];
+        let totalEstranhas = 0, feitos = 0;
+        const resumo = {};
+        slugs.forEach(slug => {
+          db.ref('dados/pizza_history/' + slug).once('value').then(snap => {
+            const val = snap.val() || {};
+            const chaves = Object.keys(val);
+            const estranhas = chaves.filter(k => !/^\d+$/.test(k));
+            resumo[slug] = { total: chaves.length, formatoAntigo: estranhas.length };
+            totalEstranhas += estranhas.length;
+            if (estranhas.length > 0) {
+              console.warn('[Diagnóstico histórico] Loja "' + slug + '" tem ' + estranhas.length + ' chave(s) em formato antigo:');
+              estranhas.forEach(k => console.warn('  chave="' + k + '" valor=', val[k]));
+            }
+            feitos++;
+            if (feitos === slugs.length) {
+              console.log('[Diagnóstico histórico] Resumo por loja:', resumo);
+              if (totalEstranhas === 0) {
+                toast('✓ Nenhuma chave em formato antigo encontrada — esse achado já não se aplica.');
+              } else {
+                toast('⚠️ ' + totalEstranhas + ' chave(s) em formato antigo encontrada(s) — detalhes no console (F12). Me manda o que aparecer lá que eu escrevo a migração certa.');
+              }
+            }
+          }).catch(e => { feitos++; console.warn('[Diagnóstico histórico] Erro ao ler ' + slug + ':', e); });
+        });
+      });
+      frag.appendChild(histDiagBtn);
     }
   }
 
@@ -11250,9 +11292,18 @@ function viewCatalogo() {
       const targetKey2 = isCpdForm ? 'pizza_catalog' : ('pizza_unit_catalog/' + unitSlug(window._catActiveTab || 'asa_sul'));
       if (targetCat2.find(i => i.name.toLowerCase() === name.toLowerCase())) { alert('J\u00E1 existe um item com esse nome.'); return; }
       const _keyNorm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-      const item = {id: Date.now().toString(), name, key: _keyNorm(name), category: catSel.value, unit: unitSel.value};
+      // 13/08: sufixo aleat\u00f3rio somado ao timestamp -- refor\u00e7o de seguran\u00e7a
+      // pro achado M\u00c9DIO do diagn\u00f3stico (dois admins cadastrando item novo no
+      // mesmo milissegundo gerariam o mesmo ID). Na pr\u00E1tica j\u00E1 era um risco
+      // extremamente baixo (id j\u00E1 era baseado em timestamp, n\u00e3o em contador
+      // sequencial como o diagn\u00f3stico descrevia), mas o sufixo elimina de vez.
+      const item = {id: Date.now().toString() + '_' + Math.random().toString(36).slice(2, 8), name, key: _keyNorm(name), category: catSel.value, unit: unitSel.value};
       targetCat2.push(item);
-      save(targetKey2, targetCat2);
+      // 13/08: passou a usar saveCatalogTab() (com detec\u00e7\u00e3o de conflito via
+      // transaction) em vez de save() direto -- esse ponto ainda gravava o
+      // cat\u00E1logo inteiro por cima sem checar se outro aparelho tinha mudado
+      // algo entre o carregamento e esse clique em "Adicionar".
+      saveCatalogTab(isCpdForm, window._catActiveTab, targetCat2);
       toast('Item "'+name+'" adicionado ao cat\u00E1logo!');
       overlay.remove();
       render();
