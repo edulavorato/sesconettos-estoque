@@ -1797,6 +1797,12 @@ auth.onAuthStateChanged(user => {
       saveLocal('pizza_catalog', catalog);
       console.log('[Firebase] Catálogo CPD carregado:', fbCatalog.length, 'itens');
       _gateStep('catalog', 'Catálogo carregado…');
+      // 13/08: guarda a "foto" do catálogo tal como veio do servidor agora —
+      // usada por saveCatalogTab() pra detectar se alguém mais mudou o
+      // catálogo entre o momento em que este dispositivo carregou/salvou
+      // por último e o momento em que ele tentar salvar de novo.
+      if (!window._catalogServerSnapshot) window._catalogServerSnapshot = {};
+      window._catalogServerSnapshot.cpd = JSON.stringify(fbCatalog);
     }
   });
 
@@ -1819,6 +1825,8 @@ auth.onAuthStateChanged(user => {
         if (!window._unitCatalogCache) window._unitCatalogCache = {};
         window._unitCatalogCache[slug] = val;
         try { localStorage.setItem('pizza_unit_catalog_' + slug, JSON.stringify(val)); } catch(e) {}
+        if (!window._catalogServerSnapshot) window._catalogServerSnapshot = {};
+        window._catalogServerSnapshot[slug] = JSON.stringify(val);
         // Se é a unidade logada, atualizar unitCatalog imediatamente
         // Usar localStorage para verificar sessão (session pode não existir no bloco Firebase)
         const _sess = (typeof session !== 'undefined' && session) ||
@@ -1860,7 +1868,16 @@ auth.onAuthStateChanged(user => {
         // precisar recarregar v\u00E1rias vezes at\u00E9 "pegar". Trocamos por navegar
         // para uma URL com um par\u00E2metro \u00FAnico a cada clique: como \u00E9 uma URL
         // diferente, o navegador n\u00E3o tem escolha a n\u00E3o ser buscar de novo.
-        banner.innerHTML = '<span>\uD83D\uDD04 Nova vers\u00E3o dispon\u00EDvel (' + remoteVer + '). Recarregue para atualizar.</span><button onclick="location.href = location.pathname + \'?v=\' + Date.now();" style="background:#1A5229;border:none;color:#fff;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-left:12px">Atualizar agora</button>';
+        const bannerSpan = document.createElement('span');
+        bannerSpan.textContent = '\uD83D\uDD04 Nova versão disponível (' + remoteVer + '). Recarregue para atualizar.';
+        const bannerBtn = document.createElement('button');
+        bannerBtn.textContent = 'Atualizar agora';
+        bannerBtn.style.cssText = 'background:#1A5229;border:none;color:#fff;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-left:12px';
+        bannerBtn.addEventListener('click', () => {
+          location.href = location.pathname + '?v=' + Date.now();
+        });
+        banner.appendChild(bannerSpan);
+        banner.appendChild(bannerBtn);
         document.body.appendChild(banner);
       }
     }
@@ -3714,9 +3731,32 @@ function classificarItem(itemName) {
   // Match exato primeiro
   for (const p of ITENS_PRODUZIDOS) { if (_n(p) === nm) return 'produzido'; }
   for (const c of ITENS_COMPRADOS)  { if (_n(c) === nm) return 'comprado'; }
-  // Match por prefixo (ex: 'Peperoni' bate 'Peperoni 1kg' e vice-versa)
-  for (const p of ITENS_PRODUZIDOS) { if (nm.startsWith(_n(p)) || _n(p).startsWith(nm)) return 'produzido'; }
-  for (const c of ITENS_COMPRADOS)  { if (nm.startsWith(_n(c)) || _n(c).startsWith(nm)) return 'comprado'; }
+  // 13/08: match por prefixo (ex: 'Peperoni' bate 'Peperoni 1kg' e vice-versa)
+  // \u2014 mas um nome curto tamb\u00e9m pode ser prefixo literal de um produto
+  // DIFERENTE (ex: 'Presunto' vs 'Presunto Fatiado Premium'), classificando
+  // errado em sil\u00eancio. Sem um c\u00f3digo \u00fanico por produto (item j\u00e1 mapeado
+  // separadamente, ver se\u00e7\u00e3o E do diagn\u00f3stico), n\u00e3o d\u00e1 pra eliminar esse
+  // risco de vez \u2014 mas d\u00e1 pra reduzir e deixar de ser silencioso: entre
+  // v\u00e1rios candidatos que batem por prefixo, fica com o mais LONGO (o match
+  // mais espec\u00edfico), e avisa no console sempre que o match n\u00e3o \u00e9 exato,
+  // pra ficar rastre\u00e1vel se algum dia o resultado parecer errado.
+  let melhorProduzido = null, melhorComprado = null;
+  for (const p of ITENS_PRODUZIDOS) {
+    const pn = _n(p);
+    if ((nm.startsWith(pn) || pn.startsWith(nm)) && (!melhorProduzido || pn.length > melhorProduzido.length)) melhorProduzido = pn;
+  }
+  for (const c of ITENS_COMPRADOS) {
+    const cn = _n(c);
+    if ((nm.startsWith(cn) || cn.startsWith(nm)) && (!melhorComprado || cn.length > melhorComprado.length)) melhorComprado = cn;
+  }
+  if (melhorProduzido && (!melhorComprado || melhorProduzido.length >= melhorComprado.length)) {
+    console.warn('[classificarItem] Match por prefixo (n\u00e3o exato) \u2014 "' + itemName + '" classificado como PRODUZIDO via "' + melhorProduzido + '". Confira se est\u00e1 certo.');
+    return 'produzido';
+  }
+  if (melhorComprado) {
+    console.warn('[classificarItem] Match por prefixo (n\u00e3o exato) \u2014 "' + itemName + '" classificado como COMPRADO via "' + melhorComprado + '". Confira se est\u00e1 certo.');
+    return 'comprado';
+  }
   return 'outro';
 }
 
@@ -5429,6 +5469,63 @@ function deconfirmCategory(unitName, cat) {
   }
 }
 
+// 13/08: correção do achado do diagnóstico "edição de catálogo sobrescreve
+// o catálogo inteiro, sem transação" — antes, essa função (e o save() usado
+// pro catálogo do CPD) simplesmente gravava o array editado por cima do que
+// estivesse no servidor (.set()). Se dois dispositivos editassem o catálogo
+// quase ao mesmo tempo, o segundo a salvar apagava a edição do primeiro por
+// completo, sem nenhum aviso. Ainda não é um merge de verdade (não dá pra
+// "somar" duas edições de lista automaticamente sem uma reestruturação
+// maior, fora do escopo de hoje) — mas agora usa transaction() do Firebase
+// pra detectar quando o servidor já mudou desde a última vez que este
+// dispositivo viu o catálogo, e AVISA em vez de sobrescrever no escuro.
+function _saveCatalogArraySafely(refPath, snapshotKey, arr, onSaved, onConflict) {
+  if (!window._catalogServerSnapshot) window._catalogServerSnapshot = {};
+  const knownStr = window._catalogServerSnapshot[snapshotKey];
+  const newStr = JSON.stringify(arr);
+
+  if (!window._fb || !window._fb.ready || typeof db === 'undefined') {
+    // Offline: enfileira normalmente — a checagem de conflito não é
+    // possível sem falar com o servidor, então essa gravação específica vai
+    // como "last write wins" mesmo, igual sempre foi (limitação aceitável:
+    // é o mesmo comportamento de antes, só que agora com aviso quando há
+    // conexão pra checar de verdade).
+    if (!window._fb) window._fb = { ready: false, pendingWrites: [] };
+    window._fb.pendingWrites = window._fb.pendingWrites || [];
+    window._fb.pendingWrites.push({ key: refPath.replace(/^dados\//, ''), data: arr, ts: Date.now() });
+    if (typeof onSaved === 'function') onSaved();
+    return;
+  }
+
+  db.ref(refPath).transaction(currentServer => {
+    const currentStr = JSON.stringify(currentServer || []);
+    if (knownStr !== undefined && currentStr !== knownStr) {
+      return; // undefined = aborta a transação, não grava nada
+    }
+    return arr;
+  }, (error, committed) => {
+    if (error) {
+      console.warn('[Firebase] Erro ao salvar catálogo (' + refPath + '):', error);
+      return;
+    }
+    if (!committed) {
+      console.warn('[Catálogo] Gravação abortada — o catálogo mudou em outro dispositivo desde o último carregamento.');
+      if (typeof onConflict === 'function') onConflict();
+      return;
+    }
+    window._catalogServerSnapshot[snapshotKey] = newStr;
+    if (typeof onSaved === 'function') onSaved();
+  });
+}
+
+function _catalogConflictWarning() {
+  if (typeof toast === 'function') {
+    toast('⚠️ Esse catálogo foi alterado em outro aparelho ao mesmo tempo — recarregue a página antes de continuar editando, pra não perder a mudança de ninguém.');
+  } else {
+    alert('Esse catálogo foi alterado em outro aparelho ao mesmo tempo. Recarregue a página antes de continuar editando.');
+  }
+}
+
 function saveUnitCatalog(unitName, catalogData) {
   const slug = unitSlug(unitName);
   // 1. Atualizar cache em memória
@@ -5442,10 +5539,20 @@ function saveUnitCatalog(unitName, catalogData) {
   }
   // 4. Salvar no localStorage
   try { localStorage.setItem('pizza_unit_catalog_' + slug, JSON.stringify(catalogData)); } catch(e) {}
-  // 5. Salvar no Firebase
-  if (window._fb && window._fb.ready && typeof db !== 'undefined') {
-    db.ref('dados/pizza_unit_catalog/' + slug).set(catalogData)
-      .catch(e => console.warn('[Firebase] Erro ao salvar catálogo de', unitName, e));
+  // 5. Salvar no Firebase (com checagem de conflito — ver _saveCatalogArraySafely)
+  _saveCatalogArraySafely('dados/pizza_unit_catalog/' + slug, slug, catalogData, null, _catalogConflictWarning);
+}
+
+// Wrapper usado pelo editor de catálogo (CPD ou unidade) — substitui as
+// chamadas antigas "isCpdTab ? save('pizza_catalog', tabCatalog) :
+// saveUnitCatalog(activeTab, tabCatalog)" por uma versão com a mesma
+// checagem de conflito nos dois casos.
+function saveCatalogTab(isCpdTab, activeTab, tabCatalog) {
+  try { localStorage.setItem('pizza_catalog', JSON.stringify(tabCatalog)); } catch(e) {}
+  if (isCpdTab) {
+    _saveCatalogArraySafely('dados/pizza_catalog', 'cpd', tabCatalog, null, _catalogConflictWarning);
+  } else {
+    saveUnitCatalog(activeTab, tabCatalog);
   }
 }
 
@@ -5514,30 +5621,15 @@ function saveItemAtomic(itemId, qty) {
   }, false); // false = não ouvir mudanças intermediárias
 }
 
-// Salvar estoque de UMA unidade específica (granular — não reescreve todas)
-function saveUnit(unitName, stockData) {
-  const slug = unitSlug(unitName);
-  try { localStorage.setItem('pizza_unit_' + slug, JSON.stringify(stockData)); } catch(e) {}
-  if (window._fb && window._fb.ready && typeof db !== 'undefined') {
-    window._fb.localWrite = true;
-    clearTimeout(window._fb.localWriteTimer);
-    window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 5000);
-    db.ref('dados/pizza_units/' + slug).set(stockData)
-      .then(() => {
-        clearTimeout(window._fb.localWriteTimer);
-        window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 300);
-      })
-      .catch(e => {
-        console.warn('[Firebase] Erro ao salvar unidade ' + unitName + ':', e);
-        clearTimeout(window._fb.localWriteTimer);
-        window._fb.localWrite = false;
-      });
-  } else {
-    if (!window._fb) window._fb = { ready: false, pendingWrites: [] };
-    window._fb.pendingWrites = window._fb.pendingWrites || [];
-    window._fb.pendingWrites.push({ type: 'unit', unitName, data: stockData });
-  }
-}
+// 13/08: a função saveUnit() (que gravava o estoque INTEIRO de uma unidade
+// de uma vez, apagando o de qualquer outro dispositivo que tivesse acabado
+// de salvar algo) foi removida — era exatamente o padrão perigoso apontado
+// no diagnóstico ("gravação de objeto inteiro"), e uma checagem em todo o
+// código confirmou que nada mais chama essa função hoje: o fluxo real de
+// contagem já grava item por item (ver 'dados/pizza_units/<loja>/<item>'
+// logo abaixo, no onUpdate de buildStockTable). Ela ficava só como um risco
+// futuro — bastava alguém chamá-la de novo por engano num código novo pra
+// reintroduzir o bug. Removida por completo em vez de só documentada.
 
 function save(key, data) {
   // Sempre salva no localStorage (cache local e fallback offline)
@@ -5568,6 +5660,19 @@ function save(key, data) {
             // Em caso de erro, liberar o flag para não travar o listener indefinidamente
             clearTimeout(window._fb.localWriteTimer);
             window._fb.localWrite = false;
+            // 13/08: antes, uma falha "online" (rede instável mas
+            // window._fb.ready ainda true) só aparecia no console técnico —
+            // o dado ficava diferente do que a tela mostrava, sem aviso pra
+            // loja e sem nova tentativa depois. Agora entra na MESMA fila de
+            // reenvio usada pelo modo offline (retry automático a cada 20s,
+            // ou assim que a conexão for confirmada de novo), e avisa quem
+            // está usando que precisa conferir.
+            if (!window._fb.pendingWrites) window._fb.pendingWrites = [];
+            window._fb.pendingWrites.push({ key, data, ts: Date.now() });
+            _updatePendingBadge(window._fb.pendingWrites.length);
+            if (typeof toast === 'function') {
+              toast('⚠️ Falha ao salvar — tentando de novo automaticamente.');
+            }
           });
       } else {
         // Firebase ainda não pronto — enfileira para tentar em seguida
@@ -6513,6 +6618,18 @@ function el(tag, attrs={}, ...children) {
     clearTimeout(saveTimer[itemId]);
     saveTimer[itemId] = setTimeout(() => {
       window._fb.pendingDebounces.delete(_pdKey);
+      // 13/08: se outro dispositivo salvou um valor diferente pra esse MESMO
+      // item nesse intervalo de 1s (o listener em tempo real já teria
+      // atualizado stockObj[itemId] com o valor de fora), antes isso era
+      // sobrescrito em silêncio pelo número digitado aqui, sem ninguém saber
+      // que houve edição simultânea. Continua enviando o que a pessoa
+      // digitou agora (é o valor mais recente que ELA confirmou, e não dá
+      // pra saber automaticamente qual dos dois é o certo) — mas agora avisa
+      // na tela, pra loja checar se não houve engano.
+      if (stockObj[itemId] !== q) {
+        console.warn('[Conflito] Item', itemId, 'foi alterado por outro aparelho enquanto você digitava. Salvando seu valor (' + q + ') mesmo assim.');
+        toast('⚠️ Esse item também foi alterado em outro aparelho ao mesmo tempo — confira o valor.');
+      }
       onUpdate(itemId, q);
     }, 1000);
   }
@@ -11235,7 +11352,7 @@ function viewCatalogo() {
             // de A Enviar e pelo MIN_PER_DAY) fica fixo — renomear não quebra
             // mais o item de Envios do Dia nem exige nenhum ajuste manual.
             item.name = v; nameLabel.textContent = v;
-            isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
+            saveCatalogTab(isCpdTab, activeTab, tabCatalog);
             nameInp.style.display='none'; nameLabel.style.display='';
           };
           nameLabel.addEventListener('click', () => { nameLabel.style.display='none'; nameInp.style.display=''; nameInp.focus(); nameInp.select(); });
@@ -11252,7 +11369,7 @@ function viewCatalogo() {
           const saveUnitFn = () => {
             const v = unitInp.value.trim() || item.unit;
             item.unit = v; unitSpan.textContent = v; catInline.textContent = v;
-            isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
+            saveCatalogTab(isCpdTab, activeTab, tabCatalog);
             unitInp.style.display='none'; unitSpan.style.display='';
           };
           unitInp.addEventListener('blur', saveUnitFn);
@@ -11336,7 +11453,7 @@ function viewCatalogo() {
                 if (c !== item.category) {
                   btn.addEventListener('click', () => {
                     item.category = c;
-                    isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
+                    saveCatalogTab(isCpdTab, activeTab, tabCatalog);
                     document.body.removeChild(modal);
                     buildTable();
                     toast('Item movido para ' + c);
@@ -11379,7 +11496,7 @@ function viewCatalogo() {
               // Trocar no array global
               tabCatalog[globalIdx]    = neighbor;
               tabCatalog[neighborGi]   = item;
-              isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
+              saveCatalogTab(isCpdTab, activeTab, tabCatalog);
               buildTable();
             };
             moveUp.addEventListener('click', () => moveItem(-1));
@@ -11393,7 +11510,7 @@ function viewCatalogo() {
             if (!confirm(`Remover "${item.name}" do cat\u00E1logo?`)) return;
             const idx = tabCatalog.indexOf(item);
             if (idx >= 0) tabCatalog.splice(idx, 1);
-            isCpdTab ? save('pizza_catalog', tabCatalog) : saveUnitCatalog(activeTab, tabCatalog);
+            saveCatalogTab(isCpdTab, activeTab, tabCatalog);
             tr.remove();
             toast('Item removido');
           }}, 'Remover');
