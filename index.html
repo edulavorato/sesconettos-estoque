@@ -2271,7 +2271,10 @@ function formatCategoryList(cats) {
   return cats.slice(0, -1).join(', ') + ' e ' + cats[cats.length - 1];
 }
 
-const MEASURES = ['Un','PCT','Cx','Kg','g','L','mL','Saco','Balde','Pe\u00E7a','Bandeja','Por\u00E7\u00E3o','Ma\u00E7o','Pote','Garrafa','Rolo','Gal\u00E3o','Barril','Caixa','Fardo'];
+// 13/08: adicionados 'Pacote', 'PCT 50g' e 'PCT 1kg' -- j\u00E1 existiam em
+// itens reais do cat\u00E1logo mas n\u00E3o apareciam como op\u00E7\u00E3o ao cadastrar um
+// item novo (achado BAIXO do diagn\u00F3stico: lista mestre incompleta).
+const MEASURES = ['Un','PCT','Cx','Kg','g','L','mL','Saco','Balde','Pe\u00E7a','Bandeja','Por\u00E7\u00E3o','Ma\u00E7o','Pote','Garrafa','Rolo','Gal\u00E3o','Barril','Caixa','Fardo','Pacote','PCT 50g','PCT 1kg'];
 
 const SEED_CATALOG = [
   {id:'rf01',name:'Muçarela',key:'mucarela',category:'Refrigerados',unit:'peça'},
@@ -11125,6 +11128,80 @@ function viewCatalogo() {
         });
       });
       frag.appendChild(acetoBtn);
+
+      // 13/08: correção pontual da seção D do diagnóstico (confirmado com o
+      // Eduardo) — dois grupos de itens com unidade de medida cadastrada
+      // errada, confirmados comparando linha a linha com as outras lojas:
+      // (1) 18 itens de Limpeza do Delivery estavam como "Un" enquanto o
+      // mesmo produto, com o mesmo nome, é "Cx"/"PCT"/"Rolo"/"Galão" nas
+      // outras 3 lojas; (2) 6 produtos de hortifruti/bar com a unidade
+      // trocada numa loja isolada (ex: Pêra "Un" em Vicente Pires, "Kg" em
+      // todo o resto). Aproveita e normaliza também variações de
+      // maiúscula/minúscula de "Un"/"Peça"/"Maço" encontradas no catálogo
+      // (achado de baixa severidade, cosmético — mas já que está mexendo
+      // nesses arrays mesmo, corrige junto). Roda uma vez só — clicar de
+      // novo não faz mal, só reafirma os mesmos valores corretos.
+      const unitFixBtn = el('button', {cls:'btn btn-outline btn-sm', style:'margin-bottom:14px;font-size:12px;margin-left:8px'},
+        '🔧 Corrigir unidades de medida (Limpeza Delivery + hortifruti)');
+      unitFixBtn.title = 'Corrige 18 itens de Limpeza do Delivery e 6 itens de hortifruti/bar, confirmado com o Eduardo em 13/08';
+      unitFixBtn.addEventListener('click', () => {
+        if (!confirm('Corrigir a unidade de medida de 18 itens de Limpeza do Delivery e 6 itens de hortifruti/bar (pera, figo, banana, pimentão, maracujá, limão siciliano) pra bater com o padrão das outras lojas?\n\nNão altera estoque nem histórico — só o campo "unidade" desses itens específicos, mais uma limpeza de maiúscula/minúscula em "Un"/"Peça"/"Maço".')) return;
+
+        const CORRECOES = {
+          delivery: {
+            ul01:'Cx', ul02:'Cx', ul03:'Cx', ul04:'Cx', ul05:'Cx', ul06:'Cx',
+            ul08:'Rolo', ul09:'PCT', ul10:'PCT', ul11:'PCT', ul12:'PCT',
+            ul13:'PCT', ul14:'PCT', ul15:'Cx', ul20:'Galão', ul21:'PCT',
+            ul23:'PCT', ul24:'PCT',
+            ur25:'Kg', // Banana nanica 27kg
+          },
+          sig: {
+            ur54:'Kg',  // Pimentão verde
+            ub56:'Un',  // Limão siciliano
+            ub57:'Kg',  // Maracujá
+          },
+          vicente_pires: {
+            ur44:'Kg',  // Pêra
+            ur43:'Kg',  // Figo
+            ur54:'Kg',  // Pimentão verde
+          },
+        };
+
+        function normalizarCaixa(u) {
+          if (!u) return u;
+          const k = u.trim().toLowerCase();
+          if (k === 'un') return 'Un';
+          if (k === 'peça' || k === 'peca') return 'Peça';
+          if (k === 'maço' || k === 'maco') return 'Maço';
+          return u;
+        }
+
+        const slugs = ['asa_sul', 'sig', 'vicente_pires', 'delivery'];
+        let feitos = 0, erros = 0;
+        slugs.forEach(slug => {
+          db.ref('dados/pizza_unit_catalog/' + slug).once('value').then(snap => {
+            const cat = snap.val();
+            if (!Array.isArray(cat)) { erros++; return; }
+            let mudou = false;
+            const idFixes = CORRECOES[slug] || {};
+            const novo = cat.map(it => {
+              if (!it) return it;
+              let unidadeNova = it.unit;
+              if (idFixes[it.id] && idFixes[it.id] !== it.unit) unidadeNova = idFixes[it.id];
+              else unidadeNova = normalizarCaixa(it.unit);
+              if (unidadeNova !== it.unit) { mudou = true; return Object.assign({}, it, { unit: unidadeNova }); }
+              return it;
+            });
+            if (!mudou) { feitos++; if (feitos + erros === slugs.length) toast('✓ Unidades já estavam corretas (ou já corrigidas) em ' + feitos + ' loja(s).'); return; }
+            db.ref('dados/pizza_unit_catalog/' + slug).set(novo).then(() => {
+              feitos++;
+              if (window._unitCatalogCache) window._unitCatalogCache[slug] = novo;
+              if (feitos + erros === slugs.length) { toast('✓ Unidades corrigidas em ' + feitos + ' loja(s).'); render(); }
+            }).catch(() => { erros++; });
+          }).catch(() => { erros++; });
+        });
+      });
+      frag.appendChild(unitFixBtn);
     }
   }
 
