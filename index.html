@@ -1987,7 +1987,23 @@ auth.onAuthStateChanged(user => {
       if (typeof showPushNotif === 'function') {
         showPushNotif(n.titulo, n.corpo, []);
       }
-      snap.ref.remove(); // remove apos exibir
+      // 13/08: antes, se essa remoção falhasse (rede instável, por ex.), o
+      // aviso ficava esquecido no banco sem ninguém notar — e como
+      // "child_added" só dispara pra cada aviso a PRIMEIRA vez que o
+      // listener conecta, ele reaparecia inteiro na próxima vez que a
+      // pessoa recarregasse a página (o Firebase reenvia tudo que ainda
+      // está lá como se fosse novo). Agora tenta de novo até 3x antes de
+      // desistir e avisar no console, pra pelo menos não sumir em silêncio.
+      const _tryRemove = (tentativa) => {
+        snap.ref.remove().catch(e => {
+          if (tentativa < 3) {
+            setTimeout(() => _tryRemove(tentativa + 1), 1500 * tentativa);
+          } else {
+            console.warn('[Notificações] Não consegui remover um aviso já exibido — pode reaparecer no próximo carregamento:', e);
+          }
+        });
+      };
+      _tryRemove(1);
     });
   }
 });
@@ -4662,14 +4678,29 @@ const MIN_PER_DAY_DELIVERY = {
 };
 
 // Retorna mapa min_per_day para uma unidade
+// 13/08: antes, essa função só reconhecia 4 grafias exatas por unidade
+// ('Asa Sul'/'asa_sul' etc.) — qualquer variação de acento, maiúscula, ou
+// nome de unidade novo/diferente caía silenciosamente em {} (nenhum
+// mínimo aplicado, sem aviso nenhum), fazendo o "A Enviar" sumir sem dar
+// pista do motivo. Agora usa o mesmo normalizador de nome (unitSlug) que o
+// resto do sistema já usa pra outros dados da unidade, e avisa no console
+// quando não reconhece a unidade — não conserta um nome de unidade
+// inválido sozinho, mas deixa de falhar em silêncio.
+const MIN_PER_DAY_BY_SLUG = {
+  asa_sul:        MIN_PER_DAY_ASA_SUL,
+  sig:            MIN_PER_DAY_SIG,
+  vicente_pires:  MIN_PER_DAY_VICENTE_PIRES,
+  delivery:       MIN_PER_DAY_DELIVERY,
+};
+
 function getMinPerDay(unitName) {
-  // Normalizar nome para garantir match independente de formato
-  const u = (unitName || '').trim();
-  if (u === 'Asa Sul'       || u === 'asa_sul')        return MIN_PER_DAY_ASA_SUL;
-  if (u === 'SIG'           || u === 'sig')             return MIN_PER_DAY_SIG;
-  if (u === 'Vicente Pires' || u === 'vicente_pires')   return MIN_PER_DAY_VICENTE_PIRES;
-  if (u === 'Delivery'      || u === 'delivery')        return MIN_PER_DAY_DELIVERY;
-  return {};
+  const slug = unitSlug(unitName);
+  const map = MIN_PER_DAY_BY_SLUG[slug];
+  if (!map) {
+    console.warn('[getMinPerDay] Unidade não reconhecida:', JSON.stringify(unitName), '(slug:', slug + ') — nenhum mínimo será aplicado nessa unidade.');
+    return {};
+  }
+  return map;
 }
 
 // Calcula quantidade a enviar para um item específico
@@ -8906,11 +8937,18 @@ function viewValidadeControl() {
     cancelBtn2.addEventListener('click', () => overlay.remove());
     const saveBtn2 = el('button', {cls:'btn btn-sm', style:'background:var(--accent,#1A5229);color:#fff'}, 'Salvar Lote');
     saveBtn2.addEventListener('click', () => {
+      // 13/08: trava contra clique duplo -- sem isso, um duplo-clique rapido
+      // dispara esse handler duas vezes antes do modal fechar, e cada
+      // disparo gera seu proprio Date.now(), entao o mesmo lote acaba sendo
+      // gravado 2x (timestamps diferentes por poucos ms, duas entradas para
+      // a mesma validade digitada uma unica vez).
+      if (saveBtn2.disabled) return;
       errEl.style.display = 'none';
       if (!selectedItem) { errEl.textContent = 'Selecione um item do catálogo.'; errEl.style.display = 'block'; return; }
       const qty = parseFloat(qtyInp.value);
       if (!qty || qty <= 0) { errEl.textContent = 'Informe uma quantidade válida.'; errEl.style.display = 'block'; return; }
       if (!dateInp.value) { errEl.textContent = 'Informe a data de validade.'; errEl.style.display = 'block'; return; }
+      saveBtn2.disabled = true;
       const slug2 = unitSlug(unitForReg);
       const ts = Date.now();
       const lote = {
@@ -8928,7 +8966,10 @@ function viewValidadeControl() {
           toast('\u2705 Lote registrado!');
           renderValidBody();
         })
-        .catch(e => { errEl.textContent = 'Erro: ' + e.message; errEl.style.display = 'block'; });
+        .catch(e => {
+          saveBtn2.disabled = false;
+          errEl.textContent = 'Erro: ' + e.message; errEl.style.display = 'block';
+        });
     });
     ftr.appendChild(cancelBtn2);
     ftr.appendChild(saveBtn2);
