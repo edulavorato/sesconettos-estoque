@@ -5984,29 +5984,39 @@ function proximaJanela(cat) {
   return 'a definir';
 }
 
-// Senhas armazenadas como hash SHA-256, não em texto puro, para que abrir o
-// código-fonte da página não exponha diretamente as senhas de login.
-// Gerado com: crypto.createHash('sha256').update(senha, 'utf8').digest('hex')
-const PASS_HASH_TO_UNIT = {
-  '6f1b423a81334cc40a36329efafc85b48417342f09f8ed90d3cfff61591ccd0a': { unit: 'cpd',          role: 'Equipe' }, // Sesco@CPD
-  'e38359a738a91205115ec44ddcf87dc51763acffbe9860a36bd834317120bfa4': { unit: 'Asa Sul',       role: 'Equipe' }, // SescoAsaSul@
-  '27f08604dafb13627c8939a04a2133116da34f2a2e7deed0db57aa05f7fc6c4c': { unit: 'Vicente Pires', role: 'Equipe' }, // Sesco#VP
-  '853d0be61e7c3b0915a07b2588e0382ca187f272424f996ca48071d637bab7c3': { unit: 'SIG',           role: 'Equipe' }, // SescoSIG#
-  '2de3188ea2f34eff5d967216ae375d3d75732fc25a084e68d21eb111efe5e64c': { unit: 'Delivery',      role: 'Equipe' }, // SescoDlv#
-  '298a6186d0e48834dd294747963c3796d35efe1666db086213638efe98dc979c': { unit: 'Delivery',      role: 'Equipe' }, // SescoDelivery%
-};
-
+// 13/08: a lista de senhas NÃO fica mais aqui no código do site (que
+// qualquer um pode ler com "Ver código-fonte") — ela foi movida pra dentro
+// das regras de segurança do Firebase (arquivo firebase_rules_v4_hash_oculto.json),
+// um lugar que o navegador nunca consegue ler. O site continua calculando o
+// hash da senha digitada, exatamente como antes — só que agora, em vez de
+// comparar esse hash com uma tabela local, ele registra o hash no banco
+// (_write_auth) e tenta uma pequena gravação de teste em cada unidade
+// (_login_probe/<unidade>) — o Firebase só deixa a gravação de teste passar
+// na unidade cuja senha bateu com o hash secreto guardado nas regras. Isso
+// é o que diz ao site qual loja/papel é da pessoa que logou. Tela de login
+// continua idêntica: mesmo nome, mesma senha, sem escolher loja.
 async function _sha256Hex(str) {
   const enc = new TextEncoder().encode(str);
   const buf = await crypto.subtle.digest('SHA-256', enc);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Não são segredo — são só os nomes/rótulos de cada loja (quem confere a
+// senha de verdade são as regras do Firebase, via _login_probe).
+const UNIT_LOGIN_CANDIDATES = [
+  { key: 'cpd',            unit: 'cpd',          role: 'Equipe' },
+  { key: 'asa_sul',        unit: 'Asa Sul',       role: 'Equipe' },
+  { key: 'vicente_pires',  unit: 'Vicente Pires', role: 'Equipe' },
+  { key: 'sig',            unit: 'SIG',           role: 'Equipe' },
+  { key: 'delivery',       unit: 'Delivery',      role: 'Equipe' },
+];
+
 // LOGIN/LOGOUT
 async function doLogin() {
   const name   = (document.getElementById('login-name').value || '').trim();
   const pass   = (document.getElementById('login-pass').value || '');
   const errDiv = document.getElementById('login-error');
+  const loginBtn = document.getElementById('login-btn');
 
   if (!name || !pass) {
     errDiv.textContent = 'Preencha seu nome e a senha para continuar.';
@@ -6014,16 +6024,40 @@ async function doLogin() {
     return;
   }
 
+  errDiv.style.display = 'none';
+  if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'Verificando…'; }
+
   let match = null;
   try {
     const hash = await _sha256Hex(pass);
-    match = PASS_HASH_TO_UNIT[hash] || null;
+    const uid = auth.currentUser && auth.currentUser.uid;
+    if (!uid) throw new Error('Sessão do Firebase ainda não está pronta.');
+
+    // Registra o hash da senha digitada — as regras do Firebase comparam
+    // esse valor com a lista secreta que só existe nas regras (nunca no site).
+    await db.ref('dados/_write_auth/' + uid).set(hash);
+
+    // Tenta uma gravação de teste em cada unidade; só passa na que bater
+    // com o hash certo. A primeira que não der "permission denied" é a loja
+    // de quem está entrando.
+    for (const cand of UNIT_LOGIN_CANDIDATES) {
+      try {
+        await db.ref('dados/_login_probe/' + cand.key).set(Date.now());
+        match = cand;
+        break;
+      } catch (e) {
+        // permissão negada nessa unidade = senha não é dela, tenta a próxima
+      }
+    }
   } catch (e) {
     console.error('[Login] Erro ao verificar senha:', e);
+    if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
     errDiv.textContent = 'Erro ao verificar a senha. Tente novamente.';
     errDiv.style.display = 'block';
     return;
   }
+
+  if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Entrar'; }
 
   if (!match) {
     errDiv.textContent = 'Senha incorreta. Verifique com o responsável.';
@@ -6036,7 +6070,6 @@ async function doLogin() {
     return;
   }
 
-  errDiv.style.display = 'none';
   session = { name, unit: match.unit, role: match.role };
   try { localStorage.setItem('pizza_session', JSON.stringify(session)); } catch(e) {}
   applySession();
@@ -6086,6 +6119,14 @@ function _finishLogout() {
   // Clear password field for security
   const passInp = document.getElementById('login-pass');
   if (passInp) { passInp.value = ''; passInp.type = 'password'; }
+  // 13/08: limpa o hash guardado pra essa sessão anônima — depois do
+  // "Sair", ninguém mais consegue gravar nada usando esse navegador até
+  // fazer login de novo com uma senha válida. Melhor esforço (não trava o
+  // reload esperando a resposta do Firebase).
+  try {
+    const uid = auth.currentUser && auth.currentUser.uid;
+    if (uid) db.ref('dados/_write_auth/' + uid).remove().catch(() => {});
+  } catch (e) {}
   // Full reload is the most reliable way to reset all state
   // (works in Electron, Chrome, Safari)
   window.location.reload();
