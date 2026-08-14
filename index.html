@@ -1769,23 +1769,23 @@ auth.onAuthStateChanged(user => {
   // deste uid já é válido pra essa unidade). Se falhar, a sessão está
   // "zumbi": limpa o cache e força login de novo, com aviso claro, em vez
   // de deixar a pessoa "logada" mas incapaz de salvar qualquer coisa.
+  //
+  // 14/08: achado da investigação sobre o caso ter continuado às 2h da
+  // manhã mesmo depois desse conserto — essa checagem SÓ rodava uma vez,
+  // aqui, logo depois de abrir a página. Se a sessão virasse "zumbi" DEPOIS
+  // disso (por exemplo: o mesmo aparelho com duas abas abertas do sistema,
+  // e alguém clica "Sair" só numa delas — isso apaga o _write_auth
+  // compartilhado por TODAS as abas daquele navegador, sem recarregar a
+  // outra aba), a checagem de carregamento já tinha passado horas antes e
+  // nunca mais rodava de novo — a aba ficava presa gravando errado, caindo
+  // só no retry cego a cada 20s (ver setInterval perto de
+  // _flushPendingWrites), que nunca detecta ou avisa nada, só tenta de novo
+  // pra sempre. Por isso essa checagem virou uma função reaproveitável
+  // (_checkSessionValidityOrRelogin, definida mais abaixo) chamada tanto
+  // aqui quanto sempre que um write real falhar por permissão — pra pegar
+  // esse tipo de sessão zumbi assim que ela acontece, não só no carregamento.
   setTimeout(() => {
-    if (!session || typeof unitSlug !== 'function') return;
-    const slug = unitSlug(session.unit);
-    db.ref('dados/_login_probe/' + slug).set(Date.now())
-      .then(() => console.log('[Auth] Sessão validada — gravação permitida para', session.unit))
-      .catch(e => {
-        console.error('[Auth] Sessão zumbi detectada — _write_auth não é válido para este uid:', e);
-        // Reusa o mecanismo de logout já testado (_finishLogout) em vez de
-        // tentar trocar de tela manualmente — ele já limpa a sessão, tenta
-        // remover qualquer _write_auth órfão e recarrega a página do zero,
-        // que é a forma mais confiável de garantir um estado limpo pro
-        // próximo login (mesmo padrão usado no logout normal).
-        if (typeof alert === 'function') {
-          alert('Sua sessão expirou (o navegador perdeu a autenticação salva) — vamos recarregar e pedir login de novo pra continuar salvando normalmente.');
-        }
-        if (typeof _finishLogout === 'function') _finishLogout();
-      });
+    if (typeof _checkSessionValidityOrRelogin === 'function') _checkSessionValidityOrRelogin();
   }, 1500); // aguarda o restante da inicialização (gates) acomodar
   // Migrar estrutura de dados das unidades se necessário (uma vez só)
   setTimeout(_migrarEstruturaPizzaUnits, 2000);
@@ -1822,12 +1822,28 @@ auth.onAuthStateChanged(user => {
     }
   });
 
+  // 14/08: comparação de versão POR NÚMERO (não por texto) — ver comentário
+  // grande na linha da constante APP_VERSION explicando por que ">" direto
+  // em string estava quebrado (fazia "1.5.9" parecer mais novo que "1.5.74").
+  // Trata cada pedaço (major.minor.patch) como número separadamente.
+  function _compareVersions(a, b) {
+    const pa = String(a || '0').split('.').map(n => parseInt(n, 10) || 0);
+    const pb = String(b || '0').split('.').map(n => parseInt(n, 10) || 0);
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+      const na = pa[i] || 0, nb = pb[i] || 0;
+      if (na !== nb) return na - nb; // >0 se a>b, <0 se a<b
+    }
+    return 0;
+  }
+  window._compareVersions = _compareVersions;
+
   // Publicar versão do app — qualquer dispositivo com versão mais recente atualiza
   setTimeout(() => {
     if (!window._APP_VERSION) return;
     db.ref('dados/pizza_app_version').once('value').then(snap => {
       const stored = snap.val();
-      if (!stored || window._APP_VERSION > stored) {
+      if (!stored || _compareVersions(window._APP_VERSION, stored) > 0) {
         db.ref('dados/pizza_app_version').set(window._APP_VERSION)
           .then(() => console.log('[App] Versão ' + window._APP_VERSION + ' publicada'))
           .catch(e => console.warn('[App] Erro ao publicar versão:', e));
@@ -1871,7 +1887,19 @@ auth.onAuthStateChanged(user => {
 
     // Migração de versão
     const CATALOG_VER = 'v15'; // catálogos independentes
-    const APP_VERSION = '1.5.9'; // 27/07: URGENTE — Envios do Dia volta a usar o catálogo da Asa Sul como referência de categoria/ordenação (não mais o do CPD)
+    // 14/08: achado da investigação sobre o "Falha ao salvar" persistente —
+    // esse número tinha ficado parado em '1.5.9' desde 27/07, mesmo depois de
+    // várias versões novas (1.5.68 até 1.5.74) terem sido publicadas. Como a
+    // comparação abaixo (linha ~1938) usava ">" direto em texto, e não em
+    // número, '1.5.9' > '1.5.74' dá VERDADEIRO (compara caractere a
+    // caractere: '9' é "maior" que '7') — ou seja, nenhum aparelho jamais via
+    // o aviso de "nova versão disponível" pra nenhuma dessas versões, mesmo
+    // quando o arquivo publicado já tinha os consertos. Um aparelho que
+    // ficasse com a aba aberta por muito tempo sem recarregar sozinho podia
+    // continuar rodando código antigo (sem a correção da sessão zumbi, por
+    // exemplo) por dias, sem nenhum aviso pra atualizar. Ver
+    // _compareVersions() logo abaixo pra comparação correta por número.
+    const APP_VERSION = '1.5.75';
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -1946,7 +1974,10 @@ auth.onAuthStateChanged(user => {
   // ── 3. VERSÃO DO APP ────────────────────────────────────────────────────────
   db.ref('dados/pizza_app_version').on('value', snap => {
     const remoteVer = snap.val();
-    if (remoteVer && remoteVer !== window._APP_VERSION && !window._updateBannerShown) {
+    const isNewer = remoteVer && (typeof _compareVersions === 'function'
+      ? _compareVersions(remoteVer, window._APP_VERSION) > 0
+      : remoteVer !== window._APP_VERSION);
+    if (isNewer && !window._updateBannerShown) {
       window._updateBannerShown = true;
       if (!document.getElementById('update-banner')) {
         const banner = document.createElement('div');
@@ -5884,6 +5915,10 @@ function adjustItemAtomic(itemId, delta) {
       console.error('[Firebase] Transação (ajuste) falhou para', itemId, error);
       window._fb.localWrite = false;
       if (typeof toast === 'function') toast('⚠️ Falha ao atualizar o estoque do CPD para um item — confira manualmente antes de continuar.');
+      const code = (error && (error.code || error.name || '')).toString().toUpperCase();
+      if (code.indexOf('PERMISSION') !== -1 && typeof _checkSessionValidityOrRelogin === 'function') {
+        _checkSessionValidityOrRelogin();
+      }
     } else if (committed) {
       const novoVal = snapshot ? snapshot.val() : null;
       if (novoVal != null) cpd[itemId] = novoVal;
@@ -5946,6 +5981,15 @@ function save(key, data) {
             _updatePendingBadge(window._fb.pendingWrites.length);
             if (typeof toast === 'function') {
               toast('⚠️ Falha ao salvar — tentando de novo automaticamente.');
+            }
+            // 14/08: se o erro for de PERMISSÃO (não de rede/offline), pode
+            // ser uma sessão zumbi que virou zumbi DEPOIS do carregamento da
+            // página (ver comentário grande em _checkSessionValidityOrRelogin)
+            // — checa na hora, em vez de deixar o retry cego a cada 20s
+            // martelando a mesma parede pra sempre sem nunca avisar ninguém.
+            const code = (e && (e.code || e.name || '')).toString().toUpperCase();
+            if (code.indexOf('PERMISSION') !== -1 && typeof _checkSessionValidityOrRelogin === 'function') {
+              _checkSessionValidityOrRelogin();
             }
           });
       } else {
@@ -6014,6 +6058,14 @@ function _flushPendingWrites() {
         const remaining = pending.slice(idx - 1); // idx-1 = item que acabou de falhar
         window._fb.pendingWrites = remaining.concat(window._fb.pendingWrites);
         _updatePendingBadge(window._fb.pendingWrites.length);
+        // 14/08: mesmo raciocínio do save() — se for erro de permissão (não
+        // de rede), pode ser sessão zumbi. Esse retry roda a cada 20s pra
+        // sempre (ver setInterval abaixo); sem essa checagem, ficaria
+        // martelando a mesma parede a noite toda sem nunca avisar ninguém.
+        const code = (e && (e.code || e.name || '')).toString().toUpperCase();
+        if (code.indexOf('PERMISSION') !== -1 && typeof _checkSessionValidityOrRelogin === 'function') {
+          _checkSessionValidityOrRelogin();
+        }
       });
   }
   _updatePendingBadge(pending.length);
@@ -6633,6 +6685,37 @@ function _finishLogout() {
   // Full reload is the most reliable way to reset all state
   // (works in Electron, Chrome, Safari)
   doReload();
+}
+
+// 14/08: extraída do que antes era só o código de dentro do
+// auth.onAuthStateChanged (rodava uma única vez, 1.5s depois de abrir a
+// página). Agora é reaproveitável e é chamada de novo sempre que um write de
+// verdade falha por permissão durante o uso normal (ver save() e
+// _flushPendingWrites) — não só no carregamento — porque uma sessão pode
+// virar "zumbi" bem depois da página já estar aberta (ex.: mesmo navegador
+// com duas abas do sistema, "Sair" clicado só numa delas). _zombieCheckAt
+// evita disparar a checagem de novo se uma já rodou nos últimos 10s (várias
+// gravações podem falhar quase juntas — não precisa checar uma por uma).
+function _checkSessionValidityOrRelogin() {
+  if (!session || typeof unitSlug !== 'function' || typeof db === 'undefined') return;
+  const now = Date.now();
+  if (window._fb && window._fb._zombieCheckAt && (now - window._fb._zombieCheckAt) < 10000) return;
+  if (window._fb) window._fb._zombieCheckAt = now;
+  const slug = unitSlug(session.unit);
+  db.ref('dados/_login_probe/' + slug).set(Date.now())
+    .then(() => console.log('[Auth] Sessão validada — gravação permitida para', session.unit))
+    .catch(e => {
+      console.error('[Auth] Sessão zumbi detectada — _write_auth não é válido para este uid:', e);
+      // Reusa o mecanismo de logout já testado (_finishLogout) em vez de
+      // tentar trocar de tela manualmente — ele já limpa a sessão, tenta
+      // remover qualquer _write_auth órfão e recarrega a página do zero,
+      // que é a forma mais confiável de garantir um estado limpo pro
+      // próximo login (mesmo padrão usado no logout normal).
+      if (typeof alert === 'function') {
+        alert('Sua sessão expirou (o navegador perdeu a autenticação salva) — vamos recarregar e pedir login de novo pra continuar salvando normalmente.');
+      }
+      if (typeof _finishLogout === 'function') _finishLogout();
+    });
 }
 
 // Modal sem opção de fechar/cancelar — só "Finalizar agora" ou "Descartar
