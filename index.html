@@ -2069,6 +2069,15 @@ auth.onAuthStateChanged(user => {
     if (typeof renderOpenCountBanner === 'function') renderOpenCountBanner();
   });
 
+  // 14/08: aviso pro CPD de itens pendentes de salvar em outras lojas (ver
+  // _reportPendingStatus). Todo mundo pode ler esse nó (mesma regra aberta
+  // de notificações), mas só o CPD renderiza o banner com ele.
+  db.ref('dados/_pending_status').on('value', snap => {
+    if (!window._fb.ready) return;
+    window._pendingStatusAll = snap.val() || {};
+    if (typeof renderPendingStatusBanner === 'function') renderPendingStatusBanner();
+  });
+
   // ── 8. ESTOQUE DAS UNIDADES (granular por unidade) ─────────────────────────
   // CPD ouve todas as unidades; cada unidade ouve apenas a si mesma
   // Determinar unidades a ouvir com base na sessão salva no localStorage
@@ -2336,7 +2345,7 @@ auth.onAuthStateChanged(user => {
         <span id="conn-dot" style="width:6px;height:6px;border-radius:50%;background:#A03A3A;display:inline-block"></span>
         <span id="conn-label">SEM CONEXÃO</span>
       </div>
-      <div id="pending-badge" style="display:none;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(214,158,46,.15);color:#975A16;border:1px solid rgba(214,158,46,.3)">
+      <div id="pending-badge" onclick="if(typeof _showPendingWritesDetail==='function')_showPendingWritesDetail()" title="Clique para ver quais itens ainda não foram salvos" style="display:none;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(214,158,46,.15);color:#975A16;border:1px solid rgba(214,158,46,.3);cursor:pointer">
         <span style="width:6px;height:6px;border-radius:50%;background:#D69E2E;display:inline-block;animation:pulse 1.5s infinite"></span>
         <span id="pending-label">0 dados pendentes</span>
       </div>
@@ -2351,6 +2360,7 @@ auth.onAuthStateChanged(user => {
     </div>
   </div>
   <div id="open-count-banner" class="alert-banner warn" style="display:none;margin:12px 16px 0"></div>
+  <div id="pending-status-banner" class="alert-banner warn" style="display:none;margin:12px 16px 0"></div>
   <div class="content" id="content"></div>
 </main>
 
@@ -5537,6 +5547,37 @@ function renderOpenCountBanner() {
   _buildBannerContent(el, '\u26A0\uFE0F', titulo, corpo, null);
 }
 
+// 14/08: banner só pro CPD, avisando quais lojas têm itens digitados que
+// ainda não foram salvos no Firebase (fila de reenvio local de cada
+// aparelho — ver _reportPendingStatus/_showPendingWritesDetail). Some
+// sozinho assim que a loja conseguir salvar (ou sair e entrar de novo).
+function renderPendingStatusBanner() {
+  const bel = document.getElementById('pending-status-banner');
+  if (!bel || !session) return;
+  if (!isCPD()) { bel.style.display = 'none'; bel.innerHTML = ''; return; }
+  const all = window._pendingStatusAll || {};
+  const slugsComPendencia = Object.keys(all).filter(slug => all[slug] && all[slug].count > 0);
+  if (slugsComPendencia.length === 0) {
+    bel.style.display = 'none';
+    bel.innerHTML = '';
+    return;
+  }
+  const partes = slugsComPendencia.map(slug => {
+    const st = all[slug];
+    return (st.unit || slug) + ' (' + st.count + (st.count === 1 ? ' item' : ' itens') + ')';
+  });
+  const titulo = 'Lojas com dados ainda não salvos \u2014 ' + partes.join(', ');
+  const detalhes = slugsComPendencia.map(slug => {
+    const st = all[slug];
+    const lista = (st.items || []).join('; ');
+    return (st.unit || slug) + ': ' + lista;
+  }).join(' | ');
+  const corpo = 'Esses itens foram digitados mas ainda não chegaram a ser confirmados no Firebase '
+    + '(provavelmente a sess\u00E3o daquele aparelho precisa de um novo login \u2014 ver v1.5.72). '
+    + 'Detalhe: ' + detalhes;
+  _buildBannerContent(bel, '\uD83D\uDCE1', titulo, corpo, null);
+}
+
 // Modal de confirmação genérico (categoria ou geral)
 function openConfirmModal(title, subtitle, onConfirm) {
   const overlay = el('div', {cls:'confirm-modal-overlay'});
@@ -5997,13 +6038,93 @@ setInterval(() => {
 // Atualizar indicador visual de dados pendentes
 function _updatePendingBadge(count) {
   const badge = document.getElementById('pending-badge');
-  if (!badge) return;
-  if (count > 0) {
-    badge.textContent = count + (count === 1 ? ' dado pendente' : ' dados pendentes');
-    badge.style.display = 'flex';
-  } else {
-    badge.style.display = 'none';
+  if (badge) {
+    // 14/08: corrigido — antes usava badge.textContent, que apagava o
+    // <span> do pontinho pulsante (some depois do primeiro update). Agora só
+    // atualiza o texto do #pending-label, preservando o resto do badge.
+    const label = document.getElementById('pending-label');
+    if (count > 0) {
+      if (label) label.textContent = count + (count === 1 ? ' dado pendente' : ' dados pendentes');
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
   }
+  if (typeof _reportPendingStatus === 'function') _reportPendingStatus();
+}
+
+// 14/08: pedido do Eduardo depois do incidente de madrugada — o CPD precisa
+// ver, de longe, quais unidades estão com itens pendentes de salvar, sem
+// precisar pedir pra cada loja checar o próprio aparelho. Como o problema
+// raiz (sessão "zumbi", ver v1.5.72) trava justamente as gravações
+// protegidas por senha, essa notificação usa um caminho DIFERENTE
+// (dados/_pending_status/<loja>) com regra aberta ("auth != null", igual
+// notificações e pizza_counted) — assim ela consegue avisar o CPD mesmo
+// quando o resto das gravações daquele aparelho está bloqueado. Precisa da
+// regra nova no Firebase (arquivo v5 enviado junto) — sem publicar essa
+// regra, esse aviso simplesmente não aparece (mas nada mais quebra).
+function _reportPendingStatus() {
+  if (!window._fb || !window._fb.ready || typeof db === 'undefined' || !session) return;
+  const slug = unitSlug(session.unit);
+  const pending = window._fb.pendingWrites || [];
+  const ref = db.ref('dados/_pending_status/' + slug);
+  if (pending.length === 0) {
+    ref.remove().catch(() => {});
+    return;
+  }
+  const itens = pending.slice(0, 20).map(p => {
+    let itemId = p.itemId;
+    if (!itemId && p.key) { const parts = p.key.split('/'); itemId = parts[parts.length - 1]; }
+    let nome = null;
+    try {
+      const found = (catalog || []).find(i => i.id === itemId) || (unitCatalog || []).find(i => i.id === itemId);
+      if (found) nome = found.name;
+    } catch (e) {}
+    const valor = p.qty != null ? p.qty : (p.data != null ? JSON.stringify(p.data).slice(0, 40) : '?');
+    return (nome || itemId || '?') + ' = ' + valor;
+  });
+  ref.set({
+    unit: session.unit,
+    count: pending.length,
+    items: itens,
+    ts: Date.now(),
+  }).catch(e => console.warn('[PendingStatus] Não consegui avisar o CPD sobre itens pendentes:', e));
+}
+
+// 14/08: achado da madrugada do fechamento (relatos de "falha ao salvar"
+// persistente) — os itens que falham ficam nessa fila de reenvio
+// (window._fb.pendingWrites), mas até agora não havia como VER quais itens
+// específicos são, só o número total no badge. Clicando no badge "X dados
+// pendentes", agora mostra a lista de verdade — pra loja/CPD saber
+// exatamente o que precisa reconferir/reenviar, em vez de duvidar de tudo.
+function _showPendingWritesDetail() {
+  const pending = (window._fb && window._fb.pendingWrites) || [];
+  if (pending.length === 0) {
+    alert('Nenhum dado pendente agora — tudo que foi digitado já está salvo no Firebase.');
+    return;
+  }
+  const linhas = pending.map(p => {
+    let desc = p.key || (p.type === 'atomic' ? 'pizza_cpd/' + p.itemId : '(desconhecido)');
+    // Tenta resolver o nome do item a partir do id, quando dá
+    let itemId = p.itemId;
+    if (!itemId && p.key) {
+      const parts = p.key.split('/');
+      itemId = parts[parts.length - 1];
+    }
+    let nome = null;
+    try {
+      const found = (catalog || []).find(i => i.id === itemId)
+        || (unitCatalog || []).find(i => i.id === itemId);
+      if (found) nome = found.name;
+    } catch (e) {}
+    const valor = p.qty != null ? p.qty : (p.data != null ? JSON.stringify(p.data).slice(0, 60) : '?');
+    return '• ' + (nome ? nome + ' (' + desc + ')' : desc) + ' → valor digitado: ' + valor;
+  });
+  alert(
+    pending.length + ' item(ns) ainda NÃO confirmados no Firebase (o sistema vai continuar tentando sozinho a cada ~20s):\n\n' +
+    linhas.join('\n') +
+    '\n\nSe a lista não sumir sozinha em alguns minutos, o mais seguro é: Sair e entrar de novo com a senha, depois reconferir esses itens específicos.'
+  );
 }
 
 // Persistir fila de writes pendentes no localStorage ao sair/refresh
@@ -12047,6 +12168,8 @@ function render() {
 
   // Aviso de contagem em aberto (rascunho que não morre sozinho — só finaliza ou descarta)
   renderOpenCountBanner();
+  // 14/08: aviso pro CPD de lojas com itens ainda não salvos (ver _reportPendingStatus)
+  if (typeof renderPendingStatusBanner === 'function') renderPendingStatusBanner();
 }
 
 // INIT
