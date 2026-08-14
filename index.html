@@ -1888,6 +1888,17 @@ auth.onAuthStateChanged(user => {
     if (!window._fb.ready || typeof cpd === 'undefined') return;
     const val = snap.val();
     if (!val) return;
+    // 14/08: mesma correção aplicada ao listener de pizza_units — ver
+    // comentário lá. Enquanto uma gravação local do CPD está em andamento
+    // (window._fb.localWrite), só faz merge do snapshot recebido em vez de
+    // apagar tudo e reconstruir do zero, pra não reverter um valor recém
+    // digitado se o snapshot chegar um pouco atrasado.
+    if (window._fb.localWrite) {
+      Object.assign(cpd, val);
+      saveLocal('pizza_cpd', cpd);
+      _gateStep('stock', 'Estoque sincronizado…');
+      return;
+    }
     Object.keys(cpd).forEach(k => delete cpd[k]);
     Object.assign(cpd, val);
     saveLocal('pizza_cpd', cpd);
@@ -1980,6 +1991,30 @@ auth.onAuthStateChanged(user => {
       }
 
       if (!unitStock[unitName]) unitStock[unitName] = {};
+      // 14/08: CORREÇÃO — relato de usuários de que o número digitado "volta
+      // pra contagem anterior" depois de salvar. Causa: este listener sempre
+      // apagava TUDO de unitStock[unitName] e reconstruía do zero a partir
+      // do snapshot recebido do Firebase — mesmo enquanto uma gravação local
+      // ainda estava em andamento (window._fb.localWrite = true, ver
+      // updateQty/onUpdate). _scheduleRender() já pulava o re-render da TELA
+      // nesse período, mas os DADOS em memória (unitStock) eram sobrescritos
+      // na hora mesmo assim. Se esse snapshot chegasse um pouco atrasado em
+      // relação ao que a pessoa acabou de digitar (rede instável, vários
+      // itens editados em sequência rápida — comum numa loja contando
+      // estoque), o valor novo sumia da memória ali mesmo; quando a tela
+      // finalmente re-renderizava (assim que localWrite liberava), mostrava
+      // o valor antigo de volta — mesmo o dado já tendo sido salvo/estar a
+      // caminho do Firebase. Agora, enquanto uma gravação local está em
+      // andamento, só ATUALIZAMOS os itens que vieram no snapshot (merge),
+      // sem apagar nada que já está em memória — o próximo evento (já com a
+      // gravação confirmada) sincroniza tudo direitinho assim que
+      // localWrite liberar, sem essa janela de sobrescrita.
+      if (window._fb.localWrite) {
+        Object.assign(unitStock[unitName], val);
+        try { localStorage.setItem('pizza_unit_' + slug, JSON.stringify(unitStock[unitName])); } catch(e) {}
+        _gateStep('stock', 'Estoque sincronizado…');
+        return;
+      }
       Object.keys(unitStock[unitName]).forEach(k => delete unitStock[unitName][k]);
       Object.assign(unitStock[unitName], val);
       try { localStorage.setItem('pizza_unit_' + slug, JSON.stringify(val)); } catch(e) {}
@@ -2318,7 +2353,7 @@ const SEED_CATALOG = [
   {id:'pp03',name:'Molho de tomate 5L',key:'molho de tomate 5l',category:'Pré Produzidos',unit:'Balde'},
   {id:'pp04',name:'Parmesão grana padano 300g',key:'parmesao grana padano 300g',category:'Pré Produzidos',unit:'Un'},
   {id:'pp05',name:'Parmesão ralado 1kg',key:'parmesao ralado 1kg',category:'Pré Produzidos',unit:'Un'},
-  {id:'pp06',name:'Provolone 300g',key:'provolone 200g',category:'Pré Produzidos',unit:'Un'},
+  {id:'pp06',name:'Provolone 200g',key:'provolone 200g',category:'Pré Produzidos',unit:'Un'},
   {id:'pp07',name:'Gorgonzola 300g',key:'gorgonzola 300g',category:'Pré Produzidos',unit:'Un'},
   {id:'pp08',name:'Lombo canadense 500g',key:'lombo canadense 500g',category:'Pré Produzidos',unit:'Un'},
   {id:'pp09',name:'Linguiça calabresa 2,5kg',key:'linguica calabresa 2,5kg',category:'Pré Produzidos',unit:'Un'},
@@ -2347,7 +2382,7 @@ const SEED_CATALOG = [
   {id:'pp32',name:'Nozes 100g',key:'nozes 100g',category:'Pré Produzidos',unit:'Kg'},
   {id:'pp33',name:'Pistache 250g',key:'pistache 250g',category:'Pré Produzidos',unit:'PCT'},
   {id:'es01',name:'Farinha 10kg',key:'farinha 10kg',category:'Estoque Seco',unit:'Un'},
-  {id:'es02',name:'Semolina 10kg',key:'semolina 5kg',category:'Estoque Seco',unit:'Un'},
+  {id:'es02',name:'Semolina 10kg',key:'semolina 10kg',category:'Estoque Seco',unit:'Un'},
   {id:'es03',name:'Fermento 1kg',key:'fermento 1kg',category:'Estoque Seco',unit:'Un'},
   {id:'es04',name:'Atum natural lata',key:'atum natural lata',category:'Estoque Seco',unit:'Un'},
   {id:'es05',name:'Creme de leite cx 200ml',key:'creme de leite cx 200ml',category:'Estoque Seco',unit:'Un'},
@@ -2649,7 +2684,7 @@ const ASA_SUL_CATALOG = [
   {id:'ur05',name:'Muçarela de búfala 180g',key:'mucarela de bufala 180g',category:'Refrigerados',unit:'Un'},
   {id:'ur06',name:'Parmesão grana padano 300g',key:'parmesao grana padano 300g',category:'Refrigerados',unit:'Peça'},
   {id:'ur07',name:'Parmesão ralado 2kg',key:'parmesao ralado 1kg',category:'Refrigerados',unit:'Peça'},
-  {id:'ur08',name:'Provolone 300g',key:'provolone 200g',category:'Refrigerados',unit:'Porção'},
+  {id:'ur08',name:'Provolone 200g',key:'provolone 200g',category:'Refrigerados',unit:'Porção'},
   {id:'ur09',name:'Gorgonzola 300g',key:'gorgonzola 300g',category:'Refrigerados',unit:'Peça'},
   {id:'ur10',name:'Burrata de búfala 200g',key:'burrata de bufala 200g',category:'Refrigerados',unit:'Un'},
   {id:'ur11',name:'Queijo brie',key:'queijo brie',category:'Refrigerados',unit:'Peça'},
@@ -2697,7 +2732,7 @@ const ASA_SUL_CATALOG = [
   {id:'ur53',name:'Tomate extra grande',key:'tomate extra grande',category:'Refrigerados',unit:'Kg'},
   {id:'ur54',name:'Pimentão verde',key:'pimentao verde',category:'Refrigerados',unit:'Kg'},
   {id:'ur55',name:'Champignon Paris 300g',key:'champignon paris 300g',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ue01',name:'Semolina 10kg',key:'semolina 5kg',category:'Estoque Seco',unit:'Saco'},
+  {id:'ue01',name:'Semolina 10kg',key:'semolina 10kg',category:'Estoque Seco',unit:'Saco'},
   {id:'ue02',name:'Canela c/açúcar mix 500g',key:'canela c/acucar mix 500g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue03',name:'Canela em pó 200g',key:'canela em po 200g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue04',name:'Orégano 250g',key:'oregano 250g',category:'Estoque Seco',unit:'PCT'},
@@ -2958,7 +2993,7 @@ const SIG_CATALOG = [
   {id:'ur05',name:'Muçarela de búfala 180g',key:'mucarela de bufala 180g',category:'Refrigerados',unit:'Un'},
   {id:'ur06',name:'Parmesão grana padano 300g',key:'parmesao grana padano 300g',category:'Refrigerados',unit:'Peça'},
   {id:'ur07',name:'Parmesão ralado 2kg',key:'parmesao ralado 1kg',category:'Refrigerados',unit:'Peça'},
-  {id:'ur08',name:'Provolone 300g',key:'provolone 200g',category:'Refrigerados',unit:'Porção'},
+  {id:'ur08',name:'Provolone 200g',key:'provolone 200g',category:'Refrigerados',unit:'Porção'},
   {id:'ur09',name:'Gorgonzola 300g',key:'gorgonzola 300g',category:'Refrigerados',unit:'Peça'},
   {id:'ur10',name:'Burrata de búfala 200g',key:'burrata de bufala 200g',category:'Refrigerados',unit:'Un'},
   {id:'ur11',name:'Queijo brie',key:'queijo brie',category:'Refrigerados',unit:'Peça'},
@@ -3006,7 +3041,7 @@ const SIG_CATALOG = [
   {id:'ur53',name:'Tomate extra grande',key:'tomate extra grande',category:'Refrigerados',unit:'Kg'},
   {id:'ur54',name:'Pimentão verde',key:'pimentao verde',category:'Refrigerados',unit:'un'},
   {id:'ur55',name:'Champignon Paris 300g',key:'champignon paris 300g',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ue01',name:'Semolina 10kg',key:'semolina 5kg',category:'Estoque Seco',unit:'Saco'},
+  {id:'ue01',name:'Semolina 10kg',key:'semolina 10kg',category:'Estoque Seco',unit:'Saco'},
   {id:'ue02',name:'Canela c/açúcar mix 500g',key:'canela c/acucar mix 500g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue03',name:'Canela em pó 200g',key:'canela em po 200g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue04',name:'Orégano 250g',key:'oregano 250g',category:'Estoque Seco',unit:'PCT'},
@@ -3196,7 +3231,7 @@ const VICENTE_PIRES_CATALOG = [
   {id:'ur05',name:'Muçarela de búfala 180g',key:'mucarela de bufala 180g',category:'Refrigerados',unit:'Un'},
   {id:'ur06',name:'Parmesão grana padano 300g',key:'parmesao grana padano 300g',category:'Refrigerados',unit:'Peça'},
   {id:'ur07',name:'Parmesão ralado 2kg',key:'parmesao ralado 1kg',category:'Refrigerados',unit:'Peça'},
-  {id:'ur08',name:'Provolone 300g',key:'provolone 200g',category:'Refrigerados',unit:'Porção'},
+  {id:'ur08',name:'Provolone 200g',key:'provolone 200g',category:'Refrigerados',unit:'Porção'},
   {id:'ur09',name:'Gorgonzola 300g',key:'gorgonzola 300g',category:'Refrigerados',unit:'Peça'},
   {id:'ur10',name:'Burrata de búfala 200g',key:'burrata de bufala 200g',category:'Refrigerados',unit:'Un'},
   {id:'ur11',name:'Queijo brie',key:'queijo brie',category:'Refrigerados',unit:'Peça'},
@@ -3244,7 +3279,7 @@ const VICENTE_PIRES_CATALOG = [
   {id:'ur53',name:'Tomate extra grande',key:'tomate extra grande',category:'Refrigerados',unit:'Kg'},
   {id:'ur54',name:'Pimentão verde',key:'pimentao verde',category:'Refrigerados',unit:'un'},
   {id:'ur55',name:'Champignon Paris 300g',key:'champignon paris 300g',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ue01',name:'Semolina 10kg',key:'semolina 5kg',category:'Estoque Seco',unit:'Saco'},
+  {id:'ue01',name:'Semolina 10kg',key:'semolina 10kg',category:'Estoque Seco',unit:'Saco'},
   {id:'ue02',name:'Canela c/açúcar mix 500g',key:'canela c/acucar mix 500g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue03',name:'Canela em pó 200g',key:'canela em po 200g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue04',name:'Orégano 250g',key:'oregano 250g',category:'Estoque Seco',unit:'PCT'},
@@ -3502,7 +3537,7 @@ const DELIVERY_CATALOG = [
   {id:'ur05',name:'Muçarela de búfala 180g',key:'mucarela de bufala 180g',category:'Refrigerados',unit:'Un'},
   {id:'ur06',name:'Parmesão grana padano 300g',key:'parmesao grana padano 300g',category:'Refrigerados',unit:'Peça'},
   {id:'ur07',name:'Parmesão ralado 2kg',key:'parmesao ralado 1kg',category:'Refrigerados',unit:'Peça'},
-  {id:'ur08',name:'Provolone 300g',key:'provolone 200g',category:'Refrigerados',unit:'Porção'},
+  {id:'ur08',name:'Provolone 200g',key:'provolone 200g',category:'Refrigerados',unit:'Porção'},
   {id:'ur09',name:'Gorgonzola 300g',key:'gorgonzola 300g',category:'Refrigerados',unit:'Peça'},
   {id:'ur10',name:'Queijo brie',key:'queijo brie',category:'Refrigerados',unit:'Peça'},
   {id:'ur11',name:'Requeijão bisnaga 1,5kg',key:'requeijao bisnaga 1,5kg',category:'Refrigerados',unit:'Un'},
@@ -3527,7 +3562,7 @@ const DELIVERY_CATALOG = [
   {id:'ur30',name:'Tomate extra grande',key:'tomate extra grande',category:'Refrigerados',unit:'Kg'},
   {id:'ur31',name:'Pimentão verde',key:'pimentao verde',category:'Refrigerados',unit:'Kg'},
   {id:'ur32',name:'Champignon Paris 300g',key:'champignon paris 300g',category:'Refrigerados',unit:'Bandeja'},
-  {id:'ue01',name:'Semolina 10kg',key:'semolina 5kg',category:'Estoque Seco',unit:'Saco'},
+  {id:'ue01',name:'Semolina 10kg',key:'semolina 10kg',category:'Estoque Seco',unit:'Saco'},
   {id:'ue02',name:'Canela c/açúcar mix 500g',key:'canela c/acucar mix 500g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue03',name:'Orégano 250g',key:'oregano 250g',category:'Estoque Seco',unit:'PCT'},
   {id:'ue04',name:'Creme de leite cx 200ml',key:'creme de leite cx 200ml',category:'Estoque Seco',unit:'Un'},
@@ -3665,7 +3700,7 @@ const ITENS_PRODUZIDOS = new Set([
   'Molho de tomate 5L',
   'Parmesão grana padano 300g',
   'Parmesão ralado 2kg',
-  'Provolone 300g',
+  'Provolone 200g',
   'Gorgonzola 300g',
   'Linguiça calabresa 2,5kg',
   'Carne de sol desfiada 1kg',
@@ -3823,7 +3858,7 @@ const MIN_PER_DAY_ASA_SUL = {
   'pimentao verde':{'QUA':15,'SEG':15,'SEX':15},
   'champignon paris 300g':{'QUA':7,'SEG':7,'SEX':12},
   'sorvete de creme 10l':{'QUA':3,'SEG':2,'SEX':4},
-  'semolina 5kg':{'SEG':4,'SEX':4},
+  'semolina 10kg':{'SEG':4,'SEX':4},
   'canela c/acucar mix 500g':{'SEG':2,'SEX':2},
   'canela em po 200g':{'SEG':2,'SEX':2},
   'oregano 250g':{'SEG':2,'SEX':2},
@@ -4127,7 +4162,7 @@ const MIN_PER_DAY_SIG = {
   'pimentao verde':{'QUA':6,'SEG':6,'SEX':12},
   'champignon paris 300g':{'QUA':3,'SEG':3,'SEX':5},
   'sorvete de creme 10l':{'QUA':2,'SEG':2,'SEX':2},
-  'semolina 5kg':{'SEG':2,'SEX':2},
+  'semolina 10kg':{'SEG':2,'SEX':2},
   'canela c/acucar mix 500g':{'SEG':1,'SEX':2},
   'canela em po 200g':{'SEG':1,'SEX':2},
   'oregano 250g':{'SEG':1,'SEX':2},
@@ -4362,7 +4397,7 @@ const MIN_PER_DAY_VICENTE_PIRES = {
   'pimentao verde':{'QUA':12,'SEG':12,'SEX':20},
   'champignon paris 300g':{'QUA':6,'SEG':6,'SEX':10},
   'sorvete de creme 10l':{'QUA':1,'SEG':1,'SEX':3},
-  'semolina 5kg':{'SEG':4,'SEX':5},
+  'semolina 10kg':{'SEG':4,'SEX':5},
   'canela c/acucar mix 500g':{'SEG':3,'SEX':3},
   'canela em po 200g':{'SEG':3,'SEX':3},
   'oregano 250g':{'SEG':3,'SEX':4},
@@ -4641,7 +4676,7 @@ const MIN_PER_DAY_DELIVERY = {
   'tomate extra grande':{'SEG':10,'SEX':10},
   'pimentao verde':{'QUA':6,'SEG':6,'SEX':12},
   'champignon paris 300g':{'QUA':3,'SEG':3,'SEX':5},
-  'semolina 5kg':{'SEG':3,'SEX':3},
+  'semolina 10kg':{'SEG':3,'SEX':3},
   'canela c/acucar mix 500g':{'SEG':5,'SEX':5},
   'oregano 250g':{'SEG':4,'SEX':4},
   'creme de leite cx 200ml':{'SEG':10,'SEX':10},
@@ -5232,7 +5267,18 @@ function confirmGeneral(unitName, respName) {
 }
 
 function saveHistoricoSnapshot(unitName, respName) {
-  if (!window._fb || !window._fb.ready || typeof db === 'undefined') return;
+  // 13/08 (achado CRÍTICO do levantamento de riscos): antes, se a conexão
+  // caísse bem na hora de confirmar a Contagem Geral, o snapshot do
+  // histórico do dia simplesmente não era salvo — e o toast de "Contagem
+  // geral confirmada" aparecia do mesmo jeito, então ninguém percebia que o
+  // relatório de calibração daquele dia ficou incompleto. Agora avisamos o
+  // usuário nos dois casos de falha (sem conexão / erro na leitura ou
+  // gravação), em vez de falhar em silêncio.
+  if (!window._fb || !window._fb.ready || typeof db === 'undefined') {
+    if (typeof toast === 'function') toast('⚠️ Sem conexão agora — o snapshot de histórico de hoje NÃO foi salvo. A confirmação da contagem foi registrada, mas o relatório de calibração pode ficar incompleto pra essa data.');
+    console.warn('[Histórico] saveHistoricoSnapshot chamado offline — snapshot não salvo para', unitName);
+    return;
+  }
   const slug    = unitSlug(unitName);
   const ustock  = unitStock[unitName] || {};
   const ucat    = getUnitCatalog(unitName).catalog;
@@ -5257,7 +5303,13 @@ function saveHistoricoSnapshot(unitName, respName) {
     writes[String(ts)] = snapshot;
     ref.update(writes)
       .then(() => console.log('[Histórico] Snapshot salvo para', unitName))
-      .catch(e => console.warn('[Histórico] Erro ao salvar snapshot:', e));
+      .catch(e => {
+        console.warn('[Histórico] Erro ao salvar snapshot:', e);
+        if (typeof toast === 'function') toast('⚠️ Falha ao salvar o snapshot de histórico de hoje — o relatório de calibração pode ficar incompleto pra essa data.');
+      });
+  }).catch(e => {
+    console.warn('[Histórico] Erro ao ler histórico existente:', e);
+    if (typeof toast === 'function') toast('⚠️ Falha ao salvar o snapshot de histórico de hoje (erro de leitura) — o relatório de calibração pode ficar incompleto pra essa data.');
   });
 }
 
@@ -5622,6 +5674,53 @@ function saveItemAtomic(itemId, qty) {
       window._fb.localWrite = false;
     }
   }, false); // false = não ouvir mudanças intermediárias
+}
+
+// 13/08: achado CRÍTICO do levantamento de riscos — saveItemAtomic() acima
+// usa .transaction() só de nome: o callback ignora currentVal (o valor real
+// no servidor) e sempre devolve a quantidade já calculada no navegador. Faz
+// sentido pra edição manual de estoque (contagem digitada é sempre um valor
+// absoluto — "é isso que eu contei agora", mesmo padrão de last-write-wins
+// já usado no resto do sistema pra contagem). Mas romaneio (baixa) e
+// cancelamento de romaneio (estorno) NÃO deveriam calcular a partir do
+// estado local — são ajustes relativos (+/- a quantidade do romaneio) e
+// precisam somar em cima do valor real do servidor, senão dois romaneios
+// emitidos quase ao mesmo tempo (ou um romaneio + uma edição manual) podem
+// se sobrescrever. Esta função nova faz o ajuste de verdade dentro da
+// transação, usando currentVal do servidor.
+function adjustItemAtomic(itemId, delta) {
+  if (!window._fb || !window._fb.ready || typeof db === 'undefined') {
+    // Offline: melhor esforço em cima do estado local, enfileira pra reenvio
+    cpd[itemId] = Math.max(0, (cpd[itemId] || 0) + delta);
+    try { localStorage.setItem('pizza_cpd', JSON.stringify(cpd)); } catch(e) {}
+    if (!window._fb) window._fb = { ready: false, pendingWrites: [] };
+    window._fb.pendingWrites = window._fb.pendingWrites || [];
+    window._fb.pendingWrites.push({ type: 'atomic', itemId, qty: cpd[itemId] });
+    return;
+  }
+  window._fb.localWrite = true;
+  clearTimeout(window._fb.localWriteTimer);
+  window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 5000);
+
+  _fbWriteStart();
+  db.ref('dados/pizza_cpd/' + itemId).transaction(currentVal => {
+    return Math.max(0, (currentVal || 0) + delta);
+  }, (error, committed, snapshot) => {
+    _fbWriteEnd();
+    clearTimeout(window._fb.localWriteTimer);
+    if (error) {
+      console.error('[Firebase] Transação (ajuste) falhou para', itemId, error);
+      window._fb.localWrite = false;
+      if (typeof toast === 'function') toast('⚠️ Falha ao atualizar o estoque do CPD para um item — confira manualmente antes de continuar.');
+    } else if (committed) {
+      const novoVal = snapshot ? snapshot.val() : null;
+      if (novoVal != null) cpd[itemId] = novoVal;
+      try { localStorage.setItem('pizza_cpd', JSON.stringify(cpd)); } catch(e) {}
+      window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 300);
+    } else {
+      window._fb.localWrite = false;
+    }
+  }, false);
 }
 
 // 13/08: a função saveUnit() (que gravava o estoque INTEIRO de uma unidade
@@ -6258,17 +6357,30 @@ function _finishLogout() {
   // Clear password field for security
   const passInp = document.getElementById('login-pass');
   if (passInp) { passInp.value = ''; passInp.type = 'password'; }
-  // 13/08: limpa o hash guardado pra essa sessão anônima — depois do
-  // "Sair", ninguém mais consegue gravar nada usando esse navegador até
-  // fazer login de novo com uma senha válida. Melhor esforço (não trava o
-  // reload esperando a resposta do Firebase).
+  // 13/08 -> 13/08 (achado CRÍTICO do levantamento de riscos): antes, a
+  // remoção do hash gravado em _write_auth/<uid> era "melhor esforço" (sem
+  // esperar confirmação) e o reload logo em seguida quase sempre cortava a
+  // requisição antes dela chegar ao servidor — então, num aparelho
+  // compartilhado da loja, a sessão do Firebase continuava com o hash
+  // antigo válido mesmo depois de "Sair", e alguém com acesso ao console do
+  // navegador ainda conseguia gravar no banco sem senha nova. Agora
+  // ESPERAMOS a remoção (ou um timeout curto, pra não travar o logout se a
+  // rede estiver ruim) antes de recarregar a página.
+  const doReload = () => { window.location.reload(); };
   try {
     const uid = auth.currentUser && auth.currentUser.uid;
-    if (uid) db.ref('dados/_write_auth/' + uid).remove().catch(() => {});
+    if (uid) {
+      const timeout = new Promise(resolve => setTimeout(resolve, 1500));
+      Promise.race([
+        db.ref('dados/_write_auth/' + uid).remove().catch(() => {}),
+        timeout,
+      ]).then(doReload);
+      return;
+    }
   } catch (e) {}
   // Full reload is the most reliable way to reset all state
   // (works in Electron, Chrome, Safari)
-  window.location.reload();
+  doReload();
 }
 
 // Modal sem opção de fechar/cancelar — só "Finalizar agora" ou "Descartar
@@ -9406,9 +9518,10 @@ function cancelarRomaneio(id, romaneio, onDone) {
   if (!confirm('Cancelar o romaneio Nº ' + (romaneio.numero != null ? romaneio.numero : id) + '?\n\nO estoque do CPD será estornado (itens devolvidos) e o romaneio ficará marcado como cancelado no histórico.')) return;
   const itens = romaneio.itens || [];
   itens.forEach(it => {
-    const novoCpd = (cpd[it.id] || 0) + it.qty;
-    cpd[it.id] = novoCpd;
-    saveItemAtomic(it.id, novoCpd);
+    // 13/08: usa adjustItemAtomic (ajuste relativo no servidor) em vez de
+    // calcular o novo total a partir do estado local — ver comentário na
+    // definição de adjustItemAtomic().
+    adjustItemAtomic(it.id, it.qty);
   });
   db.ref('dados/pizza_romaneios/' + id).update({
     status: 'cancelado',
@@ -9834,10 +9947,23 @@ function viewRomaneio() {
       genBtn.textContent = 'Gerando...';
 
       const ts = Date.now();
-      // 12/08: numeração sequencial real (nextRomaneioNumero(), transação no
-      // Firebase) — se por algum motivo a transação falhar (ex.: offline),
-      // cai pro fallback antigo (6 últimos dígitos do timestamp) em vez de
-      // travar o envio; printRomaneioPdf já sabe lidar com os dois casos.
+      // 13/08 (achado CRÍTICO do levantamento de riscos): a ordem foi
+      // invertida. Antes, a baixa de estoque do CPD acontecia ANTES do
+      // romaneio em si ser salvo com sucesso — se a rede caísse bem nesse
+      // meio-tempo, o estoque já tinha sido debitado (e um número da
+      // sequência consumido) sem nenhum romaneio correspondente salvo.
+      // Agora: 1) pega o número sequencial, 2) salva o romaneio primeiro,
+      // 3) só debita o estoque DEPOIS de confirmar que o romaneio foi
+      // gravado. Se qualquer passo falhar, nada de estoque é alterado e o
+      // usuário vê um erro claro (em vez do botão travado em "Gerando..."
+      // pra sempre) — também adicionamos o .catch que faltava na promise de
+      // nextRomaneioNumero().
+      const onFalha = (msg) => {
+        romErrEl.textContent = msg;
+        romErrEl.style.display = 'block';
+        genBtn.disabled = false;
+        genBtn.textContent = '📄 Confirmar Envio e Gerar Romaneio';
+      };
       nextRomaneioNumero().then(numero => {
         const romaneio = {
           numero: numero != null ? numero : null,
@@ -9853,22 +9979,21 @@ function viewRomaneio() {
           itens: _romaneioCart.map(c => ({ id: c.id, key: c.key, name: c.name, unit: c.unit, qty: c.qty, sugerido: c.sugerido == null ? null : c.sugerido })),
         };
 
-        // 10/08: por enquanto o romaneio só dá baixa no estoque do CPD — a
-        // soma automática no estoque da unidade de destino foi retirada a
-        // pedido do Eduardo (ele quer deixar esse lado mais robusto/com mais
-        // controle antes de automatizar). A unidade confirma o recebimento
-        // na tela "Recebimentos" (ver viewRecebimentos()).
-        romaneio.itens.forEach(it => {
-          const novoCpd = Math.max(0, (cpd[it.id] || 0) - it.qty);
-          cpd[it.id] = novoCpd;
-          saveItemAtomic(it.id, novoCpd);
-        });
-
-        // Registrar no histórico
+        // Registrar no histórico PRIMEIRO — só mexe em estoque depois de
+        // confirmar que o romaneio foi salvo de verdade.
         db.ref('dados/pizza_romaneios/' + ts).set(romaneio)
           .then(() => {
+            // 10/08: por enquanto o romaneio só dá baixa no estoque do CPD —
+            // a soma automática no estoque da unidade de destino foi
+            // retirada a pedido do Eduardo (ele quer deixar esse lado mais
+            // robusto/com mais controle antes de automatizar). A unidade
+            // confirma o recebimento na tela "Recebimentos" (ver
+            // viewRecebimentos()). Usa adjustItemAtomic (ajuste relativo no
+            // servidor) — ver comentário na definição da função.
+            romaneio.itens.forEach(it => { adjustItemAtomic(it.id, -it.qty); });
+
             toast('✓ Romaneio Nº ' + (romaneio.numero != null ? romaneio.numero : '—') + ' gerado e estoque do CPD atualizado!');
-            printRomaneioPdf(romaneio);
+            try { printRomaneioPdf(romaneio); } catch (e) { console.warn('[Romaneio] Erro ao gerar PDF (romaneio já salvo normalmente):', e); toast('⚠️ Romaneio salvo, mas houve um erro ao gerar o PDF — pode reimprimir depois pelo histórico.'); }
             // Avisa a unidade de destino em tempo real (mesmo mecanismo de
             // notificação push já usado no resto do sistema).
             db.ref('notificacoes/unidades/' + encodeURIComponent(destino) + '/' + Date.now()).set({
@@ -9879,11 +10004,11 @@ function viewRomaneio() {
             if (currentView === 'romaneio') render();
           })
           .catch(e => {
-            romErrEl.textContent = 'Erro ao salvar romaneio: ' + e.message;
-            romErrEl.style.display = 'block';
-            genBtn.disabled = false;
-            genBtn.textContent = '📄 Confirmar Envio e Gerar Romaneio';
+            onFalha('Erro ao salvar romaneio: ' + e.message + ' — nada foi alterado no estoque, pode tentar de novo.');
           });
+      }).catch(e => {
+        console.error('[Romaneio] Falha ao gerar número sequencial:', e);
+        onFalha('Erro ao gerar o número do romaneio (falha de conexão) — nada foi enviado, tente de novo.');
       });
     };
 
