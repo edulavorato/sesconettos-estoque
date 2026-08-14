@@ -1749,6 +1749,44 @@ auth.onAuthStateChanged(user => {
   window._fb.ready = true;
   if (typeof _gateStep === 'function') _gateStep('auth', 'Autenticado — carregando dados…');
   _flushPendingWrites(); // processa qualquer write que aconteceu antes do auth
+
+  // 14/08: achado do relato "Falha ao salvar" persistente (PERMISSION_DENIED
+  // em todo write, mesmo com a tela mostrando a sessão normalmente). Causa
+  // raiz: dados/_write_auth/<uid> só é gravado dentro de doLogin() — na hora
+  // que a pessoa digita a senha. A sessão em si (session = {unit, name}) é
+  // cacheada no localStorage e restaurada em toda carga de página SEM rodar
+  // doLogin() de novo, contando que o mesmo uid da autenticação anônima
+  // continua valendo. Se por qualquer motivo esse uid mudar entre uma carga
+  // de página e outra (perda de persistência do navegador, modo anônimo/
+  // privado, limpeza de dados do site, certas combinações de navegador
+  // mobile) — o Firebase cria um uid NOVO, que nunca teve _write_auth
+  // gravado. Como a LEITURA continua liberada pra qualquer uid autenticado,
+  // a tela carrega normalmente (parece que still logado), mas TODA gravação
+  // passa a ser negada pela regra, silenciosamente do ponto de vista do
+  // usuário — só aparece como "Falha ao salvar" repetindo.
+  // Correção: ao carregar a página com uma sessão já salva, faz uma
+  // gravação de teste (sem senha nenhuma — só confirma se o _write_auth
+  // deste uid já é válido pra essa unidade). Se falhar, a sessão está
+  // "zumbi": limpa o cache e força login de novo, com aviso claro, em vez
+  // de deixar a pessoa "logada" mas incapaz de salvar qualquer coisa.
+  setTimeout(() => {
+    if (!session || typeof unitSlug !== 'function') return;
+    const slug = unitSlug(session.unit);
+    db.ref('dados/_login_probe/' + slug).set(Date.now())
+      .then(() => console.log('[Auth] Sessão validada — gravação permitida para', session.unit))
+      .catch(e => {
+        console.error('[Auth] Sessão zumbi detectada — _write_auth não é válido para este uid:', e);
+        // Reusa o mecanismo de logout já testado (_finishLogout) em vez de
+        // tentar trocar de tela manualmente — ele já limpa a sessão, tenta
+        // remover qualquer _write_auth órfão e recarrega a página do zero,
+        // que é a forma mais confiável de garantir um estado limpo pro
+        // próximo login (mesmo padrão usado no logout normal).
+        if (typeof alert === 'function') {
+          alert('Sua sessão expirou (o navegador perdeu a autenticação salva) — vamos recarregar e pedir login de novo pra continuar salvando normalmente.');
+        }
+        if (typeof _finishLogout === 'function') _finishLogout();
+      });
+  }, 1500); // aguarda o restante da inicialização (gates) acomodar
   // Migrar estrutura de dados das unidades se necessário (uma vez só)
   setTimeout(_migrarEstruturaPizzaUnits, 2000);
 
