@@ -1668,6 +1668,61 @@ window._fb = {
   inFlight: 0
 };
 
+// 14/08: achado do teste em cima do bug relatado ("número volta pra
+// contagem anterior depois de salvar") — a correção anterior (checar
+// window._fb.localWrite nos listeners) só cobre a JANELA EM QUE A GRAVAÇÃO
+// JÁ ESTÁ EM ANDAMENTO no Firebase. Mas existe uma janela ANTES dessa: o
+// debounce de 1s em updateQty() (buildStockTable), onde a pessoa já digitou
+// o valor novo, mas ele ainda não foi enviado pro Firebase — localWrite
+// continua false nesse intervalo. Se um snapshot do listener chegar bem
+// nessa hora (reconexão, outro item mudando, etc.), ele reflete o estado
+// ANTIGO do servidor (ainda sem o valor recém-digitado) e sobrescreve
+// stockObj[itemId] — quando a tela reflete isso um instante depois (o campo
+// só não é tocado enquanto está com foco — ver patchStockValues), o número
+// parece "voltar" mesmo a gravação de verdade ainda ia acontecer certinha
+// no fim do debounce. Esta função trata as duas janelas como uma coisa só:
+// "tem gravação local em andamento ou prestes a acontecer" — usada em vez
+// de checar window._fb.localWrite sozinho em todo lugar que decide se pode
+// sobrescrever dado local com um snapshot do servidor.
+function _localWriteInFlight() {
+  return !!(window._fb && (window._fb.localWrite || (window._fb.pendingDebounces && window._fb.pendingDebounces.size > 0)));
+}
+
+// 14/08: teste automatizado (ver /tmp/test_stock_sync.js entregue junto)
+// revelou que _localWriteInFlight() sozinho NÃO bastava: ele evita que o
+// listener apague itens que não vieram no snapshot, mas se o snapshot
+// atrasado incluir EXPLICITAMENTE o valor antigo do item que a pessoa
+// acabou de digitar (ex.: {a: 3} chegando depois de digitar a=7), o merge
+// ainda sobrescrevia esse item específico — reproduzindo o mesmo bug. Esta
+// proteção é por item: marca "não mexe neste item específico por N
+// segundos", e os listeners agora restauram o valor local protegido por
+// cima de qualquer coisa que vier do servidor nesse intervalo, mesmo em uma
+// sincronização completa. A proteção é liberada assim que a gravação de
+// fato confirma (ver onUpdate de buildStockTable) — não precisa esperar o
+// tempo máximo se a rede for rápida.
+window._fb.protectedItems = new Map(); // 'unit:<slug>:<itemId>' | 'cpd:<itemId>' -> expira em (ms)
+function _protectItem(scopeKey, itemId, ms) {
+  window._fb.protectedItems.set(scopeKey + '_' + itemId, Date.now() + ms);
+}
+function _clearItemProtection(scopeKey, itemId) {
+  window._fb.protectedItems.delete(scopeKey + '_' + itemId);
+}
+function _isItemProtected(scopeKey, itemId) {
+  const map = window._fb.protectedItems;
+  const k = scopeKey + '_' + itemId;
+  const exp = map.get(k);
+  if (exp == null) return false;
+  if (Date.now() > exp) { map.delete(k); return false; }
+  return true;
+}
+// Retorna { ...target } só com as chaves atualmente protegidas — usado pra
+// restaurar por cima depois de aplicar o que veio do servidor.
+function _snapshotProtected(scopeKey, target) {
+  const out = {};
+  Object.keys(target).forEach(k => { if (_isItemProtected(scopeKey, k)) out[k] = target[k]; });
+  return out;
+}
+
 // 05/08: contador de writes "em voo" (já disparados no Firebase, mas cuja
 // Promise ainda não resolveu nem falhou). O mecanismo de pendingWrites só
 // protege writes que JÁ FALHARAM — um write que está simplesmente demorando
@@ -1748,10 +1803,10 @@ auth.onAuthStateChanged(user => {
 
   // Helper: throttle de render para updates externos (compartilhado por todos os listeners)
   function _scheduleRender() {
-    if (!session || window._fb.localWrite) return;
+    if (!session || _localWriteInFlight()) return;
     clearTimeout(window._fb.renderThrottleTimer);
     window._fb.renderThrottleTimer = setTimeout(() => {
-      if (!session || window._fb.localWrite) return;
+      if (!session || _localWriteInFlight()) return;
       const hasRows = document.querySelectorAll('tr[data-item-id]').length > 0;
       if (hasRows && (currentView === 'cpd' || currentView === 'units')) {
         try {
@@ -1888,19 +1943,26 @@ auth.onAuthStateChanged(user => {
     if (!window._fb.ready || typeof cpd === 'undefined') return;
     const val = snap.val();
     if (!val) return;
-    // 14/08: mesma correção aplicada ao listener de pizza_units — ver
-    // comentário lá. Enquanto uma gravação local do CPD está em andamento
-    // (window._fb.localWrite), só faz merge do snapshot recebido em vez de
-    // apagar tudo e reconstruir do zero, pra não reverter um valor recém
-    // digitado se o snapshot chegar um pouco atrasado.
-    if (window._fb.localWrite) {
+    // 14/08: correção em duas camadas pro relato de "número volta pra
+    // contagem anterior depois de salvar" (ver _protectItem/_localWriteInFlight
+    // acima). Camada 1: enquanto uma gravação local do CPD está em
+    // andamento, faz merge em vez de apagar tudo. Camada 2 (a que realmente
+    // resolve o caso confirmado por teste): mesmo em merge, restaura por
+    // cima os itens PROTEGIDOS (edição/gravação em andamento pra aquele
+    // item específico) com o valor local — porque um snapshot atrasado pode
+    // vir com o valor antigo EXPLICITAMENTE pro item que a pessoa acabou de
+    // digitar, e um merge simples sobrescreveria mesmo assim.
+    const protectedLocal = _snapshotProtected('cpd', cpd);
+    if (_localWriteInFlight()) {
       Object.assign(cpd, val);
+      Object.assign(cpd, protectedLocal);
       saveLocal('pizza_cpd', cpd);
       _gateStep('stock', 'Estoque sincronizado…');
       return;
     }
     Object.keys(cpd).forEach(k => delete cpd[k]);
     Object.assign(cpd, val);
+    Object.assign(cpd, protectedLocal);
     saveLocal('pizza_cpd', cpd);
     _gateStep('stock', 'Estoque sincronizado…');
     _scheduleRender();
@@ -1910,6 +1972,10 @@ auth.onAuthStateChanged(user => {
   db.ref('dados/pizza_minimums').on('value', snap => {
     if (!window._fb.ready || typeof minimums === 'undefined') return;
     const val = snap.val(); if (!val) return;
+    // 14/08: mesma correção do listener de pizza_units — merge em vez de
+    // apagar tudo enquanto uma gravação local (editar um mínimo) ainda está
+    // em andamento.
+    if (_localWriteInFlight()) { Object.assign(minimums, val); saveLocal('pizza_minimums', minimums); return; }
     Object.keys(minimums).forEach(k => delete minimums[k]);
     Object.assign(minimums, val);
     saveLocal('pizza_minimums', minimums);
@@ -1925,6 +1991,8 @@ auth.onAuthStateChanged(user => {
     if (!window._fb.ready) return;
     const val = snap.val(); if (!val) return;
     if (!window.unitMinimums) window.unitMinimums = {};
+    // 14/08: idem.
+    if (_localWriteInFlight()) { Object.assign(window.unitMinimums, val); saveLocal('pizza_unit_minimums', window.unitMinimums); return; }
     Object.keys(window.unitMinimums).forEach(k => delete window.unitMinimums[k]);
     Object.assign(window.unitMinimums, val);
     saveLocal('pizza_unit_minimums', window.unitMinimums);
@@ -1937,6 +2005,13 @@ auth.onAuthStateChanged(user => {
   db.ref('dados/pizza_counted').on('value', snap => {
     if (!window._fb.ready) return;
     const val = snap.val(); if (!val) return;
+    // 14/08: mesma correção do listener de pizza_units/pizza_cpd — enquanto
+    // uma gravação local está em andamento (ex.: acabou de marcar um item
+    // como contado), ignora o snapshot recebido em vez de substituir
+    // countedMap inteiro por um valor que pode estar um passo atrás do que
+    // acabou de ser salvo. O próximo evento (já com a gravação confirmada)
+    // sincroniza certo.
+    if (_localWriteInFlight()) return;
     countedMap = val;
     saveLocal('pizza_counted', countedMap);
     if (typeof renderOpenCountBanner === 'function') renderOpenCountBanner();
@@ -1947,6 +2022,10 @@ auth.onAuthStateChanged(user => {
   db.ref('dados/pizza_cat_confirms').on('value', snap => {
     if (!window._fb.ready) return;
     const val = snap.val(); if (!val) return;
+    // 14/08: idem — evita que uma confirmação de categoria recém-feita
+    // volte pra "não confirmado" por causa de um snapshot atrasado chegando
+    // enquanto a gravação ainda está em andamento.
+    if (_localWriteInFlight()) return;
     catConfirmations = val;
     saveLocal('pizza_cat_confirms', catConfirmations);
     if (typeof renderOpenCountBanner === 'function') renderOpenCountBanner();
@@ -2009,15 +2088,26 @@ auth.onAuthStateChanged(user => {
       // sem apagar nada que já está em memória — o próximo evento (já com a
       // gravação confirmada) sincroniza tudo direitinho assim que
       // localWrite liberar, sem essa janela de sobrescrita.
-      if (window._fb.localWrite) {
+      // 14/08: camada 2 da correção — mesmo em merge, restaura por cima os
+      // itens PROTEGIDOS (edição/gravação em andamento pra aquele item
+      // específico nesta unidade). Ver comentário equivalente no listener
+      // de pizza_cpd, e _protectItem/_isItemProtected no topo do arquivo.
+      // Confirmado por teste automatizado que sem isso, um snapshot atrasado
+      // que já vem COM o valor antigo do item sendo editado ainda revertia
+      // o número mesmo com o merge da correção anterior.
+      const _scopeKey = 'unit_' + slug;
+      const protectedLocal = _snapshotProtected(_scopeKey, unitStock[unitName]);
+      if (_localWriteInFlight()) {
         Object.assign(unitStock[unitName], val);
+        Object.assign(unitStock[unitName], protectedLocal);
         try { localStorage.setItem('pizza_unit_' + slug, JSON.stringify(unitStock[unitName])); } catch(e) {}
         _gateStep('stock', 'Estoque sincronizado…');
         return;
       }
       Object.keys(unitStock[unitName]).forEach(k => delete unitStock[unitName][k]);
       Object.assign(unitStock[unitName], val);
-      try { localStorage.setItem('pizza_unit_' + slug, JSON.stringify(val)); } catch(e) {}
+      Object.assign(unitStock[unitName], protectedLocal);
+      try { localStorage.setItem('pizza_unit_' + slug, JSON.stringify(unitStock[unitName])); } catch(e) {}
 
       // Liberar gate de stock ao receber a própria unidade (ou qualquer unidade para o CPD)
       _gateStep('stock', 'Estoque sincronizado…');
@@ -5669,6 +5759,9 @@ function saveItemAtomic(itemId, qty) {
       // Transação bem-sucedida — confirmar no localStorage
       try { localStorage.setItem('pizza_cpd', JSON.stringify(cpd)); } catch(e) {}
       window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 300);
+      // 14/08: gravação confirmada — libera a proteção por item já, sem
+      // esperar o prazo máximo (ver _protectItem em buildStockTable).
+      if (typeof _clearItemProtection === 'function') _clearItemProtection('cpd', itemId);
     } else {
       // Transação abortada (currentVal igual ao esperado — sem mudança necessária)
       window._fb.localWrite = false;
@@ -6644,6 +6737,10 @@ function el(tag, attrs={}, ...children) {
   const unitForConf   = opts.unitForConf  || null;
   const unitMins      = opts.unitMins     || {};
   const unitName      = opts.unitName     || null;  // unidade para botão confirmar
+  // 14/08: identifica o "escopo" de sincronização desta tabela (qual listener
+  // do Firebase ela corresponde) — usado pela proteção por item contra
+  // reversão de valor (ver _protectItem/_isItemProtected).
+  const _syncScope    = unitName ? ('unit_' + unitSlug(unitName)) : 'cpd';
   const showConfirm   = opts.showConfirm === true;  // mostrar botão ✓ por item
   const catSource     = opts.catSource || catalog;   // catálogo a usar (padrão: CPD)
   // Diagnóstico: alertar se catSource parece ser o catálogo do CPD para uma unidade
@@ -6729,6 +6826,11 @@ function el(tag, attrs={}, ...children) {
     if (!window._fb.pendingDebounces) window._fb.pendingDebounces = new Set();
     const _pdKey = searchInp.id + ':' + itemId;
     window._fb.pendingDebounces.add(_pdKey);
+    // 14/08: protege ESTE item específico contra ser sobrescrito por um
+    // snapshot atrasado do servidor (ver _protectItem) — 7s cobre o
+    // debounce (1s) + tempo de gravação até confirmar, com folga pra
+    // conexões mais lentas. Cada nova tecla renova o prazo.
+    if (typeof _protectItem === 'function') _protectItem(_syncScope, itemId, 7000);
 
     clearTimeout(saveTimer[itemId]);
     saveTimer[itemId] = setTimeout(() => {
@@ -8116,6 +8218,9 @@ function viewUnits() {
           _fbWriteEnd();
           clearTimeout(window._fb.localWriteTimer);
           window._fb.localWriteTimer = setTimeout(() => { window._fb.localWrite = false; }, 300);
+          // 14/08: gravação confirmada — libera a proteção por item já (ver
+          // _protectItem em buildStockTable), sem esperar o prazo máximo.
+          if (typeof _clearItemProtection === 'function') _clearItemProtection('unit_' + _slug, itemId);
         })
         .catch(e => {
           _fbWriteEnd();
