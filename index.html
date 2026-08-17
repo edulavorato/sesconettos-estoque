@@ -1899,7 +1899,7 @@ auth.onAuthStateChanged(user => {
     // continuar rodando código antigo (sem a correção da sessão zumbi, por
     // exemplo) por dias, sem nenhum aviso pra atualizar. Ver
     // _compareVersions() logo abaixo pra comparação correta por número.
-    const APP_VERSION = '1.5.75';
+    const APP_VERSION = '1.5.78';
     window._APP_VERSION = APP_VERSION;
 
     if (fbCatalogLen === 0) {
@@ -5347,6 +5347,33 @@ function qpGet(key, def) { return _qpState[key] !== undefined ? _qpState[key] : 
 function qpSet(key, val) { _qpState[key] = val; qpSave(_qpState); }
 
 
+// ═══ "DIA OPERACIONAL" (janela de contagem: 15h de um dia até 3h do outro) ═══
+// 17/08: a pedido do Eduardo — a operação das lojas conta a virada do dia de
+// forma diferente do relógio: uma contagem feita, por exemplo, à 0h40 é, na
+// prática, referente ao FECHAMENTO do dia anterior (começou às 15h daquele
+// dia), não ao dia civil que o relógio já mostra. Sem isso, uma confirmação
+// feita de madrugada aparecia com a data "de amanhã" pro time, e a
+// comparação de "isso é de hoje?" também dava errado nesse intervalo.
+// Regra: qualquer horário ANTES das 3h da manhã pertence ao dia operacional
+// ANTERIOR (o fechamento daquela madrugada). A partir das 3h em diante
+// (incluindo o período morto até as 15h, quando a próxima contagem ainda não
+// começou), pertence ao dia civil corrente.
+function _operationalDate(ts) {
+  const d = new Date(ts);
+  if (d.getHours() < 3) d.setDate(d.getDate() - 1);
+  return d;
+}
+function _operationalDayKey(ts) {
+  const d = _operationalDate(ts);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function _operationalDayLabel(ts) {
+  return _operationalDate(ts).toLocaleDateString('pt-BR');
+}
+function _isSameOperationalDay(tsA, tsB) {
+  return _operationalDayKey(tsA) === _operationalDayKey(tsB);
+}
+
 // ═══ CONFIRMAÇÃO DE CONTAGEM POR CATEGORIA ═══════════════════════════════════
 // Estrutura: { unitSlug: { 'Categoria': { name, ts, qtys: {itemId: qty} } } }
 // qtys = snapshot das quantidades no momento da confirmação
@@ -5700,15 +5727,25 @@ function _startZeroCheck() {
 }
 
 // Registrar modificação de quantidade em uma categoria
+//
+// 17/08: achado da investigação do caso Asa Sul (Refrigerados sem
+// confirmação nenhuma, Confirmação Geral vazia há dias, histórico de
+// calibração parado desde 12/08) — antes, QUALQUER edição de item numa
+// categoria já confirmada apagava não só a confirmação daquela categoria
+// (esperado), mas também a Confirmação Geral do DIA INTEIRO, mesmo que fosse
+// só uma correção pequena num item, sem nenhum aviso na tela. Como
+// confirmGeneral() é o único lugar que alimenta o histórico de calibração
+// (saveHistoricoSnapshot), isso também explica os dias sem snapshot. Eduardo
+// confirmou que o certo é invalidar só a categoria mexida — a Confirmação
+// Geral deve continuar valendo até alguém de fato mudar algo que já tinha
+// sido fechado nela.
 function markCatModified(unitName, cat) {
   const slug = unitSlug(unitName);
   if (!catConfirmations[slug]) catConfirmations[slug] = {};
   catConfirmations[slug]['_lastmod_' + cat] = Date.now();
-  // Se havia confirmação, invalidar
+  // Se havia confirmação desta categoria, invalidar SÓ ela
   if (catConfirmations[slug][cat]) {
     delete catConfirmations[slug][cat];
-    // Invalidar também a confirmação geral
-    delete catConfirmations[slug]._general;
     save('pizza_cat_confirms', catConfirmations);
   }
 }
@@ -7279,32 +7316,51 @@ function el(tag, attrs={}, ...children) {
         if (unitName) {
           const confState = getCatConfirmState(unitName, cat, stockObj);
           const confInfo = catConfirmations[unitSlug(unitName)] && catConfirmations[unitSlug(unitName)][cat];
-          const confTimeStr = (confInfo && confInfo.ts)
-            ? ' \u00E0s ' + new Date(confInfo.ts).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})
-            : '';
+          // 14/08: achado da investigacao do caso Asa Sul (contagem antiga,
+          // com o nome de quem nao contou ontem) - o badge so mostrava a
+          // HORA da confirmacao (ex: "as 14:32"), nunca a data. Uma categoria
+          // que ninguem mexe (porque a contagem fisica nao muda, ou porque um
+          // salvamento anterior falhou silenciosamente - ver toda a
+          // investigacao de "Falha ao salvar"/sessao zumbi) continua com o
+          // MESMO confInfo de dias atras, e getCatConfirmState() so marca
+          // 'needs-reconfirm' se a QUANTIDADE mudou - nunca por causa da
+          // DATA.
+          // 17/08: a pedido do Eduardo, a data agora aparece SEMPRE (nao so
+          // quando "antiga"), e usa o DIA OPERACIONAL (15h-3h, ver
+          // _operationalDayLabel/_isSameOperationalDay acima) em vez do dia
+          // do calendario - uma contagem feita as 0h40, por exemplo, e do
+          // fechamento do dia anterior, nao do dia civil que ja virou.
+          let confIsOldDay = false;
+          let confTimeStr = '';
+          if (confInfo && confInfo.ts) {
+            const confDate = new Date(confInfo.ts);
+            confIsOldDay = !_isSameOperationalDay(confInfo.ts, Date.now());
+            confTimeStr = ' em ' + _operationalDayLabel(confInfo.ts) + ' \u00E0s ' + confDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+          }
+          const oldDaySuffix = confIsOldDay ? ' \u26A0\uFE0F N\u00C3O \u00C9 DO DIA OPERACIONAL ATUAL' : '';
           if (isCPD()) {
             const confBadge = el('span', {
-              cls: 'cat-confirm-btn' + (confState === 'confirmed' ? ' confirmed' : confState === 'needs-reconfirm' ? ' needs-reconfirm' : ''),
+              cls: 'cat-confirm-btn' + (confState === 'confirmed' ? ' confirmed' : confState === 'needs-reconfirm' ? ' needs-reconfirm' : '') + (confIsOldDay ? ' needs-reconfirm' : ''),
               style: 'cursor:default;pointer-events:none',
               title: confState === 'confirmed'
-                ? 'Confirmada por ' + confInfo.name + confTimeStr
+                ? 'Confirmada por ' + confInfo.name + confTimeStr + oldDaySuffix
                 : confState === 'needs-reconfirm'
                   ? 'Confirmada por ' + confInfo.name + confTimeStr + ', mas o estoque mudou depois \u2014 precisa reconfirmar'
                   : 'Categoria ainda n\u00E3o confirmada por ' + unitName
             });
             confBadge.textContent = confState === 'confirmed'
-              ? '\u2713 ' + confInfo.name + confTimeStr
+              ? (confIsOldDay ? '\u26A0\uFE0F ' : '\u2713 ') + confInfo.name + confTimeStr
               : confState === 'needs-reconfirm'
                 ? '\u26A0\uFE0F ' + confInfo.name + confTimeStr + ' (desatualizado)'
                 : 'N\u00E3o confirmada';
             catWrap.appendChild(confBadge);
           } else {
           const confBtn = el('button', {
-            cls: 'cat-confirm-btn' + (confState === 'confirmed' ? ' confirmed' : confState === 'needs-reconfirm' ? ' needs-reconfirm' : ''),
-            title: confState === 'confirmed' ? 'Categoria confirmada' : confState === 'needs-reconfirm' ? 'Reconfirmação necessária' : 'Confirmar contagem desta categoria'
+            cls: 'cat-confirm-btn' + (confState === 'confirmed' ? ' confirmed' : confState === 'needs-reconfirm' ? ' needs-reconfirm' : '') + (confIsOldDay ? ' needs-reconfirm' : ''),
+            title: confState === 'confirmed' ? ('Categoria confirmada' + oldDaySuffix) : confState === 'needs-reconfirm' ? 'Reconfirma\u00E7\u00E3o necess\u00E1ria' : 'Confirmar contagem desta categoria'
           });
           confBtn.textContent = confState === 'confirmed'
-            ? '\u2713 ' + confInfo.name + confTimeStr
+            ? (confIsOldDay ? '\u26A0\uFE0F ' : '\u2713 ') + confInfo.name + confTimeStr
             : confState === 'needs-reconfirm'
               ? '\u26A0\uFE0F Reconfirmar'
               : 'Confirmar';
@@ -7919,13 +7975,19 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
       const _pConf = catConfirmations[_pSlug] && catConfirmations[_pSlug][cat];
       const _pState = typeof getCatConfirmState === 'function' ? getCatConfirmState(unitLabel, cat, stockObj) : (_pConf ? 'confirmed' : 'none');
       let _pStr, _pColor;
+      // 17/08: a pedido do Eduardo \u2014 o PDF tamb\u00E9m passa a mostrar a DATA da
+      // confirma\u00E7\u00E3o (dia operacional, 15h-3h), n\u00E3o s\u00F3 a hora, mesmo motivo
+      // do selo na tela: sem data, uma confirma\u00E7\u00E3o de dias atr\u00E1s parece de
+      // hoje quando impressa.
       if (_pState === 'confirmed' && _pConf) {
+        const _pDia = typeof _operationalDate === 'function' ? _operationalDate(_pConf.ts).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
         const _pTs = new Date(_pConf.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-        _pStr = '\u2713 ' + _pConf.name + '  ' + _pTs;
+        _pStr = '\u2713 ' + _pConf.name + '  ' + _pDia + ' ' + _pTs;
         _pColor = '0.2 0.5 0.3 rg';
       } else if (_pState === 'needs-reconfirm' && _pConf) {
+        const _pDia = typeof _operationalDate === 'function' ? _operationalDate(_pConf.ts).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
         const _pTs = new Date(_pConf.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-        _pStr = '\u26A0 ' + _pConf.name + '  ' + _pTs + ' (desatualizado)';
+        _pStr = '\u26A0 ' + _pConf.name + '  ' + _pDia + ' ' + _pTs + ' (desatualizado)';
         _pColor = '0.6 0.4 0 rg';
       } else {
         _pStr = 'N\u00E3o confirmada';
@@ -8373,7 +8435,10 @@ function viewUnits() {
   if (!isCPD()) {
     if (generalState) {
       const genInfo = el('span', {style:'font-size:11px;color:var(--accent-dark,#1A5229);font-weight:600'});
-      genInfo.textContent = '\u2713 Geral: ' + generalState.name + ' ' + new Date(generalState.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      // 17/08: mesmo racioc\u00ednio do selo de categoria \u2014 mostrar a data (dia
+      // operacional, 15h-3h) junto, n\u00e3o s\u00f3 a hora, pra ningu\u00e9m confundir a
+      // Confirma\u00e7\u00e3o Geral de hoje com a de outro dia.
+      genInfo.textContent = '\u2713 Geral: ' + generalState.name + ' em ' + _operationalDayLabel(generalState.ts) + ' \u00e0s ' + new Date(generalState.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
       pdfWrapUnit.appendChild(genInfo);
     } else if (!requiredCatsDone) {
       // Contagem ainda em andamento — mostrar progresso das categorias obrigatórias do dia

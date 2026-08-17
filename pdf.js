@@ -338,12 +338,17 @@ function printStockPdf(unitLabel, stockObj, onlyCategory) {
     ops.push(`0.85 0.93 0.87 rg ${ML} ${y-2} ${TW} 14 re f 0 0 0 rg`);
     ops.push(`BT /F1 9 Tf ${ML+3} ${y+2} Td ${pdfStr(cat.toUpperCase())} Tj ET`);
     // Nome do confirmador da categoria (apenas unidades)
+    // 17/08: mostra tamb\u00e9m a data (dia operacional, 15h-3h \u2014 ver
+    // _operationalDate no arquivo principal), n\u00e3o s\u00f3 a hora, mesmo motivo do
+    // conserto equivalente em index.html: sem data, uma confirma\u00e7\u00e3o de dias
+    // atr\u00e1s aparece igual a uma de hoje no PDF impresso.
     if (unitLabel !== 'CPD') {
       const _pSlug = typeof unitSlug === 'function' ? unitSlug(unitLabel) : '';
       const _pConf = catConfirmations[_pSlug] && catConfirmations[_pSlug][cat];
       if (_pConf) {
+        const _pDia = typeof _operationalDate === 'function' ? _operationalDate(_pConf.ts).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
         const _pTs = new Date(_pConf.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-        const _pStr = '\u2713 ' + _pConf.name + '  ' + _pTs;
+        const _pStr = '\u2713 ' + _pConf.name + '  ' + _pDia + ' ' + _pTs;
         ops.push(`BT /F2 7 Tf 0.2 0.5 0.3 rg ${ML+TW-100} ${y+3} Td ${pdfStr(_pStr)} Tj ET 0 0 0 rg`);
       }
     }
